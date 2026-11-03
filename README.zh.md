@@ -207,7 +207,8 @@ trellis gate <G0..G7> --waive   --by human:<name> --reason <text> [--task <T-NNN
 
 trellis task list [dir] [--json]
 trellis task add --title <text> --scope <paths> --acceptance <text> --verification <text> \
-                 [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>] --by <role>:<name>
+                 [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>] \
+                 [--follow-up-of <T-NNN>] --by <role>:<name>
 trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
 trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> [--note <text>] [--by <role>:<name>]
 
@@ -236,6 +237,11 @@ trellis profile list [--json]
 --reason "..."`。记录仍留在 `evidence.json` 里并标为 `retracted`，但不再阻塞
 `done`，所以 bug 流程是真实的：先记录失败的复现，修好后撤回失败证据，再补一条
 通过证据。产出者角色不能撤回自己的失败。
+
+执行过程中发现的工作可以让循环继续跑：`task add --follow-up-of T-NNN` 会继承父
+任务的 milestone，写域必须在父任务范围内，自动依赖父任务，并且**不**重开 G3/G4。
+每个任务最多派生 3 个跟进、最深 2 层；超出则和普通新任务一样让规划 gate 失效，
+交由人决策。
 
 退出码是约定的一部分：
 

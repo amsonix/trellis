@@ -139,6 +139,7 @@ const writeTools = [
         role: text('Role that owns it. Defaults to executor.'),
         milestone: text('Milestone id from ROADMAP. Defaults to the first milestone.'),
         dependsOn: text('Comma-separated task ids.'),
+        followUpOf: text('Parent task id for execution-time work that must not re-open the plan gates.'),
         by: text('Actor as role:name.')
       },
       ['title', 'scope', 'acceptance', 'verification', 'by']
@@ -152,6 +153,7 @@ const writeTools = [
         acceptance: args.acceptance,
         verification: args.verification,
         dependsOn: args.dependsOn ?? [],
+        followUpOf: args.followUpOf ?? null,
         by: args.by
       })
   },

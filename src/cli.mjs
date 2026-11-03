@@ -48,6 +48,7 @@ const VALUE_OPTIONS = new Set([
   'acceptance',
   'verification',
   'depends-on',
+  'follow-up-of',
   'id'
 ]);
 
@@ -116,8 +117,8 @@ Usage:
                               [--task <T-NNN>] [--note <text>|--reason <text>] [--dir <dir>]
   trellis task list [dir] [--json]
   trellis task add --title <text> --scope <paths> --acceptance <text> --verification <text>
-                   [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>] [--id <T-NNN>]
-                   --by <role>:<name> [--dir <dir>]
+                   [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>]
+                   [--follow-up-of <T-NNN>] [--id <T-NNN>] --by <role>:<name> [--dir <dir>]
   trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
   trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dir <dir>]
   trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit>
@@ -374,6 +375,7 @@ async function dispatch(args) {
         acceptance: options.acceptance,
         verification: options.verification,
         dependsOn: options['depends-on'] || [],
+        followUpOf: options['follow-up-of'] || null,
         id: options.id || null,
         by: options.by
       });

@@ -46,7 +46,10 @@ All notable changes to this project are recorded here. The format follows
   reproduction to a passing fix.
 - `next` reports `needsUser` and a `reason`, so a runtime can run every ready
   batch unattended and stop only where a decision is required.
-- 74 `node:test` cases, including negative controls for every blocking rule.
+- Controlled follow-ups (`task add --follow-up-of T-NNN`): same milestone, inside
+  the parent scope, at most three children and two levels; they keep G3/G4
+  approved so the loop can continue inside the plan.
+- 79 `node:test` cases, including negative controls for every blocking rule.
 
 ### Fixed
 

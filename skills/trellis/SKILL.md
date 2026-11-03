@@ -58,6 +58,10 @@ Call `trellis next --json`. If `needsUser` is false, do every task in `tasks`
 (claim → work → evidence → `report --state done`) and call `next` again. If it
 is true, stop and surface `reason`; do not invent work to keep going.
 
+While doing a task you may discover follow-up work inside the same milestone:
+add it with `--follow-up-of <T-NNN>`. That does not re-open the plan gates.
+Do not use it for unrelated work or for anything outside the parent's scope.
+
 ## The rules
 
 1. **A stage is not a suggestion.** Write only the artifacts the current stage

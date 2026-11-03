@@ -15,13 +15,14 @@ import {
   gateSatisfied,
   taskGateSatisfied,
   firstUnsatisfiedProjectGate,
-  staleGates
+  staleGates,
+  gateDigest
 } from './gates.mjs';
 import { addEvidence, verifyTaskEvidence, requirePassingEvidence, listEvidence } from './evidence.mjs';
 import { acquireLease, releaseLease, leaseStatus } from './lease.mjs';
 import { defaultState, loadState, saveState, appendAudit } from './store.mjs';
 import { RefusedError, UnavailableError, UsageError } from './errors.mjs';
-import { nowIso, parseActor, parseScope, writeText } from './util.mjs';
+import { nowIso, parseActor, parseScope, writeText, covers } from './util.mjs';
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const TEMPLATE_DIR = path.join(PACKAGE_ROOT, 'templates');
@@ -600,7 +601,18 @@ export async function claimTask(root, taskId, { by }) {
 
 export async function addTask(
   root,
-  { title, role = 'executor', scope = '', milestone = null, acceptance = '', verification = '', dependsOn = [], id = null, by } = {}
+  {
+    title,
+    role = 'executor',
+    scope = '',
+    milestone = null,
+    acceptance = '',
+    verification = '',
+    dependsOn = [],
+    id = null,
+    followUpOf = null,
+    by
+  } = {}
 ) {
   if (!by) throw new UsageError('task add needs --by <role>:<name>');
   const actor = parseActor(by);
@@ -610,6 +622,7 @@ export async function addTask(
     if (/[|\n\r]/.test(text)) throw new UsageError(`--${field} must not contain '|' or a newline`);
   }
 
+  const state = await loadState(root);
   const { tasks } = await parseTasks(root);
   const milestones = await milestonesFromRoadmap(root);
   const taskId = id ? String(id).trim() : nextTaskId(tasks);
@@ -618,17 +631,57 @@ export async function addTask(
     throw new RefusedError('TASK_ID_DUPLICATE', `task ${taskId} is already on the board`, { task: taskId });
   }
 
-  const dependencies = (Array.isArray(dependsOn) ? dependsOn : [dependsOn])
+  const domains = parseScope(scope);
+  let dependencies = (Array.isArray(dependsOn) ? dependsOn : [dependsOn])
     .flatMap((value) => String(value ?? '').split(','))
     .map((value) => value.trim())
     .filter(Boolean);
+  let resolvedMilestone = milestone ?? milestones[0]?.id ?? null;
+  let parent = null;
+  let depth = 0;
+
+  if (followUpOf) {
+    parent = tasks.find((task) => task.id === followUpOf);
+    if (!parent) {
+      throw new RefusedError('TASK_UNKNOWN', `task ${followUpOf} is not on the board`, { task: followUpOf });
+    }
+    if (!['in_progress', 'review', 'done'].includes(parent.status)) {
+      throw new RefusedError(
+        'FOLLOWUP_PARENT_STATE',
+        `follow-up parent ${parent.id} is '${parent.status}'; it must be in_progress, review or done`,
+        { parent: parent.id, status: parent.status }
+      );
+    }
+    depth = (state.followUps?.[parent.id]?.depth ?? 0) + 1;
+    if (depth > 2) {
+      throw new RefusedError('FOLLOWUP_DEPTH', `follow-up depth ${depth} exceeds 2`, { parent: parent.id, depth });
+    }
+    const siblings = Object.values(state.followUps ?? {}).filter((item) => item.parent === parent.id).length;
+    if (siblings >= 3) {
+      throw new RefusedError('FOLLOWUP_FANOUT', `${parent.id} already spawned ${siblings} follow-ups (max 3)`, {
+        parent: parent.id,
+        siblings
+      });
+    }
+    resolvedMilestone = parent.milestone;
+    dependencies = [...new Set([...dependencies, parent.id])];
+    for (const domain of domains) {
+      if (!parent.scope.some((prefix) => covers(prefix, domain))) {
+        throw new RefusedError(
+          'FOLLOWUP_SCOPE',
+          `${domain} is not inside the scope of ${parent.id} (${parent.scope.join(', ')})`,
+          { parent: parent.id, domain }
+        );
+      }
+    }
+  }
 
   const task = {
     id: taskId,
-    milestone: milestone ?? milestones[0]?.id ?? null,
+    milestone: resolvedMilestone,
     title: String(title).trim(),
     role,
-    scope: parseScope(scope),
+    scope: domains,
     dependsOn: [...new Set(dependencies)],
     acceptance: String(acceptance).trim(),
     verification: String(verification).trim(),
@@ -642,10 +695,21 @@ export async function addTask(
   }
 
   await appendTask(root, task);
-  const state = await loadState(root);
-  appendAudit(state, 'task.added', actor, { task: task.id, title: task.title, milestone: task.milestone });
+  if (parent) {
+    state.followUps = state.followUps ?? {};
+    state.followUps[task.id] = { parent: parent.id, depth, at: nowIso(), by: actor.raw };
+    appendAudit(state, 'task.followUp', actor, { task: task.id, parent: parent.id, depth });
+    for (const gateId of ['G3', 'G4']) {
+      if (state.gates?.[gateId]?.status === 'passed') {
+        state.gates[gateId].digest = await gateDigest(root, gateId);
+        appendAudit(state, 'gate.digest.refreshed', actor, { gate: gateId, reason: `follow-up ${task.id}` });
+      }
+    }
+  } else {
+    appendAudit(state, 'task.added', actor, { task: task.id, title: task.title, milestone: task.milestone });
+  }
   await saveState(root, state);
-  return { task };
+  return { task, followUpOf: parent?.id ?? null, depth };
 }
 
 export async function reportTask(root, taskId, { state: newStatus, note = null, by }) {

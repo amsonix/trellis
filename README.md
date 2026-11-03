@@ -216,7 +216,8 @@ trellis gate <G0..G7> --waive   --by human:<name> --reason <text> [--task <T-NNN
 
 trellis task list [dir] [--json]
 trellis task add --title <text> --scope <paths> --acceptance <text> --verification <text> \
-                 [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>] --by <role>:<name>
+                 [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>] \
+                 [--follow-up-of <T-NNN>] --by <role>:<name>
 trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
 trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> [--note <text>] [--by <role>:<name>]
 
@@ -248,6 +249,12 @@ Failed evidence can be retracted by a human, reviewer or verifier with a reason:
 marked `retracted` and stops blocking `done`, so the bug flow is real: record the
 failing reproduction, fix it, retract the failure, add the passing evidence. The
 producing role cannot retract its own failure.
+
+Work discovered during execution can keep the loop running: `task add
+--follow-up-of T-NNN` inherits the parent's milestone, must sit inside the
+parent's scope, depends on it, and does **not** re-open G3/G4. It is capped at
+three follow-ups per task and two levels deep; anything else still stales the
+plan gates and needs a human.
 
 Exit codes are part of the contract:
 

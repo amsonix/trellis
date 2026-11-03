@@ -176,6 +176,13 @@ Rules:
     `task.added` with the actor. Overlapping scope without a dependency is
     refused, so the caller must declare the dependency rather than widen the
     domain.
+12. A **follow-up** (`task add --follow-up-of T-NNN`) is execution-time work
+    discovered while doing a task: it inherits the parent's milestone, its scope
+    must be covered by the parent's scope, it depends on the parent, and it is
+    limited to three children per task and two levels deep. A follow-up does not
+    make G3/G4 stale — their digests are refreshed and the change is audited as
+    `task.followUp` — so a runtime can keep the loop running inside the approved
+    plan. Anything else is a normal `task add` and stales the plan gates.
 
 Allowed status transitions:
 
@@ -342,7 +349,8 @@ Implemented in `0.1.0`:
 - `generic` (default), `web-app`, `library` and `cli` profiles;
 - artifact existence, front-matter, required-section and special checks;
 - task table parsing, graph validation, scope-overlap check, status transitions,
-  and `task add` with the same validation;
+  `task add` with the same validation, and controlled follow-ups (same
+  milestone, inside the parent scope, ≤3 children, ≤2 levels);
 - gates `G0`–`G7`, approver roles, order, waivers, per-task `G5`, and digests
   that make a passed gate stale when its artifacts change;
 - evidence ledger, passing/failing/inconclusive verification, and retraction
@@ -353,7 +361,7 @@ Implemented in `0.1.0`:
   codes;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 74 `node:test` cases.
+- 79 `node:test` cases.
 
 Not in `0.1.0`:
 
