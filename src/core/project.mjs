@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TASK_TRANSITIONS, GATE_DEFS, ROLES, META_DIR } from './constants.mjs';
+import { TASK_TRANSITIONS, GATE_DEFS, ROLES, PROJECT_GATES, META_DIR } from './constants.mjs';
 import { makeCheck, summarize, hasBlocking, exitCodeFor } from './checks.mjs';
 import { getProfile, listProfiles } from './profiles.mjs';
 import { checkAllArtifacts, readArtifact, ARTIFACTS } from './artifacts.mjs';
@@ -320,6 +320,97 @@ export async function nextAction(root, role = null) {
   const tasks = parsed.tasks ?? [];
   const checksResult = await runChecks(root);
   return nextFrom(root, state, tasks, checksResult.checks, role);
+}
+
+const STALE_LEASE_HOURS = 24;
+const SEVERITY_ORDER = { high: 0, medium: 1, low: 2 };
+
+export async function projectReport(root) {
+  const status = await projectStatus(root);
+  const state = await loadState(root);
+  const { tasks = [] } = await parseTasks(root);
+  const gaps = [];
+
+  for (const check of status.checks.blocking) {
+    gaps.push({
+      kind: 'check',
+      severity: check.severity === 'fail' ? 'high' : 'medium',
+      code: check.code,
+      message: check.message,
+      action: check.artifact ? `trellis check --stage ${status.stage}` : null
+    });
+  }
+
+  const pendingGate = PROJECT_GATES.find((id) => status.gates[id]?.status !== 'passed' && status.gates[id]?.status !== 'waived');
+  if (pendingGate) {
+    const gate = GATE_DEFS[pendingGate];
+    gaps.push({
+      kind: 'gate',
+      severity: 'high',
+      code: 'GATE_PENDING',
+      message: `${pendingGate} ${gate.title} is pending (approvers: ${gate.approvers.join(', ')})`,
+      action: `trellis brief --role ${gate.approvers[0]}`
+    });
+  }
+
+  for (const task of tasks.filter((item) => item.status === 'blocked')) {
+    const note = state.taskNotes?.[task.id]?.note;
+    gaps.push({
+      kind: 'task',
+      severity: 'medium',
+      code: 'TASK_BLOCKED',
+      message: `${task.id} is blocked${note ? `: ${note}` : ''}`,
+      action: `trellis brief --role ${task.role}`
+    });
+  }
+
+  for (const task of tasks.filter((item) => item.status === 'done')) {
+    const checks = await verifyTaskEvidence(root, task.id);
+    const failing = checks.filter((check) => check.severity === 'fail');
+    if (failing.length > 0) {
+      gaps.push({
+        kind: 'evidence',
+        severity: 'high',
+        code: 'EVIDENCE_NOT_PASSING',
+        message: `${task.id} is done but has no passing evidence (${failing.map((check) => check.code).join(', ')})`,
+        action: `trellis evidence add --task ${task.id} --kind test --uri <file|url|commit> --verdict pass --by <role>:<name>`
+      });
+    }
+  }
+
+  const now = Date.now();
+  for (const lease of status.leases) {
+    const ageHours = Math.floor((now - Date.parse(lease.createdAt)) / 3_600_000);
+    if (Number.isFinite(ageHours) && ageHours >= STALE_LEASE_HOURS) {
+      gaps.push({
+        kind: 'lease',
+        severity: 'medium',
+        code: 'LEASE_STALE',
+        message: `${lease.taskId} lease is ${ageHours}h old (${lease.actor} on ${lease.domains.join(', ')})`,
+        action: `trellis lease release ${lease.taskId} --by <role>:<name>`
+      });
+    }
+  }
+
+  gaps.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
+  const passedGates = PROJECT_GATES.filter(
+    (id) => status.gates[id]?.status === 'passed' || status.gates[id]?.status === 'waived'
+  ).length;
+  const doneTasks = tasks.filter((task) => task.status === 'done').length;
+
+  return {
+    project: status.project,
+    stage: status.stage,
+    progress: {
+      gates: { passed: passedGates, total: PROJECT_GATES.length },
+      tasks: { done: doneTasks, total: tasks.length }
+    },
+    gaps: gaps.slice(0, 20),
+    next: {
+      kind: status.next.kind,
+      command: status.next.command ?? null
+    }
+  };
 }
 
 const GATE_READS = {

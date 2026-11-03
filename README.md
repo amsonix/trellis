@@ -131,8 +131,8 @@ cp -R skills/trellis ~/.agents/skills/trellis
 
 `bin/trellis-mcp.mjs` is a dependency-free MCP server over stdio. By default it
 exposes the read side: `trellis_status`, `trellis_check`, `trellis_next`,
-`trellis_brief`, `trellis_task_list`, `trellis_evidence_list`, `trellis_verify`,
-`trellis_lease_status` and `trellis_profile_list`.
+`trellis_brief`, `trellis_report`, `trellis_task_list`, `trellis_evidence_list`,
+`trellis_verify`, `trellis_lease_status` and `trellis_profile_list`.
 
 With `TRELLIS_MCP_WRITE=1` it also exposes `trellis_init`, `trellis_task_claim`,
 `trellis_task_report`, `trellis_evidence_add`, `trellis_lease_release` and
@@ -186,6 +186,7 @@ trellis status [dir] [--json]
 trellis check [dir] [--stage <stage>] [--json]
 trellis next [dir] [--role <role>] [--json]
 trellis brief [dir] [--role <role>] [--json]
+trellis report [dir] [--json]
 
 trellis gate <G0..G7> --approve --by <role>:<name> [--task <T-NNN>] [--note <text>]
 trellis gate <G0..G7> --waive   --by human:<name> --reason <text> [--task <T-NNN>]
@@ -205,6 +206,10 @@ trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
 trellis reindex [dir] [--json]
 trellis profile list [--json]
 ```
+
+`trellis report` answers "where is this project and what is blocking it": gate
+and task counts, blocking checks, blocked tasks, tasks marked done without
+passing evidence, and leases older than 24 hours.
 
 Exit codes are part of the contract:
 

@@ -66,6 +66,7 @@ test('the MCP server exposes read tools and never a gate approval', async () => 
     const names = list.result.tools.map((tool) => tool.name);
     assert.ok(names.includes('trellis_status'));
     assert.ok(names.includes('trellis_brief'));
+    assert.ok(names.includes('trellis_report'));
     assert.ok(!names.includes('trellis_task_claim'));
     assert.ok(names.every((name) => !name.includes('gate')));
 

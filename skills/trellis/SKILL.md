@@ -25,6 +25,9 @@ If `trellis` is not on `PATH` but the repository is checked out, use
 If `next` and the user's request disagree, say so and ask. Do not silently
 switch stages or skip a gate.
 
+When the user asks where the project stands, run `trellis report` first: it
+lists the gate and task counts and the concrete gaps.
+
 If the runtime exposes Trellis MCP tools (`trellis_*`), they follow the same
 rules. Gate approval is not available there by design; a human runs it from the
 CLI.
@@ -51,6 +54,7 @@ trellis status [dir] [--json]
 trellis check [dir] [--stage <stage>] [--json]
 trellis next [dir] [--role <role>] [--json]
 trellis brief [dir] [--role <role>] [--json]
+trellis report [dir] [--json]
 
 trellis task list [dir] [--json]
 trellis task claim <T-NNN> --by <role>:<name>

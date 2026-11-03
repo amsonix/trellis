@@ -129,6 +129,25 @@ test('the brief command prints a role brief', async () => {
   }
 });
 
+test('the report command summarises progress and gaps', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'pp-cli-report-'));
+  try {
+    await run(['init', dir, '--name', 'demo', '--json']);
+    const json = await run(['report', dir, '--json']);
+    assert.equal(json.code, 0);
+    const payload = JSON.parse(json.stdout).data;
+    assert.equal(payload.progress.gates.total, 7);
+    assert.ok(payload.gaps.some((gap) => gap.code === 'GATE_PENDING'));
+
+    const text = await run(['report', dir]);
+    assert.equal(text.code, 0);
+    assert.match(text.stdout, /Trellis report/);
+    assert.match(text.stdout, /GATE_PENDING/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('the read side of the CLI returns envelopes', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'pp-cli-read-'));
   try {

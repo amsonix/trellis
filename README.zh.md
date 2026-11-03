@@ -126,7 +126,7 @@ cp -R skills/trellis ~/.agents/skills/trellis
 
 `bin/trellis-mcp.mjs` 是一个零依赖的 stdio MCP 服务。默认只暴露读工具：
 `trellis_status`、`trellis_check`、`trellis_next`、`trellis_brief`、
-`trellis_task_list`、`trellis_evidence_list`、`trellis_verify`、
+`trellis_report`、`trellis_task_list`、`trellis_evidence_list`、`trellis_verify`、
 `trellis_lease_status`、`trellis_profile_list`。
 
 设置 `TRELLIS_MCP_WRITE=1` 后额外暴露写工具：`trellis_init`、
@@ -178,6 +178,7 @@ trellis status [dir] [--json]
 trellis check [dir] [--stage <stage>] [--json]
 trellis next [dir] [--role <role>] [--json]
 trellis brief [dir] [--role <role>] [--json]
+trellis report [dir] [--json]
 
 trellis gate <G0..G7> --approve --by <role>:<name> [--task <T-NNN>] [--note <text>]
 trellis gate <G0..G7> --waive   --by human:<name> --reason <text> [--task <T-NNN>]
@@ -197,6 +198,9 @@ trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
 trellis reindex [dir] [--json]
 trellis profile list [--json]
 ```
+
+`trellis report` 回答「项目到哪一步了、卡在哪」：gate 与任务计数、阻塞检查、被阻塞
+的任务、标了 done 却没有通过证据的任务，以及超过 24 小时的租约。
 
 退出码是约定的一部分：
 

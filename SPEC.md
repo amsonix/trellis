@@ -319,10 +319,11 @@ Implemented in `0.1.0`:
 - evidence ledger, passing/failing/inconclusive verification;
 - leases on task claim, release, conflict detection, `guard commit --staged`
   with `--observe`;
-- `status`, `check`, `next`, `brief`, `reindex`, JSON envelope, exit codes;
+- `status`, `check`, `next`, `brief`, `report`, `reindex`, JSON envelope, exit
+  codes;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 49 `node:test` cases.
+- 54 `node:test` cases.
 
 Not in `0.1.0`:
 

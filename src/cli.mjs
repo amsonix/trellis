@@ -10,6 +10,7 @@ import {
   runChecks,
   nextAction,
   agentBrief,
+  projectReport,
   claimTask,
   reportTask,
   addTaskEvidence,
@@ -101,6 +102,7 @@ Usage:
   trellis check [dir] [--stage <stage>] [--json]
   trellis next [dir] [--role <role>] [--json]
   trellis brief [dir] [--role <role>] [--json]
+  trellis report [dir] [--json]
   trellis gate <G0|G1|G2|G3|G4|G5|G6|G7> --approve|--waive --by <role>:<name>
                               [--task <T-NNN>] [--note <text>|--reason <text>] [--dir <dir>]
   trellis task list [dir] [--json]
@@ -174,6 +176,27 @@ function printBrief(data) {
   if (data.commands.approve) console.log(`  ${data.commands.approve}`);
   if (data.commands.request) console.log(`  ${data.commands.request}`);
   if (data.commands.blocked) console.log(`  ${data.commands.blocked}`);
+}
+
+function printReport(data) {
+  console.log(`Trellis report — ${data.project.name} (${data.project.profile})`);
+  console.log(`Stage:  ${data.stage}`);
+  console.log(`Gates:  ${data.progress.gates.passed}/${data.progress.gates.total} passed`);
+  console.log(`Tasks:  ${data.progress.tasks.done}/${data.progress.tasks.total} done`);
+  console.log('');
+  if (data.gaps.length === 0) {
+    console.log('Gaps: none');
+  } else {
+    console.log(`Gaps (${data.gaps.length})`);
+    for (const gap of data.gaps) {
+      console.log(`  ${gap.severity.toUpperCase().padEnd(6)} ${gap.code}  ${gap.message}`);
+      if (gap.action) console.log(`         → ${gap.action}`);
+    }
+  }
+  if (data.next.command) {
+    console.log('');
+    console.log(`Next: ${data.next.command}`);
+  }
 }
 
 function printStatus(data) {
@@ -296,6 +319,11 @@ async function dispatch(args) {
   if (command === 'brief') {
     const data = await agentBrief(dirOf(args), { role: options.role || null });
     return { data, exitCode: 0, print: () => printBrief(data) };
+  }
+
+  if (command === 'report') {
+    const data = await projectReport(dirOf(args));
+    return { data, exitCode: 0, print: () => printReport(data) };
   }
 
   if (command === 'gate') {

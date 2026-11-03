@@ -33,7 +33,10 @@ All notable changes to this project are recorded here. The format follows
 - `SECURITY.md` and issue templates for bug reports and feature requests.
 - An MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools with
   `TRELLIS_MCP_WRITE=1`, no gate approval.
-- 49 `node:test` cases, including negative controls for every blocking rule.
+- `report [--json]`: gate and task counts plus the gaps — blocking checks, the
+  pending gate, blocked tasks, tasks marked done without passing evidence, and
+  leases older than 24 hours — with the next command.
+- 54 `node:test` cases, including negative controls for every blocking rule.
 
 ### Fixed
 

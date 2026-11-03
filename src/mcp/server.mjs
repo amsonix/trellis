@@ -16,6 +16,7 @@ import {
   runChecks,
   nextAction,
   agentBrief,
+  projectReport,
   claimTask,
   reportTask,
   addTaskEvidence,
@@ -66,6 +67,12 @@ const readTools = [
     description: 'The current gate brief: read set, write set, prohibitions and next commands.',
     inputSchema: object({ dir: dirProp, role: text('Role to brief. Defaults to the first approver of the next gate.') }),
     run: (args) => agentBrief(dirOf(args), { role: args.role ?? null })
+  },
+  {
+    name: 'trellis_report',
+    description: 'Progress and gaps: gate/task counts, blocking checks, blocked tasks, unproven done tasks, stale leases and the next command.',
+    inputSchema: object({ dir: dirProp }),
+    run: (args) => projectReport(dirOf(args))
   },
   {
     name: 'trellis_task_list',

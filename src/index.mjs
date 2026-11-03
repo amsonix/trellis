@@ -12,6 +12,7 @@ export {
   runChecks,
   nextAction,
   agentBrief,
+  projectReport,
   claimTask,
   reportTask,
   addTaskEvidence,
