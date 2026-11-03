@@ -4,6 +4,54 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-11-03
+
+### Added
+
+- `report [--json]`: gate and task counts plus the gaps — blocking checks, the
+  pending gate, blocked tasks, tasks marked done without passing evidence, and
+  leases older than 24 hours — with the next command.
+- `report` derives per-milestone progress (done / in_progress / todo / empty)
+  from the task board without writing status back into `ROADMAP.md`.
+- `task add`: validate and append a task row from a requirement or a bug report,
+  including the write-scope overlap check, and record `task.added` with the actor.
+- Controlled follow-ups (`task add --follow-up-of T-NNN`): same milestone, inside
+  the parent scope, at most three children and two levels; they keep G3/G4
+  approved so a runtime can continue inside the plan.
+- `task ask` / `task answer`: a question blocks the task, is recorded with its
+  previous status, and surfaces as `needsUser`; only a human can answer it.
+- `next` reports `needsUser` and a `reason`, so a runtime can run every ready
+  batch unattended and stop only where a decision is required.
+- `evidence retract <EV-id> --reason ...`: a human, reviewer or verifier can
+  retire a failed record without deleting it, so a bug can go from a failing
+  reproduction to a passing fix.
+- Gate digests: a passed gate goes stale when the artifacts it approved change;
+  `check` reports `GATE_STALE` and re-approval is the only way to clear it.
+- A per-project write lock (`.trellis/.lock`) and atomic JSON writes, so parallel
+  claims or evidence records are serialized instead of losing updates.
+- Audit entries append to `.trellis/audit.jsonl`; `state.json` keeps the last 200
+  so it does not grow with history.
+- `TRELLIS_STRICT=1` makes `task claim` refuse before `G4` instead of warning.
+- 97 `node:test` cases, including negative controls for every blocking rule.
+
+### Changed
+
+- `G5` now requires `G4`, so a task review cannot precede the plan.
+- Gate digests hash normalized content (whitespace-only edits no longer stale a
+  gate) and G2 covers `docs/adr/*.md`.
+- `check` warns with `TASK_BEFORE_PLAN` when work starts before `G4`.
+
+### Fixed
+
+- Concurrent `task claim` and `evidence add` calls no longer lose updates.
+
+### Not yet
+
+- Measurement guard (shared target / renderer identity).
+- File-level write enforcement; the guard is commit-time only.
+- DSH / Super-agent integration.
+- SQLite, HTTP and multi-host.
+
 ## [0.1.0] - 2026-11-03
 
 ### Added
@@ -33,36 +81,6 @@ All notable changes to this project are recorded here. The format follows
 - `SECURITY.md` and issue templates for bug reports and feature requests.
 - An MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools with
   `TRELLIS_MCP_WRITE=1`, no gate approval.
-- `report [--json]`: gate and task counts plus the gaps — blocking checks, the
-  pending gate, blocked tasks, tasks marked done without passing evidence, and
-  leases older than 24 hours — with the next command.
-- `task add`: validate and append a task row from a requirement or a bug report,
-  including the write-scope overlap check, and record `task.added` with the actor.
-- Gate digests: a passed gate goes stale when the artifacts it approved change;
-  `check` reports `GATE_STALE`, later approvals are refused, and re-approval is
-  the only way to clear it.
-- `evidence retract <EV-id> --reason ...`: a human, reviewer or verifier can
-  retire a failed record without deleting it, so a bug can go from a failing
-  reproduction to a passing fix.
-- `next` reports `needsUser` and a `reason`, so a runtime can run every ready
-  batch unattended and stop only where a decision is required.
-- Controlled follow-ups (`task add --follow-up-of T-NNN`): same milestone, inside
-  the parent scope, at most three children and two levels; they keep G3/G4
-  approved so the loop can continue inside the plan.
-- `task ask` / `task answer`: a question blocks the task and is recorded with its
-  previous status; only a human can answer, and the task resumes where it was.
-- `report` derives per-milestone progress (done / in_progress / todo / empty) from
-  the task board; `G5` now requires `G4` so review cannot precede the plan.
-- A per-project write lock (`.trellis/.lock`) and atomic JSON writes, so parallel
-  claims or evidence records are serialized instead of losing updates.
-- Gate digests hash normalized content (whitespace-only edits no longer stale a
-  gate) and G2 now covers `docs/adr/*.md`.
-- `check` warns with `TASK_BEFORE_PLAN` when a task is already in progress
-  before `G4`, instead of silently allowing execution before planning.
-- Audit entries append to `.trellis/audit.jsonl`; `state.json` keeps the last 200
-  so it does not grow with history.
-- `TRELLIS_STRICT=1` makes `task claim` refuse before `G4` instead of warning.
-- 97 `node:test` cases, including negative controls for every blocking rule.
 
 ### Fixed
 
@@ -76,4 +94,5 @@ All notable changes to this project are recorded here. The format follows
 - DSH / Super-agent integration.
 - SQLite, HTTP and multi-host.
 
+[0.1.1]: https://github.com/amsonix/trellis/releases/tag/v0.1.1
 [0.1.0]: https://github.com/amsonix/trellis/releases/tag/v0.1.0

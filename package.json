@@ -1,6 +1,6 @@
 {
   "name": "trellis",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Trellis: an agent-facing protocol for building projects: stages, artifacts, gates, roles, tasks and evidence.",
   "type": "module",
   "repository": {
