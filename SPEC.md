@@ -85,7 +85,8 @@ The stage is derived, not stored as an independent field:
 Rules:
 
 1. A project gate cannot be approved before its predecessor in
-   `G0, G1, G2, G3, G4, G6, G7`. `G5` is per task and independent.
+   `G0, G1, G2, G3, G4, G6, G7`. `G5` is per task: it is not part of the
+   project chain, but it requires `G4`.
 2. The approver's role must be in the gate's `approvers`.
 3. A gate with a blocking check is refused; the checks are returned in the
    error details.
@@ -367,7 +368,7 @@ Implemented in `0.1.0`:
   codes;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 84 `node:test` cases.
+- 86 `node:test` cases.
 
 Not in `0.1.0`:
 

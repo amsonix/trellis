@@ -238,8 +238,9 @@ trellis profile list [--json]
 ```
 
 `trellis report` answers "where is this project and what is blocking it": gate
-and task counts, blocking checks, blocked tasks, tasks marked done without
-passing evidence, and leases older than 24 hours.
+and task counts, per-milestone progress derived from the task board, blocking
+checks, blocked tasks, tasks marked done without passing evidence, and leases
+older than 24 hours.
 
 New requirements and bug reports go in through `trellis task add`: it validates
 the milestone, role, acceptance, verification and write-scope overlap before

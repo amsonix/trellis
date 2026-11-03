@@ -5,6 +5,22 @@ import path from 'node:path';
 import { approveGate, claimTask, reportTask, addTaskEvidence, projectStatus, nextAction } from '../src/core/project.mjs';
 import { cleanup, makeProject, appendTask } from './helpers.mjs';
 
+test('G5 cannot be approved before G4', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await claimTask(dir, 'T-001', { by: 'executor:w1' });
+    await addTaskEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'npm test', verdict: 'pass', by: 'executor:w1' });
+    await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+
+    await assert.rejects(
+      () => approveGate(dir, 'G5', { by: 'reviewer:rita', taskId: 'T-001' }),
+      (error) => error.code === 'GATE_OUT_OF_ORDER'
+    );
+  } finally {
+    await cleanup(dir);
+  }
+});
+
 async function approveProjectGates(dir, until = 'G4') {
   const sequence = [
     ['G0', 'human:alice'],

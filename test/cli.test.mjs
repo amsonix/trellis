@@ -243,6 +243,7 @@ test('the report command summarises progress and gaps', async () => {
     assert.equal(text.code, 0);
     assert.match(text.stdout, /Trellis report/);
     assert.match(text.stdout, /GATE_PENDING/);
+    assert.match(text.stdout, /Milestones:/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

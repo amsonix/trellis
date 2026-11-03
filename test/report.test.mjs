@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { claimTask, projectReport, reportTask } from '../src/core/project.mjs';
+import { addTaskEvidence, claimTask, projectReport, reportTask } from '../src/core/project.mjs';
 import { updateTaskStatus } from '../src/core/tasks.mjs';
 import { cleanup, makeProject } from './helpers.mjs';
 
@@ -42,6 +42,26 @@ test('a done task without passing evidence is a gap', async () => {
     await updateTaskStatus(dir, 'T-001', 'done');
     const report = await projectReport(dir);
     assert.ok(report.gaps.some((gap) => gap.code === 'EVIDENCE_NOT_PASSING'));
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('report aggregates milestones from the task board', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await claimTask(dir, 'T-001', { by: 'executor:w1' });
+    await addTaskEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'npm test', verdict: 'pass', by: 'executor:w1' });
+    await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+
+    const report = await projectReport(dir);
+    assert.deepEqual(report.milestones[0], {
+      id: 'M0',
+      title: 'M0 Foundation',
+      status: 'done',
+      tasks: { done: 1, total: 1 }
+    });
+    assert.equal(report.milestones[1].status, 'empty');
   } finally {
     await cleanup(dir);
   }

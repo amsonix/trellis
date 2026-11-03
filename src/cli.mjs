@@ -203,6 +203,15 @@ function printReport(data) {
   console.log(`Stage:  ${data.stage}`);
   console.log(`Gates:  ${data.progress.gates.passed}/${data.progress.gates.total} passed`);
   console.log(`Tasks:  ${data.progress.tasks.done}/${data.progress.tasks.total} done`);
+  if (data.milestones.length > 0) {
+    console.log('');
+    console.log('Milestones:');
+    for (const milestone of data.milestones) {
+      console.log(
+        `  ${milestone.title.padEnd(28)} ${milestone.status.padEnd(12)} ${milestone.tasks.done}/${milestone.tasks.total} tasks`
+      );
+    }
+  }
   console.log('');
   if (data.gaps.length === 0) {
     console.log('Gaps: none');

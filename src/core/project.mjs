@@ -466,6 +466,21 @@ export async function projectReport(root) {
     (id) => status.gates[id]?.status === 'passed' || status.gates[id]?.status === 'waived'
   ).length;
   const doneTasks = tasks.filter((task) => task.status === 'done').length;
+  const milestones = await milestonesFromRoadmap(root);
+  const milestoneProgress = milestones.map((milestone) => {
+    const items = tasks.filter((task) => task.milestone === milestone.id);
+    const done = items.filter((task) => task.status === 'done').length;
+    const active = items.some(
+      (task) => ['in_progress', 'review'].includes(task.status) || task.status === 'done'
+    );
+    const status = items.length === 0 ? 'empty' : done === items.length ? 'done' : active ? 'in_progress' : 'todo';
+    return {
+      id: milestone.id,
+      title: milestone.title,
+      status,
+      tasks: { done, total: items.length }
+    };
+  });
   const pendingQuestions = Object.values(state.questions ?? {})
     .filter((record) => record.status === 'open')
     .map((record) => ({
@@ -484,6 +499,7 @@ export async function projectReport(root) {
       tasks: { done: doneTasks, total: tasks.length }
     },
     gaps: gaps.slice(0, 20),
+    milestones: milestoneProgress,
     pendingQuestions,
     next: {
       kind: status.next.kind,

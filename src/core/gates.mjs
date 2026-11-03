@@ -217,6 +217,12 @@ export async function approveGate(root, gateId, { by, note = null, taskId = null
 
   if (gateId === 'G5') {
     if (!taskId) throw new UsageError('G5 is a per-task gate; pass --task <T-NNN>');
+    if (!gateSatisfied(state, 'G4')) {
+      throw new RefusedError('GATE_OUT_OF_ORDER', 'G5 cannot be approved before G4', {
+        gate: 'G5',
+        previous: 'G4'
+      });
+    }
     const existing = state.taskGates?.[taskId];
     if (existing?.status === 'passed' || existing?.status === 'waived') {
       throw new RefusedError('GATE_ALREADY_SATISFIED', `${gateId} for ${taskId} is already ${existing.status}`, { gate: gateId, task: taskId });
