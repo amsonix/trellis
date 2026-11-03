@@ -31,7 +31,9 @@ All notable changes to this project are recorded here. The format follows
 - A CI-enforced coverage gate (`npm run coverage`); the thresholds are a floor,
   not a target.
 - `SECURITY.md` and issue templates for bug reports and feature requests.
-- 46 `node:test` cases, including negative controls for every blocking rule.
+- An MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools with
+  `TRELLIS_MCP_WRITE=1`, no gate approval.
+- 49 `node:test` cases, including negative controls for every blocking rule.
 
 ### Fixed
 

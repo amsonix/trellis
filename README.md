@@ -127,6 +127,39 @@ cp -R skills/trellis ~/.agents/skills/trellis
 
 ---
 
+## MCP server
+
+`bin/trellis-mcp.mjs` is a dependency-free MCP server over stdio. By default it
+exposes the read side: `trellis_status`, `trellis_check`, `trellis_next`,
+`trellis_brief`, `trellis_task_list`, `trellis_evidence_list`, `trellis_verify`,
+`trellis_lease_status` and `trellis_profile_list`.
+
+With `TRELLIS_MCP_WRITE=1` it also exposes `trellis_init`, `trellis_task_claim`,
+`trellis_task_report`, `trellis_evidence_add`, `trellis_lease_release` and
+`trellis_reindex`.
+
+Gate approval is deliberately **not** exposed: a gate approver must not be the
+role that produced the work, so that decision stays in the CLI.
+
+DSH configuration:
+
+```yaml
+- id: mcp-trellis
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: trellis
+    transport: stdio
+    command: node
+    args: ['/absolute/path/to/trellis/bin/trellis-mcp.mjs']
+    env:
+      TRELLIS_MCP_WRITE: '1'
+```
+
+The project directory comes from the tool argument, then `TRELLIS_DIR`, then the
+current directory.
+
+---
+
 ## The lifecycle
 
 | Gate | Stage | Approver | What it means |
@@ -236,6 +269,7 @@ Layout:
 src/core/     pure domain: artifacts, tasks, gates, evidence, leases, store
 src/index.mjs public library surface (import this, not a deep path)
 src/cli.mjs   argument parsing, human output, JSON envelope
+src/mcp/      MCP server over stdio
 templates/    the files `init` writes
 skills/       the agent skill `init` writes into a project
 schema/       JSON Schemas for the state, task, evidence and profile

@@ -320,13 +320,15 @@ Implemented in `0.1.0`:
 - leases on task claim, release, conflict detection, `guard commit --staged`
   with `--observe`;
 - `status`, `check`, `next`, `brief`, `reindex`, JSON envelope, exit codes;
-- 46 `node:test` cases.
+- an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
+  behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
+- 49 `node:test` cases.
 
 Not in `0.1.0`:
 
 - measurement guard (shared target / renderer identity);
 - file-level write enforcement (only commit-time guard);
-- DSH / Super-agent plugin or tool surface;
+- DSH-specific plugin (the MCP server is the generic tool surface);
 - SQLite store, HTTP server, multi-user/multi-host;
 - policy versioning and revalidation of live leases;
 - diagram rendering and link checking;

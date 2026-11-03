@@ -17,7 +17,8 @@
     "./cli": "./src/cli.mjs"
   },
   "bin": {
-    "trellis": "./bin/trellis.mjs"
+    "trellis": "./bin/trellis.mjs",
+    "trellis-mcp": "./bin/trellis-mcp.mjs"
   },
   "files": [
     "bin/",

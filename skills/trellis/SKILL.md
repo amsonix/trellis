@@ -25,6 +25,10 @@ If `trellis` is not on `PATH` but the repository is checked out, use
 If `next` and the user's request disagree, say so and ask. Do not silently
 switch stages or skip a gate.
 
+If the runtime exposes Trellis MCP tools (`trellis_*`), they follow the same
+rules. Gate approval is not available there by design; a human runs it from the
+CLI.
+
 ## The rules
 
 1. **A stage is not a suggestion.** Write only the artifacts the current stage

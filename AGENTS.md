@@ -14,6 +14,7 @@ check, add the case that proves it can be red.
 ```text
 src/core/       pure domain; no network, no clock, no process.exit
 src/cli.mjs     argument parsing, human output, JSON envelope
+src/mcp/        MCP server over stdio
 templates/      the files `init` writes into a new project
 skills/         the agent skill `init` writes into a project
 schema/         JSON Schemas for the state, task, evidence and profile
@@ -62,7 +63,8 @@ When you use this protocol on a real project:
 
 - Measurement guard (shared target / renderer identity).
 - File-level write enforcement; the guard is commit-time only.
-- DSH / Super-agent integration.
+- DSH-specific plugin; the MCP server (`bin/trellis-mcp.mjs`) is the generic
+  tool surface.
 - SQLite / HTTP / multi-host.
 
 Those are roadmap items, not invariants of the current version. Do not describe

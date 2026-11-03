@@ -122,6 +122,37 @@ cp -R skills/trellis ~/.agents/skills/trellis
 
 ---
 
+## MCP 服务
+
+`bin/trellis-mcp.mjs` 是一个零依赖的 stdio MCP 服务。默认只暴露读工具：
+`trellis_status`、`trellis_check`、`trellis_next`、`trellis_brief`、
+`trellis_task_list`、`trellis_evidence_list`、`trellis_verify`、
+`trellis_lease_status`、`trellis_profile_list`。
+
+设置 `TRELLIS_MCP_WRITE=1` 后额外暴露写工具：`trellis_init`、
+`trellis_task_claim`、`trellis_task_report`、`trellis_evidence_add`、
+`trellis_lease_release`、`trellis_reindex`。
+
+gate 批准**故意不暴露**：批准者不能是产出这项工作的角色，这个决定留在 CLI 里。
+
+DSH 配置：
+
+```yaml
+- id: mcp-trellis
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: trellis
+    transport: stdio
+    command: node
+    args: ['/absolute/path/to/trellis/bin/trellis-mcp.mjs']
+    env:
+      TRELLIS_MCP_WRITE: '1'
+```
+
+项目目录依次取工具参数、`TRELLIS_DIR`、当前目录。
+
+---
+
 ## 生命周期
 
 | Gate | 阶段 | 批准者 | 含义 |
@@ -225,6 +256,7 @@ npm run coverage      # 测试 + CI 强制的覆盖率门槛
 src/core/     纯领域：产物、任务、gate、证据、租约、存储
 src/index.mjs 公共库入口（导入这个，不要深路径）
 src/cli.mjs   参数解析、人类可读输出、JSON 信封
+src/mcp/      stdio MCP 服务
 templates/    `init` 写入的文件
 skills/       `init` 写入项目的 agent skill
 schema/       state、task、evidence、profile 的 JSON Schema
