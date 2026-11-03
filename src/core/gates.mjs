@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { GATE_DEFS, PROJECT_GATES, META_DIR } from './constants.mjs';
 import { makeCheck, summarize } from './checks.mjs';
@@ -13,7 +14,7 @@ import { nowIso, parseActor, readText } from './util.mjs';
 export const GATE_DEPENDENCIES = {
   G0: ['PROJECT'],
   G1: ['RESEARCH'],
-  G2: ['ARCHITECTURE'],
+  G2: ['ARCHITECTURE', 'ADR'],
   G3: ['ROADMAP', 'TASKS', 'VERIFICATION'],
   G4: ['ROADMAP', 'TASKS'],
   G5: [],
@@ -21,13 +22,37 @@ export const GATE_DEPENDENCIES = {
   G7: ['OPERATIONS']
 };
 
+export function normalizeArtifact(text) {
+  return String(text)
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+$/, ''))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+async function adrDigest(root) {
+  const dir = path.join(root, META_DIR, 'docs/adr');
+  let names = [];
+  try {
+    names = (await fs.readdir(dir)).filter((name) => name.endsWith('.md')).sort();
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  const parts = [];
+  for (const name of names) {
+    const text = await readText(path.join(dir, name));
+    parts.push(`${name}\n${normalizeArtifact(text)}`);
+  }
+  return parts.join('\n');
+}
+
 export async function gateDigest(root, gateId) {
   const dependencies = GATE_DEPENDENCIES[gateId] ?? GATE_DEFS[gateId]?.artifacts ?? [];
   const files = {};
   const hash = crypto.createHash('sha256');
   for (const artifactId of dependencies) {
-    const definition = ARTIFACTS[artifactId];
-    if (!definition) continue;
     let text = 'MISSING';
     if (artifactId === 'TASKS') {
       // The task *structure* is what the plan gates approve: id, milestone,
@@ -48,10 +73,14 @@ export async function gateDigest(root, gateId) {
           }))
         );
       }
+    } else if (artifactId === 'ADR') {
+      text = await adrDigest(root);
     } else {
+      const definition = ARTIFACTS[artifactId];
+      if (!definition) continue;
       const file = path.join(root, META_DIR, definition.path);
       try {
-        text = await readText(file);
+        text = normalizeArtifact(await readText(file));
       } catch (error) {
         if (error.code !== 'ENOENT') throw error;
       }

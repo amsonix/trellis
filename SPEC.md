@@ -94,13 +94,14 @@ Rules:
    recorded and is visible in `status`.
 5. A gate cannot be approved twice.
 6. An approval records a digest of the artifacts the gate depends on: `PROJECT`
-   for G0, `RESEARCH` for G1, `ARCHITECTURE` for G2, `ROADMAP`, `TASKS` and
-   `VERIFICATION` for G3, `ROADMAP` and `TASKS` for G4, `TASKS` and
-   `VERIFICATION` for G6, `OPERATIONS` for G7.
+   for G0, `RESEARCH` for G1, `ARCHITECTURE` and `docs/adr/*.md` for G2,
+   `ROADMAP`, `TASKS` and `VERIFICATION` for G3, `ROADMAP` and `TASKS` for G4,
+   `TASKS` and `VERIFICATION` for G6, `OPERATIONS` for G7.
 7. If those artifacts change after approval, the gate is **stale**: `check`
    reports `GATE_STALE`, and any later gate is refused until the stale gate is
    re-approved. Re-approval is the only way to clear it; a waiver does not go
-   stale because it is an explicit human decision.
+   stale because it is an explicit human decision. The digest hashes normalized
+   content, so line-ending and trailing-whitespace edits do not stale a gate.
 8. The `TASKS` digest covers the task *structure* — id, milestone, title, role,
    scope, dependencies, acceptance, verification — not the status column.
    Claiming or finishing a task does not make the plan gates stale; adding or
@@ -373,7 +374,7 @@ Implemented in `0.1.0`:
   codes;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 90 `node:test` cases.
+- 92 `node:test` cases.
 
 Not in `0.1.0`:
 

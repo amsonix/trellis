@@ -55,7 +55,9 @@ All notable changes to this project are recorded here. The format follows
   the task board; `G5` now requires `G4` so review cannot precede the plan.
 - A per-project write lock (`.trellis/.lock`) and atomic JSON writes, so parallel
   claims or evidence records are serialized instead of losing updates.
-- 90 `node:test` cases, including negative controls for every blocking rule.
+- Gate digests hash normalized content (whitespace-only edits no longer stale a
+  gate) and G2 now covers `docs/adr/*.md`.
+- 92 `node:test` cases, including negative controls for every blocking rule.
 
 ### Fixed
 

@@ -98,6 +98,43 @@ test('task status churn does not stale the plan gates, a new task does', async (
   }
 });
 
+test('a whitespace-only edit does not stale an approval', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await approveG0(dir);
+    await appendFile(path.join(dir, '.trellis/PROJECT.md'), '\n\n   \n');
+    const checks = await runChecks(dir);
+    assert.equal(checks.checks.some((check) => check.code === 'GATE_STALE'), false);
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('a new ADR stales the architecture approval', async () => {
+  const dir = await makeProject('generic');
+  try {
+    for (const [gate, by] of [
+      ['G0', 'human:alice'],
+      ['G1', 'architect:ann'],
+      ['G2', 'architect:ann'],
+      ['G3', 'human:alice'],
+      ['G4', 'coordinator:kim']
+    ]) {
+      await approveGate(dir, gate, { by });
+    }
+    assert.equal((await projectStatus(dir)).staleGates.length, 0);
+
+    await writeFile(
+      path.join(dir, '.trellis/docs/adr/0002-later-decision.md'),
+      '# ADR-0002\n\nA later architecture decision.\n'
+    );
+    const status = await projectStatus(dir);
+    assert.deepEqual(status.staleGates.map((item) => item.gate), ['G2']);
+  } finally {
+    await cleanup(dir);
+  }
+});
+
 test('an approval from before digests existed is not reported stale', async () => {
   const dir = await makeProject('generic');
   try {
