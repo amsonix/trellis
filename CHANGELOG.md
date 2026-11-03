@@ -26,11 +26,14 @@ All notable changes to this project are recorded here. The format follows
   abandoned, blocked or crashed; the record keeps `releasedAt` and `releasedBy`.
 - `status`, `check`, `next`, `gate`, `task`, `evidence`, `verify`, `lease`,
   `guard`, `reindex`, `profile`, `--json` and stable exit codes.
-- 38 `node:test` cases, including negative controls for every blocking rule.
+- `brief [--role <role>]`: the current gate, the read/write set, the role's
+  prohibitions and the next commands, from the profile, the stage and the role.
+- 42 `node:test` cases, including negative controls for every blocking rule.
 
 ### Fixed
 
-- `examples/agent-brief.md` no longer claims that the CLI generates the brief.
+- `examples/agent-brief.md` now points at `trellis brief` instead of describing
+  a brief the CLI did not print.
 
 ### Not yet
 

@@ -115,7 +115,8 @@ guessing the stage.
 
 The skill carries the rules that matter: claim a task before writing its scope,
 record passing evidence before a `done` report, ask one question when blocked,
-and never approve a gate for work you produced.
+and never approve a gate for work you produced. The same brief is available from
+the CLI: `trellis brief --role <role>`.
 
 To make it available in every project, install it at the user level:
 
@@ -151,6 +152,7 @@ trellis init [project-dir] [--profile <generic|web-app|library|cli>] [--name <na
 trellis status [dir] [--json]
 trellis check [dir] [--stage <stage>] [--json]
 trellis next [dir] [--role <role>] [--json]
+trellis brief [dir] [--role <role>] [--json]
 
 trellis gate <G0..G7> --approve --by <role>:<name> [--task <T-NNN>] [--note <text>]
 trellis gate <G0..G7> --waive   --by human:<name> --reason <text> [--task <T-NNN>]

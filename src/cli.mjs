@@ -9,6 +9,7 @@ import {
   projectStatus,
   runChecks,
   nextAction,
+  agentBrief,
   claimTask,
   reportTask,
   addTaskEvidence,
@@ -99,6 +100,7 @@ Usage:
   trellis status [dir] [--json]
   trellis check [dir] [--stage <stage>] [--json]
   trellis next [dir] [--role <role>] [--json]
+  trellis brief [dir] [--role <role>] [--json]
   trellis gate <G0|G1|G2|G3|G4|G5|G6|G7> --approve|--waive --by <role>:<name>
                               [--task <T-NNN>] [--note <text>|--reason <text>] [--dir <dir>]
   trellis task list [dir] [--json]
@@ -136,6 +138,42 @@ function gateSymbol(status) {
   if (status === 'passed') return 'PASS';
   if (status === 'waived') return 'WAIVED';
   return 'PENDING';
+}
+
+function printBrief(data) {
+  console.log(`Role:    ${data.role}`);
+  console.log(`Project: ${data.project.name} (${data.project.profile})`);
+  console.log(`Stage:   ${data.stage}`);
+  if (data.gate) console.log(`Gate:    ${data.gate.id} ${data.gate.title} (${data.gate.status})`);
+  if (data.task) {
+    console.log(`Task:    ${data.task.id} ${data.task.title} (${data.task.status})`);
+    console.log(`  scope: ${data.task.scope.join(', ')}`);
+  }
+  console.log('');
+  console.log('Read:');
+  for (const item of data.read) console.log(`  ${item}`);
+  if (data.write.length > 0) {
+    console.log('');
+    console.log('Write:');
+    for (const item of data.write) console.log(`  ${item}`);
+  }
+  if (data.mustNot.length > 0) {
+    console.log('');
+    console.log('Do not:');
+    for (const item of data.mustNot) console.log(`  - ${item}`);
+  }
+  const { pass, warn, fail, unavailable } = data.checks.summary;
+  console.log('');
+  console.log(`Checks: ${pass} pass, ${warn} warn, ${fail} fail, ${unavailable} unavailable`);
+  for (const check of data.checks.blocking.slice(0, 5)) {
+    console.log(`  ${check.severity.toUpperCase()} ${check.code}: ${check.message}`);
+  }
+  console.log('');
+  console.log('Next:');
+  console.log(`  ${data.commands.check}`);
+  if (data.commands.approve) console.log(`  ${data.commands.approve}`);
+  if (data.commands.request) console.log(`  ${data.commands.request}`);
+  if (data.commands.blocked) console.log(`  ${data.commands.blocked}`);
 }
 
 function printStatus(data) {
@@ -253,6 +291,11 @@ async function dispatch(args) {
   if (command === 'next') {
     const data = await nextAction(dirOf(args), options.role || null);
     return { data, exitCode: 0, print: () => printNext(data) };
+  }
+
+  if (command === 'brief') {
+    const data = await agentBrief(dirOf(args), { role: options.role || null });
+    return { data, exitCode: 0, print: () => printBrief(data) };
   }
 
   if (command === 'gate') {

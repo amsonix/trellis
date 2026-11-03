@@ -112,6 +112,23 @@ test('unknown commands are usage errors', async () => {
   assert.equal(JSON.parse(result.stdout).error.code, 'USAGE');
 });
 
+test('the brief command prints a role brief', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'pp-cli-brief-'));
+  try {
+    await run(['init', dir, '--name', 'demo', '--json']);
+    const brief = await run(['brief', dir, '--role', 'architect', '--json']);
+    assert.equal(brief.code, 0);
+    const payload = JSON.parse(brief.stdout).data;
+    assert.equal(payload.gate.id, 'G0');
+    assert.ok(payload.read.includes('.trellis/PROJECT.md'));
+
+    const unknown = await run(['brief', dir, '--role', 'wizard', '--json']);
+    assert.equal(unknown.code, 2);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('the read side of the CLI returns envelopes', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'pp-cli-read-'));
   try {

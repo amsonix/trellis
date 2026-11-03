@@ -319,8 +319,8 @@ Implemented in `0.1.0`:
 - evidence ledger, passing/failing/inconclusive verification;
 - leases on task claim, release, conflict detection, `guard commit --staged`
   with `--observe`;
-- `status`, `check`, `next`, `reindex`, JSON envelope, exit codes;
-- 38 `node:test` cases.
+- `status`, `check`, `next`, `brief`, `reindex`, JSON envelope, exit codes;
+- 42 `node:test` cases.
 
 Not in `0.1.0`:
 

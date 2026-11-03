@@ -1,10 +1,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TASK_TRANSITIONS, GATE_DEFS, META_DIR } from './constants.mjs';
+import { TASK_TRANSITIONS, GATE_DEFS, ROLES, META_DIR } from './constants.mjs';
 import { makeCheck, summarize, hasBlocking, exitCodeFor } from './checks.mjs';
 import { getProfile, listProfiles } from './profiles.mjs';
-import { checkAllArtifacts, readArtifact } from './artifacts.mjs';
+import { checkAllArtifacts, readArtifact, ARTIFACTS } from './artifacts.mjs';
 import { parseTasks, validateTasks, milestonesFromRoadmap, taskById, readyTasks, updateTaskStatus } from './tasks.mjs';
 import {
   approveGate,
@@ -320,6 +320,98 @@ export async function nextAction(root, role = null) {
   const tasks = parsed.tasks ?? [];
   const checksResult = await runChecks(root);
   return nextFrom(root, state, tasks, checksResult.checks, role);
+}
+
+const GATE_READS = {
+  G0: ['PROJECT'],
+  G1: ['PROJECT', 'RESEARCH'],
+  G2: ['PROJECT', 'RESEARCH', 'ARCHITECTURE'],
+  G3: ['ROADMAP', 'TASKS', 'VERIFICATION'],
+  G4: ['TASKS'],
+  G5: ['TASKS', 'VERIFICATION'],
+  G6: ['TASKS', 'VERIFICATION'],
+  G7: ['OPERATIONS', 'TASKS']
+};
+
+const ROLE_MUST_NOT = {
+  human: ['approve a gate on behalf of an agent', 'let a role approve work it produced'],
+  coordinator: ['write product code', 'approve G5'],
+  architect: ['write product code', 'approve a gate for work you produced'],
+  executor: ['approve a gate for work you produced', 'edit .trellis/docs/ARCHITECTURE.md'],
+  reviewer: ['change the code under review', 'approve a gate for work you produced'],
+  verifier: ['change the code under test', 'approve a gate for work you produced'],
+  operator: ['write product code', 'approve a gate for work you produced']
+};
+
+export async function agentBrief(root, { role = null } = {}) {
+  const state = await loadState(root);
+  const parsed = await parseTasks(root);
+  const tasks = parsed.tasks ?? [];
+  const stage = computeStage(state, tasks);
+  const gateId = firstUnsatisfiedProjectGate(state);
+  const gate = gateId ? GATE_DEFS[gateId] : null;
+  const chosenRole = role ?? gate?.approvers?.[0] ?? 'human';
+  if (!ROLES.includes(chosenRole)) {
+    throw new UsageError(`unknown role '${chosenRole}' (choose: ${ROLES.join(', ')})`);
+  }
+
+  const checksResult = await runChecks(root);
+  const artifactPath = (id) => `${META_DIR}/${ARTIFACTS[id].path}`;
+  const read = (gateId ? GATE_READS[gateId] ?? gate.artifacts : ['PROJECT', 'OPERATIONS']).map(artifactPath);
+  const write = gate ? gate.artifacts.map(artifactPath) : [];
+  if (gateId === 'G2') write.push(`${META_DIR}/docs/adr/*.md`);
+  const blocking = checksResult.checks
+    .filter((check) => check.severity === 'fail' || check.severity === 'unavailable')
+    .map((check) => ({
+      code: check.code,
+      severity: check.severity,
+      message: check.message,
+      artifact: check.artifact ?? null
+    }));
+  const focus = stage === 'executing'
+    ? tasks.find((task) => task.status === 'in_progress') ??
+      tasks.find((task) => ['todo', 'ready'].includes(task.status)) ??
+      null
+    : null;
+
+  const canApprove = gate ? gate.approvers.includes(chosenRole) : false;
+  return {
+    project: { name: state.project.name, profile: state.project.profile },
+    stage,
+    role: chosenRole,
+    gate: gate
+      ? {
+          id: gate.id,
+          title: gate.title,
+          status: state.gates?.[gate.id]?.status ?? 'pending',
+          approvers: gate.approvers
+        }
+      : null,
+    read,
+    write,
+    mustNot: ROLE_MUST_NOT[chosenRole] ?? [],
+    task: focus
+      ? {
+          id: focus.id,
+          title: focus.title,
+          status: focus.status,
+          role: focus.role,
+          scope: focus.scope,
+          acceptance: focus.acceptance,
+          verification: focus.verification
+        }
+      : null,
+    checks: { summary: checksResult.summary, blocking },
+    commands: {
+      check: gate ? `trellis check --stage ${gate.stage}` : 'trellis check',
+      approve: canApprove ? `trellis gate ${gate.id} --approve --by ${chosenRole}:<name>` : null,
+      request:
+        gate && !canApprove
+          ? `ask ${gate.approvers.join(' or ')} to run: trellis gate ${gate.id} --approve --by ${gate.approvers[0]}:<name>`
+          : null,
+      blocked: focus ? `trellis task report ${focus.id} --state blocked --note "<one question>"` : null
+    }
+  };
 }
 
 export async function claimTask(root, taskId, { by }) {

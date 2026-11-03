@@ -16,9 +16,11 @@ If `trellis` is not on `PATH` but the repository is checked out, use
 
 ## Before any write
 
-1. `trellis status --json` — where the project is.
-2. `trellis next --role <your-role> --json` — the one action allowed now.
-3. Read the artifacts named by `next` before touching anything.
+1. `trellis brief --role <your-role> --json` — the current gate, what to read,
+   what to write, and what you must not do.
+2. `trellis status --json` — where the project is.
+3. `trellis next --role <your-role> --json` — the one action allowed now.
+4. Read the artifacts named by `brief` before touching anything.
 
 If `next` and the user's request disagree, say so and ask. Do not silently
 switch stages or skip a gate.
@@ -44,6 +46,7 @@ switch stages or skip a gate.
 trellis status [dir] [--json]
 trellis check [dir] [--stage <stage>] [--json]
 trellis next [dir] [--role <role>] [--json]
+trellis brief [dir] [--role <role>] [--json]
 
 trellis task list [dir] [--json]
 trellis task claim <T-NNN> --by <role>:<name>

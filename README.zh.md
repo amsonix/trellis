@@ -110,7 +110,8 @@ agent 运行时如何操作本项目的 skill（见 [Agent skill](#agent-skill)�
 `next` 出发，而不是靠猜当前阶段。
 
 skill 里是真正要紧的规则：先 claim 任务再写它的写域；`done` 报告之前先记录通过
-证据；卡住时只问一个问题；绝不为自己的产出批准 gate。
+证据；卡住时只问一个问题；绝不为自己的产出批准 gate。同样的 brief 也可以直接从
+CLI 打印：`trellis brief --role <role>`。
 
 要让它对所有项目可用，可以装到用户级目录：
 
@@ -145,6 +146,7 @@ trellis init [project-dir] [--profile <generic|web-app|library|cli>] [--name <na
 trellis status [dir] [--json]
 trellis check [dir] [--stage <stage>] [--json]
 trellis next [dir] [--role <role>] [--json]
+trellis brief [dir] [--role <role>] [--json]
 
 trellis gate <G0..G7> --approve --by <role>:<name> [--task <T-NNN>] [--note <text>]
 trellis gate <G0..G7> --waive   --by human:<name> --reason <text> [--task <T-NNN>]

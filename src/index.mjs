@@ -11,6 +11,7 @@ export {
   projectStatus,
   runChecks,
   nextAction,
+  agentBrief,
   claimTask,
   reportTask,
   addTaskEvidence,
