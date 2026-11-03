@@ -21,6 +21,19 @@ export async function readText(file) {
   return fs.readFile(file, 'utf8');
 }
 
+export async function renameWithRetry(from, to, attempts = 6) {
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      await fs.rename(from, to);
+      return;
+    } catch (error) {
+      const transient = ['EPERM', 'EBUSY', 'EACCES'].includes(error.code);
+      if (!transient || i === attempts - 1) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 20 * (i + 1)));
+    }
+  }
+}
+
 export async function writeText(file, text) {
   await ensureDir(path.dirname(file));
   await fs.writeFile(file, text, 'utf8');
@@ -34,7 +47,7 @@ export async function writeJson(file, value) {
   await ensureDir(path.dirname(file));
   const tmp = `${file}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
   await fs.writeFile(tmp, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
-  await fs.rename(tmp, file);
+  await renameWithRetry(tmp, file);
 }
 
 export async function listDir(dir) {

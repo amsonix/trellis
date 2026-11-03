@@ -9,7 +9,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { EVIDENCE_ARCHIVE, EVIDENCE_FILE, evidenceArchivePath, evidencePath, loadEvidence } from './evidence.mjs';
 import { AUDIT_FILE, STATE_DIR } from './store.mjs';
-import { readText } from './util.mjs';
+import { readText, renameWithRetry } from './util.mjs';
 
 const DEFAULT_AUDIT_BYTES = 5 * 1024 * 1024;
 
@@ -47,7 +47,7 @@ async function compactEvidence(root, { dryRun = false, archiveRetractedDays = 0 
     await fs.mkdir(path.dirname(file), { recursive: true });
     const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2, 8)}.tmp`;
     await fs.writeFile(tmp, text, 'utf8');
-    await fs.rename(tmp, file);
+    await renameWithRetry(tmp, file);
   }
   return {
     file: EVIDENCE_FILE,
@@ -71,7 +71,7 @@ async function rotateAudit(root, { maxBytes = DEFAULT_AUDIT_BYTES, dryRun = fals
   if (stat.size <= maxBytes) return null;
   const name = `audit-${new Date().toISOString().replace(/[:.]/g, '-')}.jsonl`;
   const target = path.join(root, STATE_DIR, name);
-  if (!dryRun) await fs.rename(file, target);
+  if (!dryRun) await renameWithRetry(file, target);
   return { from: `${STATE_DIR}/${AUDIT_FILE}`, to: `${STATE_DIR}/${name}`, bytes: stat.size, dryRun };
 }
 

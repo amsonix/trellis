@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { SCHEMA_VERSION, ALL_GATES, META_DIR } from './constants.mjs';
 import { UnavailableError } from './errors.mjs';
-import { nowIso, readJson, writeJson } from './util.mjs';
+import { nowIso, readJson, renameWithRetry, writeJson } from './util.mjs';
 import { currentAgent } from './identity.mjs';
 
 export const STATE_DIR = META_DIR;
@@ -108,7 +108,7 @@ export async function saveState(root, state) {
   const file = statePath(root);
   const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2, 8)}.tmp`;
   await writeJson(tmp, state);
-  await fs.rename(tmp, file);
+  await renameWithRetry(tmp, file);
 }
 
 export function appendAudit(state, action, actor = null, detail = null) {

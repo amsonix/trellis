@@ -3,7 +3,7 @@ import path from 'node:path';
 import { EVIDENCE_KINDS, EVIDENCE_VERDICTS } from './constants.mjs';
 import { makeCheck } from './checks.mjs';
 import { RefusedError, UsageError } from './errors.mjs';
-import { exists, fileSha256, nowIso, parseActor, readText } from './util.mjs';
+import { exists, fileSha256, nowIso, parseActor, readText, renameWithRetry } from './util.mjs';
 import { STATE_DIR } from './store.mjs';
 import { currentAgent } from './identity.mjs';
 
@@ -71,7 +71,7 @@ export async function migrateLegacyEvidence(root) {
   if (items.length > 0) {
     for (const item of items) await appendEvent(evidencePath(root), { type: 'add', ...item });
   }
-  await fs.rename(legacy, `${legacy}.migrated`);
+  await renameWithRetry(legacy, `${legacy}.migrated`);
   return true;
 }
 

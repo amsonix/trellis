@@ -17,6 +17,11 @@ All notable changes to this project are recorded here. The format follows
 - Chinese `CONTRIBUTING.zh.md`, a Chinese `SPEC.zh.md` reference translation and
   `docs/v0.3.0-plan.md`.
 
+### Fixed
+
+- Windows CI flake: renames retry on `EPERM`/`EBUSY`/`EACCES` and the ledger lock
+  waits 30 s (stale after 20 s) instead of 10 s.
+
 ### Changed
 
 - Document installing from GitHub (`npm install -g github:amsonix/trellis`,
