@@ -2,6 +2,7 @@ import path from 'node:path';
 import { RefusedError, UsageError } from './errors.mjs';
 import { covers, exists, nowIso, overlaps, parseActor, readJson, writeJson } from './util.mjs';
 import { STATE_DIR } from './store.mjs';
+import { currentAgent } from './identity.mjs';
 import { parseTasks, taskById } from './tasks.mjs';
 
 export const LEASES_FILE = `${STATE_DIR}/leases.json`;
@@ -67,6 +68,7 @@ export async function acquireLease(root, { taskId, actor, domains }) {
     id: `L-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     taskId,
     actor: parsedActor.raw,
+    agent: currentAgent(),
     domains: wanted,
     state: 'held',
     createdAt: nowIso(),

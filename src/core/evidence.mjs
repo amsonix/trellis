@@ -4,6 +4,7 @@ import { makeCheck } from './checks.mjs';
 import { RefusedError, UsageError } from './errors.mjs';
 import { exists, fileSha256, nowIso, parseActor, readJson, writeJson } from './util.mjs';
 import { STATE_DIR } from './store.mjs';
+import { currentAgent } from './identity.mjs';
 
 export const EVIDENCE_FILE = `${STATE_DIR}/evidence.json`;
 
@@ -60,6 +61,7 @@ export async function addEvidence(root, { taskId, kind, uri, verdict, by, note =
     verdict,
     producedBy: actor.raw,
     producedAt: nowIso(),
+    agent: currentAgent(),
     note
   };
   ledger.items.push(record);

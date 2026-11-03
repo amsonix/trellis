@@ -4,6 +4,17 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `TRELLIS_AGENT` stamps leases, evidence and audit entries with a worker id for
+  attribution (it is not a credential).
+- `examples/spec-kit/sync.mjs`: capture a Spec Kit `tasks.md` checklist into the
+  task board, idempotently and in order.
+- CI now runs on Windows as well as Linux, for Node 20, 22 and 24.
+- 101 `node:test` cases.
+
 ## [0.1.1] - 2026-11-03
 
 ### Added

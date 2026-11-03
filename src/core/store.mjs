@@ -3,6 +3,7 @@ import path from 'node:path';
 import { SCHEMA_VERSION, ALL_GATES, META_DIR } from './constants.mjs';
 import { UnavailableError } from './errors.mjs';
 import { nowIso, readJson, writeJson } from './util.mjs';
+import { currentAgent } from './identity.mjs';
 
 export const STATE_DIR = META_DIR;
 export const STATE_FILE = 'state.json';
@@ -115,6 +116,7 @@ export function appendAudit(state, action, actor = null, detail = null) {
     at: nowIso(),
     action,
     actor: actor ? (typeof actor === 'string' ? actor : actor.raw ?? `${actor.role}:${actor.name}`) : null,
+    agent: currentAgent(),
     detail
   });
   if (state.audit.length > 2000) {

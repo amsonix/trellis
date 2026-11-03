@@ -23,6 +23,7 @@ import { acquireLease, releaseLease, leaseStatus } from './lease.mjs';
 import { defaultState, loadState, saveState, appendAudit } from './store.mjs';
 import { RefusedError, UnavailableError, UsageError } from './errors.mjs';
 import { nowIso, parseActor, parseScope, writeText, covers } from './util.mjs';
+import { currentAgent } from './identity.mjs';
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const TEMPLATE_DIR = path.join(PACKAGE_ROOT, 'templates');
@@ -802,6 +803,7 @@ export async function askTask(root, taskId, { question, by }) {
     question: String(question).trim(),
     askedBy: actor.raw,
     askedAt: nowIso(),
+    agent: currentAgent(),
     previousStatus: task.status,
     status: 'open',
     answer: null,

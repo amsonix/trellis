@@ -3,29 +3,98 @@
   "$id": "https://raw.githubusercontent.com/amsonix/trellis/main/schema/evidence.schema.json",
   "title": "Trellis evidence",
   "type": "object",
-  "required": ["id", "taskId", "kind", "uri", "verdict", "producedBy", "producedAt"],
+  "required": [
+    "id",
+    "taskId",
+    "kind",
+    "uri",
+    "verdict",
+    "producedBy",
+    "producedAt"
+  ],
   "properties": {
-    "id": { "type": "string", "minLength": 1 },
-    "taskId": { "type": "string", "pattern": "^T-[0-9]+$" },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "taskId": {
+      "type": "string",
+      "pattern": "^T-[0-9]+$"
+    },
     "kind": {
       "type": "string",
-      "enum": ["test", "benchmark", "review", "approval", "log", "screenshot", "doc"]
+      "enum": [
+        "test",
+        "benchmark",
+        "review",
+        "approval",
+        "log",
+        "screenshot",
+        "doc"
+      ]
     },
-    "uri": { "type": "string", "minLength": 1 },
-    "sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
-    "verdict": { "type": "string", "enum": ["pass", "fail", "inconclusive"] },
-    "producedBy": { "type": "string", "minLength": 1 },
-    "producedAt": { "type": "string" },
-    "note": { "type": ["string", "null"] },
+    "uri": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "inconclusive"
+      ]
+    },
+    "producedBy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "producedAt": {
+      "type": "string"
+    },
+    "note": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "retracted": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "properties": {
-        "by": { "type": "string", "minLength": 1 },
-        "at": { "type": "string" },
-        "reason": { "type": "string", "minLength": 1 }
+        "by": {
+          "type": "string",
+          "minLength": 1
+        },
+        "at": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
       },
-      "required": ["by", "at", "reason"],
+      "required": [
+        "by",
+        "at",
+        "reason"
+      ],
       "additionalProperties": false
+    },
+    "agent": {
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
   "additionalProperties": true

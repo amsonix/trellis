@@ -245,6 +245,10 @@ Rules:
 | Verifier | evidence | `G5`, `G6` | change the code under test |
 | Operator | operations, deploy | `G7` | change product code |
 
+The `--by role:name` string is self-declared. `TRELLIS_AGENT` adds process
+attribution to leases, evidence and audit entries; it is not a credential and
+grants no access.
+
 The reference implementation enforces:
 
 - gate approver roles;
@@ -379,7 +383,7 @@ Implemented in `0.1.0`:
   codes;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 97 `node:test` cases.
+- 101 `node:test` cases.
 
 Not in `0.1.0`:
 

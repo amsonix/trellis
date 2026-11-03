@@ -172,7 +172,11 @@ DSH 配置：
 而不是互相覆盖。超过 10 秒的锁视为陈旧，会被接管。
 
 审计条目追加到 `.trellis/audit.jsonl`；`state.json` 只保留最近 200 条。设置
-`TRELLIS_STRICT=1` 后，`task claim` 在 `G4` 之前会直接拒绝，而不只是警告。
+`TRELLIS_STRICT=1` 后，`task claim` 在 `G4` 之前会直接拒绝，而不只是警告。设置
+`TRELLIS_AGENT` 会给租约、证据和审计打上 worker 标识（用于归因，不是认证）。
+
+Spec Kit 用户可以用 [`examples/spec-kit/`](examples/spec-kit/) 把 `tasks.md`
+清单接进任务板：Spec Kit 管规格与计划，Trellis 记谁在做、凭什么算完成。
 
 ---
 

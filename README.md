@@ -183,7 +183,12 @@ stolen.
 
 Audit entries are appended to `.trellis/audit.jsonl`; `state.json` keeps only the
 most recent 200. Set `TRELLIS_STRICT=1` to make `task claim` refuse before `G4`
-instead of only warning.
+instead of only warning. Set `TRELLIS_AGENT` to stamp leases, evidence and audit
+entries with a worker id (attribution, not authentication).
+
+Spec Kit users can capture a `tasks.md` checklist through
+[`examples/spec-kit/`](examples/spec-kit/): Spec Kit keeps the spec and the plan,
+Trellis records who is doing the work and what proves it.
 
 ---
 
