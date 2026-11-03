@@ -3,3 +3,4 @@ node_modules/
 coverage/
 .trellis/tmp/
 *.log
+dist/

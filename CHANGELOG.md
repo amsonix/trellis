@@ -8,6 +8,8 @@ All notable changes to this project are recorded here. The format follows
 
 ### Added
 
+- `scripts/release-tarball.mjs` and `docs/release.md`: build a pinned tarball and
+  install it from a GitHub Release URL while the npm registry is unavailable.
 - `export --a2a`: read-only A2A task view with the Trellis fields kept under
   `metadata.trellis`.
 - `compact --archive-retracted <days>`: move retracted evidence older than the
