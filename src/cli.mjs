@@ -26,7 +26,8 @@ import {
   approveGate,
   waiveGate,
   retractEvidence,
-  releaseLease
+  releaseLease,
+  compact
 } from './core/mutations.mjs';
 import { parseTasks } from './core/tasks.mjs';
 import { leaseStatus, guardCommit } from './core/lease.mjs';
@@ -59,7 +60,7 @@ const VALUE_OPTIONS = new Set([
   'id'
 ]);
 
-const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force']);
+const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run']);
 
 function parseArgv(argv) {
   const positionals = [];
@@ -139,6 +140,7 @@ Usage:
   trellis lease release <T-NNN> --by <role>:<name> [--dir <dir>]
   trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
   trellis reindex [dir] [--json]
+  trellis compact [dir] [--dry-run] [--json]
   trellis profile list [--json]
   trellis --version
   trellis --help
@@ -228,6 +230,15 @@ function printReport(data) {
   if (data.next.command) {
     console.log('');
     console.log(`Next: ${data.next.command}`);
+  }
+}
+
+function printCompact(data) {
+  const { before, after } = data.evidence;
+  const suffix = data.evidence.dryRun ? ' (dry run)' : '';
+  console.log(`evidence: ${before.lines} events / ${before.bytes} B -> ${after.lines} records / ${after.bytes} B${suffix}`);
+  if (data.audit) {
+    console.log(`audit: rotated ${data.audit.from} (${data.audit.bytes} B) -> ${data.audit.to}${suffix}`);
   }
 }
 
@@ -536,6 +547,11 @@ async function dispatch(args) {
   if (command === 'reindex') {
     const data = await reindex(dirOf(args));
     return { data, exitCode: 0, print: () => console.log(`reindexed ${data.project.name} (${data.project.profile}); stage ${data.stage}`) };
+  }
+
+  if (command === 'compact') {
+    const data = await compact(dirOf(args), { dryRun: Boolean(options['dry-run']) });
+    return { data, exitCode: 0, print: () => printCompact(data) };
   }
 
   if (command === 'profile') {

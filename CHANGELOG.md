@@ -4,6 +4,14 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `compact [--dry-run]`: fold the evidence event log into one `add` line per
+  record (retraction state included) and rotate `audit.jsonl` past 5 MB.
+- 106 `node:test` cases.
+
 ## [0.2.0] - 2026-11-03
 
 ### Added

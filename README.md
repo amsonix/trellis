@@ -188,6 +188,9 @@ most recent 200. Set `TRELLIS_STRICT=1` to make `task claim` refuse before `G4`
 instead of only warning. Set `TRELLIS_AGENT` to stamp leases, evidence and audit
 entries with a worker id (attribution, not authentication).
 
+`trellis compact` folds the evidence event log into one record per id and
+rotates `audit.jsonl` when it exceeds 5 MB; `--dry-run` reports the sizes.
+
 Spec Kit users can capture a `tasks.md` checklist through
 [`examples/spec-kit/`](examples/spec-kit/): Spec Kit keeps the spec and the plan,
 Trellis records who is doing the work and what proves it.
@@ -251,6 +254,7 @@ trellis lease status [--json]
 trellis lease release <T-NNN> --by <role>:<name>
 trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
 trellis reindex [dir] [--json]
+trellis compact [dir] [--dry-run] [--json]
 trellis profile list [--json]
 ```
 

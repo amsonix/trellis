@@ -19,6 +19,7 @@ import {
 } from './project.mjs';
 import { addEvidence as addEvidenceUnlocked, retractEvidence as retractEvidenceUnlocked } from './evidence.mjs';
 import { acquireLease as acquireLeaseUnlocked, releaseLease as releaseLeaseUnlocked } from './lease.mjs';
+import { compact as compactUnlocked } from './compact.mjs';
 
 const locked = (fn) => (root, ...args) => withLock(root, () => fn(root, ...args));
 
@@ -35,3 +36,4 @@ export const retractEvidence = locked(retractEvidenceUnlocked);
 export const releaseLease = locked(releaseLeaseUnlocked);
 export const addEvidence = locked(addEvidenceUnlocked);
 export const acquireLease = locked(acquireLeaseUnlocked);
+export const compact = locked(compactUnlocked);

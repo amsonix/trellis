@@ -49,7 +49,7 @@ function fold(events) {
   for (const event of events) {
     if (event.type === 'add') {
       const { type, ...record } = event;
-      records.set(record.id, { ...record, retracted: null });
+      records.set(record.id, { ...record, retracted: record.retracted ?? null });
     } else if (event.type === 'retract') {
       const record = records.get(event.id);
       if (record) record.retracted = { by: event.by, at: event.at, reason: event.reason };

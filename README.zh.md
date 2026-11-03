@@ -176,6 +176,9 @@ DSH 配置：
 `TRELLIS_STRICT=1` 后，`task claim` 在 `G4` 之前会直接拒绝，而不只是警告。设置
 `TRELLIS_AGENT` 会给租约、证据和审计打上 worker 标识（用于归因，不是认证）。
 
+`trellis compact` 会把证据事件日志折叠成每条记录一行，并在 `audit.jsonl` 超过
+5 MB 时轮转；`--dry-run` 只报告大小。
+
 Spec Kit 用户可以用 [`examples/spec-kit/`](examples/spec-kit/) 把 `tasks.md`
 清单接进任务板：Spec Kit 管规格与计划，Trellis 记谁在做、凭什么算完成。
 
@@ -235,6 +238,7 @@ trellis lease status [--json]
 trellis lease release <T-NNN> --by <role>:<name>
 trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
 trellis reindex [dir] [--json]
+trellis compact [dir] [--dry-run] [--json]
 trellis profile list [--json]
 ```
 

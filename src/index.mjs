@@ -31,7 +31,8 @@ export {
   acquireLease,
   releaseLease,
   addEvidence,
-  retractEvidence
+  retractEvidence,
+  compact
 } from './core/mutations.mjs';
 
 export {

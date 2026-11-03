@@ -30,7 +30,8 @@ import {
   addTaskEvidence,
   reindex,
   retractEvidence,
-  releaseLease
+  releaseLease,
+  compact
 } from '../core/mutations.mjs';
 import { parseTasks } from '../core/tasks.mjs';
 import { leaseStatus } from '../core/lease.mjs';
@@ -268,6 +269,13 @@ const writeTools = [
     description: 'Rebuild the state ledger from the artifacts.',
     inputSchema: object({ dir: dirProp }),
     run: (args) => reindex(dirOf(args))
+  },
+  {
+    name: 'trellis_compact',
+    description:
+      'Fold the evidence event log into one record per id and rotate the audit stream when it exceeds 5 MB. Observable state is unchanged.',
+    inputSchema: object({ dir: dirProp, dryRun: { type: 'boolean', description: 'Report sizes without writing.' } }),
+    run: (args) => compact(dirOf(args), { dryRun: args.dryRun === true })
   }
 ];
 

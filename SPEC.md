@@ -289,7 +289,8 @@ JSON ledgers are written through a temporary file and renamed. A lock older than
 ten seconds is treated as stale.
 
 Audit entries are appended to `.trellis/audit.jsonl`; `state.json` keeps the most
-recent 200 so it does not grow with history. `TRELLIS_STRICT=1` makes `task claim`
+recent 200 so it does not grow with history. `compact` folds the evidence log into
+one record per id and rotates the audit stream past 5 MB. `TRELLIS_STRICT=1` makes `task claim`
 refuse before `G4` instead of only warning.
 
 `next` is the loop contract: it returns `kind: "tasks"` with `needsUser: false`
@@ -385,7 +386,7 @@ Implemented in `0.1.0`:
   codes;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 103 `node:test` cases.
+- 106 `node:test` cases.
 
 Not in `0.1.0`:
 
