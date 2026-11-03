@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -239,6 +239,28 @@ test('the A2A export returns tasks', async () => {
     const data = JSON.parse(exported.stdout).data;
     assert.equal(data.kind, 'a2a.tasks');
     assert.equal(data.tasks[0].status.state, 'working');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('large JSON output is flushed through a pipe', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'pp-cli-flush-'));
+  try {
+    await run(['init', dir, '--name', 'demo', '--json']);
+    const tasksPath = path.join(dir, '.trellis/docs/TASKS.md');
+    const text = await readFile(tasksPath, 'utf8');
+    const rows = [];
+    for (let i = 2; i <= 302; i += 1) {
+      rows.push(`| T-${String(i).padStart(3, '0')} | M0 | Task ${i} | executor | docs/t${i} | - | docs ${i} | manual review | todo |`);
+    }
+    await writeFile(tasksPath, `${text}${rows.join('\n')}\n`);
+
+    const result = await run(['task', 'list', '--dir', dir, '--json']);
+    assert.equal(result.code, 0);
+    assert.ok(result.stdout.length > 65536, `stdout was ${result.stdout.length} bytes`);
+    const payload = JSON.parse(result.stdout);
+    assert.equal(payload.data.tasks.length, 302);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

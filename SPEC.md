@@ -395,7 +395,7 @@ Implemented through `0.2.x`:
 - `TRELLIS_AGENT` attribution and `TRELLIS_STRICT=1`;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 112 `node:test` cases.
+- 113 `node:test` cases.
 
 Not yet:
 

@@ -4,6 +4,15 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.2] - 2026-11-03
+
+### Fixed
+
+- `--json` output is no longer truncated when stdout is a pipe: the CLI sets
+  `process.exitCode` instead of calling `process.exit()`, so Node drains stdout
+  before exiting. A 100 KB `task list --json | jq` now parses.
+- 113 `node:test` cases.
+
 ## [0.3.1] - 2026-11-03
 
 ### Fixed
@@ -157,3 +166,4 @@ All notable changes to this project are recorded here. The format follows
 [0.1.0]: https://github.com/amsonix/trellis/releases/tag/v0.1.0
 [0.3.0]: https://github.com/amsonix/trellis/releases/tag/v0.3.0
 [0.3.1]: https://github.com/amsonix/trellis/releases/tag/v0.3.1
+[0.3.2]: https://github.com/amsonix/trellis/releases/tag/v0.3.2
