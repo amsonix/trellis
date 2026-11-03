@@ -52,6 +52,12 @@ reviewer or verifier retract the failing record with a reason, then add the
 passing evidence. The retracted record stays in the ledger; the producing role
 cannot retract its own failure.
 
+## Running a batch
+
+Call `trellis next --json`. If `needsUser` is false, do every task in `tasks`
+(claim → work → evidence → `report --state done`) and call `next` again. If it
+is true, stop and surface `reason`; do not invent work to keep going.
+
 ## The rules
 
 1. **A stage is not a suggestion.** Write only the artifacts the current stage

@@ -263,6 +263,12 @@ Exit codes:
 `status` and `check` never write. `gate`, `task`, `evidence`, `lease` and
 `reindex` write the ledger and append an audit entry.
 
+`next` is the loop contract: it returns `kind: "tasks"` with `needsUser: false`
+when a batch is ready to run, or `needsUser: true` with a `reason` when a gate,
+a task review, a stale approval, a blocked task or a failing check needs a
+decision. A runtime may run every `tasks` batch unattended and must stop on
+`needsUser: true`.
+
 ## 11. Checks and severity
 
 Every check returns one of:
@@ -347,7 +353,7 @@ Implemented in `0.1.0`:
   codes;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 70 `node:test` cases.
+- 74 `node:test` cases.
 
 Not in `0.1.0`:
 

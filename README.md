@@ -160,6 +160,23 @@ current directory.
 
 ---
 
+## The loop
+
+`trellis next` is the loop contract. It returns either work the agent may run
+without asking, or a stop with a reason:
+
+```json
+{ "kind": "tasks", "tasks": [ ... ], "needsUser": false, "reason": null }
+{ "kind": "gate",  "gate": { ... }, "needsUser": true,  "reason": "gate G3 (Plan) needs approval" }
+```
+
+A runtime loops: run the `tasks` batch, claim each task, record evidence, report
+`done`, then call `next` again. It stops only when `needsUser` is true — a gate,
+a task review, a stale approval, a blocked task or a failing check. Ready work
+never waits for a person; decisions do.
+
+---
+
 ## The lifecycle
 
 | Gate | Stage | Approver | What it means |

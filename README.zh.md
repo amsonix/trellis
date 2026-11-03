@@ -154,6 +154,22 @@ DSH 配置：
 
 ---
 
+## 循环
+
+`trellis next` 就是循环契约。它要么返回一批可以直接执行的任务，要么返回一个带原因
+的停止：
+
+```json
+{ "kind": "tasks", "tasks": [ ... ], "needsUser": false, "reason": null }
+{ "kind": "gate",  "gate": { ... }, "needsUser": true,  "reason": "gate G3 (Plan) needs approval" }
+```
+
+运行时循环：执行 `tasks` 批次 → 每个任务 claim → 记录证据 → `report --state done`
+→ 再调 `next`。只有 `needsUser` 为 true 时才停——gate 审批、任务评审、失效的批准、
+被阻塞的任务或失败的检查。就绪的工作不等任何人，需要决策的才等。
+
+---
+
 ## 生命周期
 
 | Gate | 阶段 | 批准者 | 含义 |

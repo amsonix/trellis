@@ -233,7 +233,26 @@ async function buildAttention(root, state, tasks, checks) {
   return attention;
 }
 
+function stopReason(result) {
+  if (result.kind === 'gate') {
+    const gate = result.gate;
+    if (gate.id === 'G5') return `task review G5 for ${gate.task ?? 'a task'} needs a reviewer`;
+    return `gate ${gate.id}${gate.title ? ` (${gate.title})` : ''} needs approval`;
+  }
+  if (result.kind === 'waiting') {
+    const first = result.attention?.[0];
+    return first ? `${first.code}: ${first.message}` : 'no actionable task; a decision is needed';
+  }
+  return null;
+}
+
 async function nextFrom(root, state, tasks, checks, role = null) {
+  const result = await computeNext(root, state, tasks, checks, role);
+  const needsUser = result.kind !== 'tasks';
+  return { ...result, needsUser, reason: needsUser ? stopReason(result) : null };
+}
+
+async function computeNext(root, state, tasks, checks, role = null) {
   const stage = computeStage(state, tasks);
   const stale = await staleGates(root, state);
   if (stale.length > 0) {

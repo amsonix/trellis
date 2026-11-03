@@ -44,7 +44,9 @@ All notable changes to this project are recorded here. The format follows
 - `evidence retract <EV-id> --reason ...`: a human, reviewer or verifier can
   retire a failed record without deleting it, so a bug can go from a failing
   reproduction to a passing fix.
-- 70 `node:test` cases, including negative controls for every blocking rule.
+- `next` reports `needsUser` and a `reason`, so a runtime can run every ready
+  batch unattended and stop only where a decision is required.
+- 74 `node:test` cases, including negative controls for every blocking rule.
 
 ### Fixed
 
