@@ -10,8 +10,17 @@ It does not teach an agent how to write code. It tells an agent, at every step:
 4. **Which paths may this role write?**
 5. **What is the next action, and who must approve it?**
 
-The protocol is a small, dependency-free Node.js library and CLI. Files in git
-are the source of truth; `.project-protocol/` is an index and an audit log.
+The protocol is a small, dependency-free Node.js library and CLI. It stores
+everything in one fixed directory inside the project:
+
+```text
+<project>/.project-protocol/
+```
+
+The Markdown artifacts there are the source of truth; `state.json`,
+`evidence.json` and `leases.json` are the ledger. `init` can run on an existing
+project: it creates `.project-protocol/` and never touches `README.md`,
+`TASKS.md`, `docs/` or any other existing file.
 
 ```text
 intake → discovery → architecture → plan → ready → executing → integrating → releasing → maintained
@@ -27,7 +36,10 @@ Requires Node.js 20 or newer. There are no runtime dependencies.
 cd project-protocol
 npm test
 
-# Create a project from the CLI
+# Create the management directory of a project (new or existing)
+node bin/project-protocol.mjs init /tmp/demo
+
+# Optional: choose a profile or a display name
 node bin/project-protocol.mjs init /tmp/demo --profile web-app --name demo
 
 # Inspect it
@@ -51,29 +63,35 @@ project-protocol --help
 ## What it creates
 
 ```text
-PROJECT.md                     problem, users, scope, non-goals, constraints, acceptance
-docs/RESEARCH.md               questions, prior art, unknowns, risks
-docs/ARCHITECTURE.md           context, containers, components, data, interfaces, failure,
+<project>/.project-protocol/
+  PROJECT.md                   problem, users, scope, non-goals, constraints, acceptance
+  README.md                    quickstart for the protocol root
+  docs/RESEARCH.md             questions, prior art, unknowns, risks
+  docs/ARCHITECTURE.md         context, containers, components, data, interfaces, failure,
                                security, deployment, observability, open questions
-docs/ROADMAP.md                milestones, each with exit criteria
-docs/TASKS.md                  task table: scope, dependencies, acceptance, verification
-docs/VERIFICATION.md           strategy, oracle, fixtures, evidence
-docs/OPERATIONS.md             deploy, rollback, monitoring, runbook
-docs/GLOSSARY.md               terms
-docs/INVARIANTS.md             things that must never break
-docs/adr/0001-....md           the first architecture decision
-.project-protocol/state.json   gate ledger and audit
-.project-protocol/evidence.json
-.project-protocol/leases.json  write leases (the execution constraint)
+  docs/ROADMAP.md              milestones, each with exit criteria
+  docs/TASKS.md                task table: scope, dependencies, acceptance, verification
+  docs/VERIFICATION.md         strategy, oracle, fixtures, evidence
+  docs/OPERATIONS.md           deploy, rollback, monitoring, runbook
+  docs/GLOSSARY.md             terms
+  docs/INVARIANTS.md           things that must never break
+  docs/adr/0001-....md         the first architecture decision
+  state.json                   gate ledger and audit
+  evidence.json                evidence ledger
+  leases.json                  write leases (the execution constraint)
 ```
 
-A profile selects which artifacts are required:
+A profile selects which artifacts are required. It is **optional**; the default
+is `generic`.
 
 | Profile | Use | Required artifacts |
 |---|---|---|
-| `web-app` | user-facing application | all of the above |
-| `library` | reusable package / SDK | all except `OPERATIONS` |
-| `cli` | command-line tool | all except `OPERATIONS` |
+| `generic` | any project (default) | `PROJECT`, `ARCHITECTURE`, `ROADMAP`, `TASKS`, `VERIFICATION` |
+| `web-app` | user-facing application | all of the above plus `OPERATIONS` and `RESEARCH` |
+| `library` | reusable package / SDK | core five plus `RESEARCH`; `OPERATIONS` optional |
+| `cli` | command-line tool | core five plus `RESEARCH`; `OPERATIONS` optional |
+
+`--name` is also optional; it defaults to the project directory name.
 
 ---
 
@@ -98,7 +116,7 @@ recorded in the audit log.
 ## Commands
 
 ```text
-project-protocol init [dir] --profile <web-app|library|cli> [--name <name>]
+project-protocol init [project-dir] [--profile <generic|web-app|library|cli>] [--name <name>]
 project-protocol status [dir] [--json]
 project-protocol check [dir] [--stage <stage>] [--json]
 project-protocol next [dir] [--role <role>] [--json]
@@ -141,7 +159,7 @@ Exit codes are part of the contract:
 
 ## Design principles
 
-1. **Files are the source of truth.** The artifacts are committed Markdown; the
+1. **The fixed `.project-protocol/` directory is the source of truth.** Its artifacts are committed Markdown; the
    JSON ledger is an index and an audit trail. `reindex` can rebuild it.
 2. **No LLM in the core.** The protocol validates structure, roles, tasks and
    evidence. The model writes the content; the protocol checks it.

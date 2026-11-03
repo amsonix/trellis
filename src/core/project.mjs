@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TASK_TRANSITIONS, GATE_DEFS } from './constants.mjs';
+import { TASK_TRANSITIONS, GATE_DEFS, META_DIR } from './constants.mjs';
 import { makeCheck, summarize, hasBlocking, exitCodeFor } from './checks.mjs';
 import { getProfile, listProfiles } from './profiles.mjs';
 import { checkAllArtifacts, readArtifact } from './artifacts.mjs';
@@ -41,56 +41,60 @@ const TEMPLATE_MAP = {
 
 export { listProfiles };
 
-export async function initProject({ dir, name = null, profile: profileId = 'web-app' }) {
+export async function initProject({ dir, name = null, profile: profileId = 'generic' }) {
   const root = path.resolve(dir);
   const profile = getProfile(profileId);
   const projectName = name || path.basename(root) || 'project';
   if (!root || root === '/') throw new UsageError('refusing to initialise the filesystem root');
 
+  // The management directory is fixed: <project>/.project-protocol/.
+  // init may run on an existing project: it only creates that directory and
+  // never touches README.md, TASKS.md, docs/ or any other existing file.
+  const meta = path.join(root, META_DIR);
   let entries = [];
   try {
-    entries = await fs.readdir(root);
+    entries = await fs.readdir(meta);
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
   }
-  const nonEmpty = entries.filter((entry) => entry !== '.DS_Store');
-  if (nonEmpty.length > 0) {
-    throw new RefusedError('DIR_NOT_EMPTY', `${root} is not empty; choose a new directory`, {
+  if (entries.length > 0) {
+    throw new RefusedError('ALREADY_INITIALIZED', `${root} already has a non-empty ${META_DIR}/ management directory`, {
       dir: root,
-      entries: nonEmpty.slice(0, 10)
+      managementDir: meta,
+      entries: entries.slice(0, 10)
     });
   }
 
-  await fs.mkdir(path.join(root, 'docs/adr'), { recursive: true });
-  await fs.mkdir(path.join(root, '.project-protocol'), { recursive: true });
+  await fs.mkdir(path.join(meta, 'docs/adr'), { recursive: true });
 
   const created = [];
   const today = nowIso().slice(0, 10);
   for (const [template, destination] of Object.entries(TEMPLATE_MAP)) {
     const source = path.join(TEMPLATE_DIR, template);
-    const target = path.join(root, destination);
+    const target = path.join(meta, destination);
     const text = await fs.readFile(source, 'utf8');
     const rendered = text
       .replaceAll('{{PROJECT_NAME}}', projectName)
       .replaceAll('{{PROFILE}}', profile.id)
       .replaceAll('{{DATE}}', today);
     await writeText(target, rendered);
-    created.push(destination);
+    created.push(`${META_DIR}/${destination}`);
   }
 
   const state = defaultState({ name: projectName, profile: profile.id });
-  appendAudit(state, 'project.init', null, { dir: root, profile: profile.id });
+  appendAudit(state, 'project.init', null, { dir: root, managementDir: meta, profile: profile.id });
   await saveState(root, state);
 
   return {
     dir: root,
+    managementDir: meta,
     name: projectName,
     profile: profile.id,
     created,
     next: [
       `cd ${root}`,
-      'read PROJECT.md and fill the scope, non-goals and acceptance',
-      'run: project-protocol check',
+      `read ${META_DIR}/PROJECT.md and fill the scope, non-goals and acceptance`,
+      `run: project-protocol check --dir ${root}`,
       'run: project-protocol gate G0 --approve --by human:<you>'
     ]
   };
@@ -391,7 +395,7 @@ export async function reindex(root) {
     if (!(error instanceof UnavailableError)) throw error;
     const project = await readArtifact(root, 'PROJECT');
     if (project.missing) {
-      throw new UnavailableError('cannot reindex: PROJECT.md is missing and there is no state to recover from', { dir: root });
+      throw new UnavailableError('cannot reindex: ${META_DIR}/PROJECT.md is missing and there is no state to recover from', { dir: root });
     }
     state = defaultState({
       name: project.data?.project || path.basename(root),

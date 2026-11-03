@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { initProject } from '../src/core/project.mjs';
+import { META_DIR } from '../src/core/constants.mjs';
 
 export async function makeProject(profile = 'web-app') {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'pp-test-'));
@@ -33,8 +34,9 @@ export async function replace(dir, rel, from, to) {
 }
 
 export async function appendTask(dir, row) {
-  const text = await read(dir, 'docs/TASKS.md');
-  await write(dir, 'docs/TASKS.md', `${text.trimEnd()}\n${row}\n`);
+  const file = `${META_DIR}/docs/TASKS.md`;
+  const text = await read(dir, file);
+  await write(dir, file, `${text.trimEnd()}\n${row}\n`);
 }
 
 export function codes(checks) {

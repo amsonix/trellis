@@ -9,6 +9,9 @@ All notable changes to this project are recorded here. The format follows
 ### Added
 
 - A dependency-free Node.js protocol and CLI for agent-facing project building.
+- A fixed `<project>/.project-protocol/` management directory; `init` can run on
+  an existing project and never overwrites existing files.
+- `generic` profile (the default); `--profile` and `--name` are optional.
 - Profiles: `web-app`, `library`, `cli`.
 - Stages and gates `G0`–`G7`, including the per-task `G5` review.
 - Artifact contracts for `PROJECT`, `RESEARCH`, `ARCHITECTURE`, `ROADMAP`,

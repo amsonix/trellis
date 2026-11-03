@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { makeCheck } from './checks.mjs';
+import { META_DIR } from './constants.mjs';
 import { parseFrontMatter } from './frontmatter.mjs';
 import {
   exists,
@@ -92,7 +93,7 @@ export const ARTIFACTS = {
 export async function readArtifact(root, id) {
   const definition = ARTIFACTS[id];
   if (!definition) return { definition, missing: true, error: 'UNKNOWN_ARTIFACT' };
-  const file = path.join(root, definition.path);
+  const file = path.join(root, META_DIR, definition.path);
   if (!(await exists(file))) {
     return { definition, file, missing: true, error: null };
   }
@@ -112,7 +113,7 @@ export async function readArtifact(root, id) {
 }
 
 async function adrFiles(root) {
-  const dir = path.join(root, 'docs/adr');
+  const dir = path.join(root, META_DIR, 'docs/adr');
   const entries = await listDir(dir);
   return entries.filter((entry) => entry.isFile() && entry.name.endsWith('.md')).map((entry) => path.join(dir, entry.name));
 }

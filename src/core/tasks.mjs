@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { ROLES, TASK_STATUSES } from './constants.mjs';
+import { ROLES, TASK_STATUSES, META_DIR } from './constants.mjs';
 import { makeCheck } from './checks.mjs';
 import {
   exists,
@@ -60,7 +60,7 @@ function splitRow(line) {
 }
 
 export async function parseTasks(root) {
-  const file = path.join(root, TASKS_FILE);
+  const file = path.join(root, META_DIR, TASKS_FILE);
   if (!(await exists(file))) {
     return { tasks: [], error: { code: 'TASKS_MISSING', message: `${TASKS_FILE} does not exist` } };
   }
@@ -138,7 +138,7 @@ function dependencyClosure(tasks) {
 }
 
 export async function milestonesFromRoadmap(root) {
-  const file = path.join(root, 'docs/ROADMAP.md');
+  const file = path.join(root, META_DIR, 'docs/ROADMAP.md');
   if (!(await exists(file))) return [];
   const text = await readText(file);
   const sections = splitSections(text);
@@ -270,7 +270,7 @@ export function readyTasks(tasks, role) {
 }
 
 export async function updateTaskStatus(root, id, status) {
-  const file = path.join(root, TASKS_FILE);
+  const file = path.join(root, META_DIR, TASKS_FILE);
   const text = await readText(file);
   const lines = text.split(/\r?\n/);
   let changed = false;

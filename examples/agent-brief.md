@@ -11,18 +11,18 @@ Stage: architecture
 Gate: G2 (Architecture)
 
 ## Read
-- PROJECT.md
-- docs/RESEARCH.md
-- docs/GLOSSARY.md
+- .project-protocol/PROJECT.md
+- .project-protocol/docs/RESEARCH.md
+- .project-protocol/docs/GLOSSARY.md
 
 ## Write
-- docs/ARCHITECTURE.md
-- docs/adr/*.md
-- docs/GLOSSARY.md (terms only)
+- .project-protocol/docs/ARCHITECTURE.md
+- .project-protocol/docs/adr/*.md
+- .project-protocol/docs/GLOSSARY.md (terms only)
 
 ## Do not
 - write product code
-- edit docs/ROADMAP.md or docs/TASKS.md (that is the Plan stage)
+- edit .project-protocol/docs/ROADMAP.md or .project-protocol/docs/TASKS.md (that is the Plan stage)
 - approve G2 yourself
 
 ## Checklist

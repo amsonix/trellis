@@ -38,15 +38,19 @@ It answers five questions at every moment:
 
 ## 3. Source of truth
 
-1. **Artifacts in git are the source of truth.** `PROJECT.md`, `docs/*.md` and
-   `docs/adr/*.md` are committed.
-2. **`.project-protocol/` is an index and an audit log.** It records gates,
-   evidence, leases and history. It can be rebuilt with `reindex` when the
-   artifacts are intact.
-3. **A task is a row in `docs/TASKS.md`.** A lease is a separate record that
-   names the task, the actor and the write domains.
+1. **The fixed management directory `<project>/.project-protocol/` holds the
+   artifacts.** `PROJECT.md`, `docs/*.md` and `docs/adr/*.md` inside it are the
+   source of truth and are committed with the project.
+2. **The same directory holds the ledger.** `state.json`, `evidence.json` and
+   `leases.json` record gates, evidence, leases and history. The ledger can be
+   rebuilt with `reindex` when the artifacts are intact.
+3. **A task is a row in `.project-protocol/docs/TASKS.md`.** A lease is a
+   separate record that names the task, the actor and the write domains.
 4. **A gate is an approval event**, not a file. It is recorded in the state
    ledger with the approver, time and note.
+5. **`init` may run on an existing project.** It creates only
+   `.project-protocol/` and never touches `README.md`, `TASKS.md`, `docs/` or
+   any other existing file. It refuses a non-empty `.project-protocol/`.
 
 ## 4. Stages
 
@@ -108,15 +112,15 @@ Then a Markdown body with level-2 sections. The required sections are:
 
 | Artifact | Path | Required sections |
 |---|---|---|
-| `PROJECT` | `PROJECT.md` | Problem, Users, Scope, Non-goals, Constraints, Acceptance |
-| `RESEARCH` | `docs/RESEARCH.md` | Questions, Prior art, Unknowns, Risks |
-| `ARCHITECTURE` | `docs/ARCHITECTURE.md` | Context, Containers, Components, Data model, Interfaces, Failure modes, Security, Deployment, Observability, Open questions |
-| `ROADMAP` | `docs/ROADMAP.md` | at least one `## M...` milestone, each with `Exit criteria` |
-| `TASKS` | `docs/TASKS.md` | a task table (see §7) |
-| `VERIFICATION` | `docs/VERIFICATION.md` | Strategy, Oracle, Fixtures, Evidence |
-| `OPERATIONS` | `docs/OPERATIONS.md` | Deploy, Rollback, Monitoring, Runbook |
-| `GLOSSARY` | `docs/GLOSSARY.md` | Terms |
-| `INVARIANTS` | `docs/INVARIANTS.md` | Invariants |
+| `PROJECT` | `.project-protocol/PROJECT.md` | Problem, Users, Scope, Non-goals, Constraints, Acceptance |
+| `RESEARCH` | `.project-protocol/docs/RESEARCH.md` | Questions, Prior art, Unknowns, Risks |
+| `ARCHITECTURE` | `.project-protocol/docs/ARCHITECTURE.md` | Context, Containers, Components, Data model, Interfaces, Failure modes, Security, Deployment, Observability, Open questions |
+| `ROADMAP` | `.project-protocol/docs/ROADMAP.md` | at least one `## M...` milestone, each with `Exit criteria` |
+| `TASKS` | `.project-protocol/docs/TASKS.md` | a task table (see §7) |
+| `VERIFICATION` | `.project-protocol/docs/VERIFICATION.md` | Strategy, Oracle, Fixtures, Evidence |
+| `OPERATIONS` | `.project-protocol/docs/OPERATIONS.md` | Deploy, Rollback, Monitoring, Runbook |
+| `GLOSSARY` | `.project-protocol/docs/GLOSSARY.md` | Terms |
+| `INVARIANTS` | `.project-protocol/docs/INVARIANTS.md` | Invariants |
 
 Special checks:
 
@@ -124,13 +128,13 @@ Special checks:
 - `ARCHITECTURE.Context` contains at least one Mermaid block (warning if not).
 - `ARCHITECTURE.Containers` contains a Markdown table with `Container`,
   `Responsibility` and `Interface` columns.
-- `docs/adr/` contains at least one ADR (warning if not).
+- `.project-protocol/docs/adr/` contains at least one ADR (warning if not).
 - A rendered diagram or a link that does not resolve is a warning, not a
   failure, until a renderer/link checker is wired in.
 
 ## 7. Tasks
 
-`docs/TASKS.md` contains exactly one task table with this header:
+`.project-protocol/docs/TASKS.md` contains exactly one task table with this header:
 
 ```text
 | ID | Milestone | Title | Role | Scope | Depends on | Acceptance | Verification | Status |
@@ -272,8 +276,11 @@ implemented in this version. It is the next execution-constraint module.
 
 A profile selects required/optional artifacts and the gates that apply.
 
+`--profile` is optional; the default is `generic`.
+
 | Profile | Required artifacts | Optional |
 |---|---|---|
+| `generic` | `PROJECT`, `ARCHITECTURE`, `ROADMAP`, `TASKS`, `VERIFICATION` | `RESEARCH`, `OPERATIONS`, `GLOSSARY`, `INVARIANTS` |
 | `web-app` | `PROJECT`, `RESEARCH`, `ARCHITECTURE`, `ROADMAP`, `TASKS`, `VERIFICATION`, `OPERATIONS` | `GLOSSARY`, `INVARIANTS` |
 | `library` | `PROJECT`, `RESEARCH`, `ARCHITECTURE`, `ROADMAP`, `TASKS`, `VERIFICATION` | `OPERATIONS`, `GLOSSARY`, `INVARIANTS` |
 | `cli` | same as `library` | `OPERATIONS`, `GLOSSARY`, `INVARIANTS` |
@@ -297,7 +304,9 @@ artifact.
 
 Implemented in `0.1.0`:
 
-- `init` with `web-app`, `library`, `cli` profiles;
+- `init` on a new or existing project; it creates a fixed
+  `<project>/.project-protocol/` and never overwrites existing files;
+- `generic` (default), `web-app`, `library` and `cli` profiles;
 - artifact existence, front-matter, required-section and special checks;
 - task table parsing, graph validation, scope-overlap check, status transitions;
 - gates `G0`–`G7`, approver roles, order, waivers, per-task `G5`;

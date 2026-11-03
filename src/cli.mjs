@@ -92,7 +92,9 @@ An agent-facing protocol for building projects: stages, artifacts, gates, roles,
 tasks and evidence. Files are the source of truth; .project-protocol/ is the index.
 
 Usage:
-  project-protocol init [dir] --profile <web-app|library|cli> [--name <name>]
+  project-protocol init [project-dir] [--profile <generic|web-app|library|cli>] [--name <name>]
+      (works on an existing project; creates <project>/.project-protocol/ only;
+       profile defaults to generic, name defaults to the directory name)
   project-protocol status [dir] [--json]
   project-protocol check [dir] [--stage <stage>] [--json]
   project-protocol next [dir] [--role <role>] [--json]
@@ -122,6 +124,7 @@ Exit codes:
 
 function printInit(data) {
   console.log(`initialised ${data.name} (${data.profile}) in ${data.dir}`);
+  console.log(`  management: ${data.managementDir}`);
   console.log(`  created ${data.created.length} artifacts`);
   console.log('  next:');
   for (const line of data.next) console.log(`    ${line}`);
@@ -231,7 +234,7 @@ async function dispatch(args) {
 
   if (command === 'init') {
     const dir = path.resolve(args.positionals[0] || options.dir || process.cwd());
-    const data = await initProject({ dir, name: options.name, profile: options.profile || 'web-app' });
+    const data = await initProject({ dir, name: options.name, profile: options.profile || 'generic' });
     return { data, exitCode: 0, print: () => printInit(data) };
   }
 

@@ -22,7 +22,7 @@ test('reindex rebuilds the state from the artifacts', async () => {
 test('reindex follows the project front-matter', async () => {
   const dir = await makeProject();
   try {
-    await replace(dir, 'PROJECT.md', 'project: test-project', 'project: renamed-project');
+    await replace(dir, '.project-protocol/PROJECT.md', 'project: test-project', 'project: renamed-project');
     const result = await reindex(dir);
     assert.equal(result.project.name, 'renamed-project');
     const status = await projectStatus(dir);

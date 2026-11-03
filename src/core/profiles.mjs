@@ -1,6 +1,14 @@
 import { UsageError } from './errors.mjs';
 
 export const PROFILES = {
+  generic: {
+    id: 'generic',
+    title: 'Generic project',
+    description: 'Any project; only the core planning artifacts are required.',
+    requiredArtifacts: ['PROJECT', 'ARCHITECTURE', 'ROADMAP', 'TASKS', 'VERIFICATION'],
+    optionalArtifacts: ['RESEARCH', 'OPERATIONS', 'GLOSSARY', 'INVARIANTS'],
+    gates: ['G0', 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7']
+  },
   'web-app': {
     id: 'web-app',
     title: 'Web application',

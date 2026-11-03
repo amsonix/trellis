@@ -31,11 +31,15 @@ test/           node:test suites and fixtures
 ```bash
 npm test
 node bin/project-protocol.mjs --help
-node bin/project-protocol.mjs init /tmp/pp-check --profile cli --name check
+node bin/project-protocol.mjs init /tmp/pp-check
 node bin/project-protocol.mjs status --dir /tmp/pp-check
 ```
 
 ## Protocol discipline for agents
+
+The management directory is fixed at `<project>/.project-protocol/`. `init` may
+run on an existing project; it must never overwrite `README.md`, `TASKS.md`,
+`docs/` or any other existing file.
 
 When you use this protocol on a real project:
 
