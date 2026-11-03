@@ -185,6 +185,16 @@ function taskCounts(tasks) {
 
 async function buildAttention(root, state, tasks, checks) {
   const attention = [];
+  for (const record of Object.values(state.questions ?? {})) {
+    if (record.status !== 'open') continue;
+    attention.push({
+      kind: 'question',
+      code: 'QUESTION_OPEN',
+      message: `${record.id} for ${record.taskId}: ${record.question}`,
+      task: record.taskId,
+      question: record.id
+    });
+  }
   for (const check of checks) {
     if (check.severity === 'fail' || check.severity === 'unavailable') {
       attention.push({ kind: 'check', code: check.code, message: check.message, artifact: check.artifact ?? null, task: check.task ?? null });
@@ -456,6 +466,15 @@ export async function projectReport(root) {
     (id) => status.gates[id]?.status === 'passed' || status.gates[id]?.status === 'waived'
   ).length;
   const doneTasks = tasks.filter((task) => task.status === 'done').length;
+  const pendingQuestions = Object.values(state.questions ?? {})
+    .filter((record) => record.status === 'open')
+    .map((record) => ({
+      id: record.id,
+      taskId: record.taskId,
+      question: record.question,
+      askedBy: record.askedBy,
+      askedAt: record.askedAt
+    }));
 
   return {
     project: status.project,
@@ -465,9 +484,12 @@ export async function projectReport(root) {
       tasks: { done: doneTasks, total: tasks.length }
     },
     gaps: gaps.slice(0, 20),
+    pendingQuestions,
     next: {
       kind: status.next.kind,
-      command: status.next.command ?? null
+      command: status.next.command ?? null,
+      needsUser: status.next.needsUser ?? null,
+      reason: status.next.reason ?? null
     }
   };
 }
@@ -712,8 +734,92 @@ export async function addTask(
   return { task, followUpOf: parent?.id ?? null, depth };
 }
 
-export async function reportTask(root, taskId, { state: newStatus, note = null, by }) {
-  if (!newStatus) throw new UsageError('task report needs --state <status>');
+export async function askTask(root, taskId, { question, by }) {
+  if (!taskId) throw new UsageError('task ask needs a task id');
+  if (!question || String(question).trim() === '') {
+    throw new UsageError('task ask needs --question "<one question>"');
+  }
+  if (!by) throw new UsageError('task ask needs --by <role>:<name>');
+  const actor = parseActor(by);
+  const state = await loadState(root);
+  const { tasks } = await parseTasks(root);
+  const task = taskById(tasks, taskId);
+  if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
+
+  state.questions = state.questions ?? {};
+  const open = Object.values(state.questions).find((item) => item.taskId === taskId && item.status === 'open');
+  if (open) {
+    throw new RefusedError('QUESTION_OPEN', `task ${taskId} already has open question ${open.id}`, {
+      task: taskId,
+      question: open.id
+    });
+  }
+
+  if (!['in_progress', 'review'].includes(task.status)) {
+    throw new RefusedError(
+      'QUESTION_NOT_ASKABLE',
+      `task ${taskId} is '${task.status}'; only an in_progress or review task can ask`,
+      { task: taskId, status: task.status }
+    );
+  }
+
+  const id = `Q-${String(Object.keys(state.questions).length + 1).padStart(3, '0')}`;
+  const record = {
+    id,
+    taskId,
+    question: String(question).trim(),
+    askedBy: actor.raw,
+    askedAt: nowIso(),
+    previousStatus: task.status,
+    status: 'open',
+    answer: null,
+    answeredBy: null,
+    answeredAt: null
+  };
+  state.questions[id] = record;
+  await updateTaskStatus(root, taskId, 'blocked');
+  state.taskNotes = state.taskNotes ?? {};
+  state.taskNotes[taskId] = { note: record.question, at: record.askedAt, by: actor.raw, state: 'blocked' };
+  appendAudit(state, 'task.question', actor, { task: taskId, question: id });
+  await saveState(root, state);
+  return { question: record, task: { ...task, status: 'blocked' } };
+}
+
+export async function answerTask(root, questionId, { decision, by }) {
+  if (!questionId) throw new UsageError('task answer needs a question id');
+  if (!decision || String(decision).trim() === '') {
+    throw new UsageError('task answer needs --decision "<the answer>"');
+  }
+  if (!by) throw new UsageError('task answer needs --by <role>:<name>');
+  const actor = parseActor(by);
+  if (actor.role !== 'human') {
+    throw new RefusedError('QUESTION_ANSWER_ROLE', `${actor.raw} cannot answer a question; only human can`, {
+      actor: actor.raw
+    });
+  }
+
+  const state = await loadState(root);
+  const record = state.questions?.[questionId];
+  if (!record) {
+    throw new RefusedError('QUESTION_UNKNOWN', `no question '${questionId}'`, { question: questionId });
+  }
+  if (record.status !== 'open') {
+    throw new RefusedError('QUESTION_ANSWERED', `question ${questionId} is already ${record.status}`, {
+      question: questionId
+    });
+  }
+
+  record.status = 'answered';
+  record.answer = String(decision).trim();
+  record.answeredBy = actor.raw;
+  record.answeredAt = nowIso();
+  await updateTaskStatus(root, record.taskId, record.previousStatus);
+  appendAudit(state, 'task.answered', actor, { task: record.taskId, question: questionId });
+  await saveState(root, state);
+  return { question: record, task: { id: record.taskId, status: record.previousStatus } };
+}
+
+export async function reportTask(root, taskId, { state: newStatus, note = null, by }) {  if (!newStatus) throw new UsageError('task report needs --state <status>');
   const actor = by ? parseActor(by) : null;
   const state = await loadState(root);
   const { tasks } = await parseTasks(root);

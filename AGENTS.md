@@ -52,8 +52,8 @@ When you use this protocol on a real project:
    without it is refused.
 4. **Claim a task before writing its scope.** `task claim` creates the lease;
    `guard commit` uses it.
-5. **Ask one concrete question when blocked.** Report `blocked` with one
-   question, not a long status essay.
+5. **Ask one concrete question when blocked.** Use `task ask`, which blocks the
+   task and records the question; only a human answers it.
 6. **Use `--observe` before enforcing a guard.** Record what it would block;
    review the audit; then make it block.
 7. **Do not edit `.trellis/evidence.json` by hand.** Use

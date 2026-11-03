@@ -183,6 +183,11 @@ Rules:
     make G3/G4 stale — their digests are refreshed and the change is audited as
     `task.followUp` — so a runtime can keep the loop running inside the approved
     plan. Anything else is a normal `task add` and stales the plan gates.
+13. A **question** (`task ask`) blocks the task and records the question with
+    the status it had before. Only a human may answer (`task answer`); the answer
+    is recorded in the ledger and the task returns to its previous status. An
+    open question appears in `next` as `needsUser: true` and in `report` as
+    `pendingQuestions`; a task with an open question cannot be claimed.
 
 Allowed status transitions:
 
@@ -349,8 +354,9 @@ Implemented in `0.1.0`:
 - `generic` (default), `web-app`, `library` and `cli` profiles;
 - artifact existence, front-matter, required-section and special checks;
 - task table parsing, graph validation, scope-overlap check, status transitions,
-  `task add` with the same validation, and controlled follow-ups (same
-  milestone, inside the parent scope, ≤3 children, ≤2 levels);
+  `task add` with the same validation, controlled follow-ups (same milestone,
+  inside the parent scope, ≤3 children, ≤2 levels), and questions that only a
+  human can answer;
 - gates `G0`–`G7`, approver roles, order, waivers, per-task `G5`, and digests
   that make a passed gate stale when its artifacts change;
 - evidence ledger, passing/failing/inconclusive verification, and retraction
@@ -361,7 +367,7 @@ Implemented in `0.1.0`:
   codes;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 79 `node:test` cases.
+- 84 `node:test` cases.
 
 Not in `0.1.0`:
 

@@ -49,7 +49,9 @@ All notable changes to this project are recorded here. The format follows
 - Controlled follow-ups (`task add --follow-up-of T-NNN`): same milestone, inside
   the parent scope, at most three children and two levels; they keep G3/G4
   approved so the loop can continue inside the plan.
-- 79 `node:test` cases, including negative controls for every blocking rule.
+- `task ask` / `task answer`: a question blocks the task and is recorded with its
+  previous status; only a human can answer, and the task resumes where it was.
+- 84 `node:test` cases, including negative controls for every blocking rule.
 
 ### Fixed
 

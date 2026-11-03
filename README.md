@@ -135,8 +135,9 @@ exposes the read side: `trellis_status`, `trellis_check`, `trellis_next`,
 `trellis_verify`, `trellis_lease_status` and `trellis_profile_list`.
 
 With `TRELLIS_MCP_WRITE=1` it also exposes `trellis_init`, `trellis_task_add`,
-`trellis_task_claim`, `trellis_task_report`, `trellis_evidence_add`,
-`trellis_evidence_retract`, `trellis_lease_release` and `trellis_reindex`.
+`trellis_task_ask`, `trellis_task_answer`, `trellis_task_claim`,
+`trellis_task_report`, `trellis_evidence_add`, `trellis_evidence_retract`,
+`trellis_lease_release` and `trellis_reindex`.
 
 Gate approval is deliberately **not** exposed: a gate approver must not be the
 role that produced the work, so that decision stays in the CLI.
@@ -219,6 +220,8 @@ trellis task add --title <text> --scope <paths> --acceptance <text> --verificati
                  [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>] \
                  [--follow-up-of <T-NNN>] --by <role>:<name>
 trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
+trellis task ask <T-NNN> --question <text> --by <role>:<name>
+trellis task answer <Q-NNN> --decision <text> --by human:<name>
 trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> [--note <text>] [--by <role>:<name>]
 
 trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> \
@@ -255,6 +258,10 @@ Work discovered during execution can keep the loop running: `task add
 parent's scope, depends on it, and does **not** re-open G3/G4. It is capped at
 three follow-ups per task and two levels deep; anything else still stales the
 plan gates and needs a human.
+
+Decisions travel as questions: `task ask` blocks the task and records the
+question, `next`/`report` surface it as `needsUser`, and only a human can
+`task answer`. The task then returns to the status it had before the question.
 
 Exit codes are part of the contract:
 

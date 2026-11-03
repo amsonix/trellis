@@ -18,6 +18,8 @@ import {
   agentBrief,
   projectReport,
   addTask,
+  askTask,
+  answerTask,
   claimTask,
   reportTask,
   addTaskEvidence,
@@ -156,6 +158,35 @@ const writeTools = [
         followUpOf: args.followUpOf ?? null,
         by: args.by
       })
+  },
+  {
+    name: 'trellis_task_ask',
+    description:
+      'Ask one blocking question about a task. The task becomes blocked, the question is recorded on the ledger, and next/report surface it as needing a human answer.',
+    inputSchema: object(
+      {
+        dir: dirProp,
+        task: text('Task id.'),
+        question: text('The one question that blocks the task.'),
+        by: text('Actor as role:name.')
+      },
+      ['task', 'question', 'by']
+    ),
+    run: (args) => askTask(dirOf(args), args.task, { question: args.question, by: args.by })
+  },
+  {
+    name: 'trellis_task_answer',
+    description: 'Answer an open question as a human; the task returns to its previous status.',
+    inputSchema: object(
+      {
+        dir: dirProp,
+        question: text('Question id, e.g. Q-001.'),
+        decision: text('The answer.'),
+        by: text('Actor as human:<name>.')
+      },
+      ['question', 'decision', 'by']
+    ),
+    run: (args) => answerTask(dirOf(args), args.question, { decision: args.decision, by: args.by })
   },
   {
     name: 'trellis_task_claim',

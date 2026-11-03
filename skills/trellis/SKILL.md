@@ -72,8 +72,9 @@ Do not use it for unrelated work or for anything outside the parent's scope.
    passing evidence record. `inconclusive` is not a pass.
 4. **Never approve your own work.** A gate approver must not be the role that
    produced the work. A human approves; you produce the evidence and ask.
-5. **Blocked is one question.** Report `blocked` with a single concrete
-   question, not a status essay.
+5. **Blocked is one question.** Use `trellis task ask T-NNN --question "..."`;
+   it blocks the task, records the question and surfaces it as `needsUser`.
+   Never write a status essay, and never answer your own question.
 6. **Do not edit the ledger by hand.** Use `evidence add`, `task report`,
    `gate` and `reindex`. The JSON files are an index and an audit trail.
 7. **A stale gate is re-approved, not skipped.** If `check` reports

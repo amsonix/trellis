@@ -130,9 +130,9 @@ cp -R skills/trellis ~/.agents/skills/trellis
 `trellis_lease_status`、`trellis_profile_list`。
 
 设置 `TRELLIS_MCP_WRITE=1` 后额外暴露写工具：`trellis_init`、
-`trellis_task_add`、`trellis_task_claim`、`trellis_task_report`、
-`trellis_evidence_add`、`trellis_evidence_retract`、`trellis_lease_release`、
-`trellis_reindex`。
+`trellis_task_add`、`trellis_task_ask`、`trellis_task_answer`、
+`trellis_task_claim`、`trellis_task_report`、`trellis_evidence_add`、
+`trellis_evidence_retract`、`trellis_lease_release`、`trellis_reindex`。
 
 gate 批准**故意不暴露**：批准者不能是产出这项工作的角色，这个决定留在 CLI 里。
 
@@ -210,6 +210,8 @@ trellis task add --title <text> --scope <paths> --acceptance <text> --verificati
                  [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>] \
                  [--follow-up-of <T-NNN>] --by <role>:<name>
 trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
+trellis task ask <T-NNN> --question <text> --by <role>:<name>
+trellis task answer <Q-NNN> --decision <text> --by human:<name>
 trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> [--note <text>] [--by <role>:<name>]
 
 trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> \
@@ -242,6 +244,9 @@ trellis profile list [--json]
 任务的 milestone，写域必须在父任务范围内，自动依赖父任务，并且**不**重开 G3/G4。
 每个任务最多派生 3 个跟进、最深 2 层；超出则和普通新任务一样让规划 gate 失效，
 交由人决策。
+
+决策以「问题」的形式向上走：`task ask` 把任务置为阻塞并记录问题，`next`/`report`
+会以 `needsUser` 呈现，只有 human 能 `task answer`。回答后任务回到提问前的状态。
 
 退出码是约定的一部分：
 

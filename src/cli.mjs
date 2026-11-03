@@ -12,6 +12,8 @@ import {
   agentBrief,
   projectReport,
   addTask,
+  askTask,
+  answerTask,
   claimTask,
   reportTask,
   addTaskEvidence,
@@ -49,6 +51,8 @@ const VALUE_OPTIONS = new Set([
   'verification',
   'depends-on',
   'follow-up-of',
+  'question',
+  'decision',
   'id'
 ]);
 
@@ -120,6 +124,8 @@ Usage:
                    [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>]
                    [--follow-up-of <T-NNN>] [--id <T-NNN>] --by <role>:<name> [--dir <dir>]
   trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
+  trellis task ask <T-NNN> --question <text> --by <role>:<name> [--dir <dir>]
+  trellis task answer <Q-NNN> --decision <text> --by human:<name> [--dir <dir>]
   trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dir <dir>]
   trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit>
                               --verdict <pass|fail|inconclusive> --by <role>:<name> [--dir <dir>]
@@ -392,6 +398,26 @@ async function dispatch(args) {
       if (!options.by) throw new UsageError('task claim needs --by <role>:<name>');
       const data = await claimTask(dir, taskId, { by: options.by });
       return { data, exitCode: 0, print: () => console.log(`claimed ${taskId}; lease ${data.lease.id} on ${data.lease.domains.join(', ')}`) };
+    }
+    if (subcommand === 'ask') {
+      const taskId = args.positionals[0];
+      if (!taskId) throw new UsageError('task ask needs a task id');
+      if (!options.question) throw new UsageError('task ask needs --question "<one question>"');
+      if (!options.by) throw new UsageError('task ask needs --by <role>:<name>');
+      const data = await askTask(dir, taskId, { question: options.question, by: options.by });
+      return { data, exitCode: 0, print: () => console.log(`asked ${data.question.id} for ${taskId}`) };
+    }
+    if (subcommand === 'answer') {
+      const questionId = args.positionals[0];
+      if (!questionId) throw new UsageError('task answer needs a question id');
+      if (!options.decision) throw new UsageError('task answer needs --decision "<the answer>"');
+      if (!options.by) throw new UsageError('task answer needs --by human:<name>');
+      const data = await answerTask(dir, questionId, { decision: options.decision, by: options.by });
+      return {
+        data,
+        exitCode: 0,
+        print: () => console.log(`answered ${data.question.id}; ${data.task.id} is ${data.task.status}`)
+      };
     }
     if (subcommand === 'report') {
       const taskId = args.positionals[0];
