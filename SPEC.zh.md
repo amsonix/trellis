@@ -107,6 +107,8 @@ version、created），正文用二级标题组织。必需章节见英文版表
     `task.followUp`。
 15. 问题（`task ask`）：任务置 blocked 并记录原状态；只有 human 能
     `task answer`；回答后恢复原状态；未答问题出现在 `next` 与 `report`。
+16. `scope suggest` 读取提到某任务的提交，在其当前写域内给出文件级建议；
+    只读，不改任务板。
 
 状态转移：
 
@@ -127,7 +129,8 @@ done → 终态
   "producedBy": "verifier:ci", "producedAt": "...", "note": "...", "agent": "..." }
 ```
 
-- 存在 `.trellis/evidence.jsonl`，是 append-only 事件日志（add / retract）。
+- 存在 `.trellis/evidence.jsonl`，是 append-only 事件日志（add / retract）；
+  可选 `proves` 字段写明这条证据要证明验收条件里的哪一句。
 - 本地文件在写入时计算 sha256；文件变化需要新证据。
 - done 需要 pass 且没有 fail；inconclusive 不是 pass。
 - 证据可以由 human/reviewer/verifier 带理由撤回；记录保留、不再计数；

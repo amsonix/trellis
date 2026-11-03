@@ -85,7 +85,7 @@ export async function listEvidence(root, taskId = null) {
   return taskId ? items.filter((item) => item.taskId === taskId) : items;
 }
 
-export async function addEvidence(root, { taskId, kind, uri, verdict, by, note = null }) {
+export async function addEvidence(root, { taskId, kind, uri, verdict, by, note = null, proves = null }) {
   if (!taskId) throw new UsageError('evidence add needs --task <T-NNN>');
   if (!EVIDENCE_KINDS.includes(kind)) {
     throw new UsageError(`--kind must be one of: ${EVIDENCE_KINDS.join(', ')}`);
@@ -95,6 +95,9 @@ export async function addEvidence(root, { taskId, kind, uri, verdict, by, note =
   }
   if (!uri) throw new UsageError('evidence add needs --uri <file|url|commit>');
   const actor = parseActor(by);
+  if (proves !== null && String(proves).trim() === '') {
+    throw new UsageError('--proves must name what the evidence proves');
+  }
 
   let digest = null;
   const local = path.resolve(root, uri);
@@ -113,7 +116,8 @@ export async function addEvidence(root, { taskId, kind, uri, verdict, by, note =
     producedBy: actor.raw,
     producedAt: nowIso(),
     agent: currentAgent(),
-    note
+    note,
+    proves: proves === null ? null : String(proves).trim()
   };
   await appendEvent(evidencePath(root), record);
   const { type, ...rest } = record;

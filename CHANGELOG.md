@@ -12,7 +12,13 @@ All notable changes to this project are recorded here. The format follows
   sharing one git index no longer block each other.
 - `next` returns `alsoReady` when it stops at a gate but execution is still
   possible, instead of hiding the claimable tasks.
-- 117 `node:test` cases.
+- `evidence add --proves "<acceptance clause>"`: optional field naming what the
+  evidence is meant to prove.
+- `scope suggest --task T-NNN`: proposes a file-level write scope from
+  `git log --grep`, without editing the board.
+- The missing-state error names the project root and suggests `--dir`,
+  `TRELLIS_DIR`, `reindex` and `init`.
+- 119 `node:test` cases.
 
 ## [0.4.0] - 2026-11-03
 

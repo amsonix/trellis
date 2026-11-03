@@ -197,6 +197,8 @@ Rules:
     is recorded in the ledger and the task returns to its previous status. An
     open question appears in `next` as `needsUser: true` and in `report` as
     `pendingQuestions`; a task with an open question cannot be claimed.
+16. `scope suggest` reads commits mentioning a task and proposes file-level
+    paths inside its current scope; it never edits the board.
 
 Allowed status transitions:
 
@@ -231,7 +233,8 @@ done        → (terminal)
 Rules:
 
 - Evidence is stored in `.trellis/evidence.jsonl` as an append-only event log:
-  `add` and `retract` events are folded by evidence id when read.
+  `add` and `retract` events are folded by evidence id when read. An optional
+  `proves` field names the acceptance clause the evidence is meant to prove.
 - A local file URI gets a sha256 at add time; a changed file needs new evidence.
 - A task cannot be `done` without a `pass` and with any `fail`.
 - A gate cannot be approved on a task whose evidence does not verify.

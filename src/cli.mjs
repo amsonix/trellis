@@ -32,6 +32,7 @@ import {
 import { parseTasks } from './core/tasks.mjs';
 import { leaseStatus, guardCommit } from './core/lease.mjs';
 import { exportA2A } from './core/export-a2a.mjs';
+import { suggestScopeForTask } from './core/scope.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -58,6 +59,7 @@ const VALUE_OPTIONS = new Set([
   'follow-up-of',
   'priority',
   'paths',
+  'proves',
   'archive-retracted',
   'question',
   'decision',
@@ -99,7 +101,7 @@ function parseArgv(argv) {
 
   const command = positionals.shift() ?? null;
   let subcommand = null;
-  if (['task', 'evidence', 'lease', 'guard', 'profile'].includes(command)) {
+  if (['task', 'evidence', 'lease', 'guard', 'profile', 'scope'].includes(command)) {
     subcommand = positionals.shift() ?? null;
   }
   return { command, subcommand, positionals, options };
@@ -147,6 +149,7 @@ Usage:
   trellis reindex [dir] [--json]
   trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
   trellis export --a2a [dir] [--json]
+  trellis scope suggest --task <T-NNN> [dir] [--json]
   trellis profile list [--json]
   trellis --version
   trellis --help
@@ -561,6 +564,31 @@ async function dispatch(args) {
   if (command === 'reindex') {
     const data = await reindex(dirOf(args));
     return { data, exitCode: 0, print: () => console.log(`reindexed ${data.project.name} (${data.project.profile}); stage ${data.stage}`) };
+  }
+
+  if (command === 'scope') {
+    if (subcommand !== 'suggest') throw new UsageError('scope supports: suggest');
+    if (!options.task) throw new UsageError('scope suggest needs --task <T-NNN>');
+    const dir = dirOf(args);
+    const { tasks, error } = await parseTasks(dir);
+    if (error) throw new UnavailableError(error.message, error);
+    const task = tasks.find((item) => item.id === options.task);
+    if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${options.task} is not on the task board`, { task: options.task });
+    const { stdout } = await execFileAsync('git', ['log', '--all', '--name-only', '--format=', `--grep=${options.task}`], {
+      cwd: dir,
+      maxBuffer: 16 * 1024 * 1024
+    });
+    const files = stdout.split('\n').map((line) => line.trim()).filter(Boolean);
+    const data = suggestScopeForTask(task.id, task.scope, files);
+    return {
+      data,
+      exitCode: 0,
+      print: () => {
+        console.log(`current:   ${data.current.join(', ')}`);
+        console.log(`suggested: ${data.suggested.length > 0 ? data.suggested.join(', ') : '(no touched file inside the scope)'}`);
+        if (data.outside.length > 0) console.log(`outside:   ${data.outside.join(', ')}`);
+      }
+    };
   }
 
   if (command === 'export') {

@@ -102,6 +102,12 @@
         "string",
         "null"
       ]
+    },
+    "proves": {
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
   "additionalProperties": true,
