@@ -59,12 +59,21 @@ node bin/trellis.mjs next --dir /tmp/demo --role architect
 node bin/trellis.mjs gate G0 --approve --by human:alice --dir /tmp/demo
 ```
 
-Or install the binary locally:
+Or install the CLI from the repository — no npm registry needed:
 
 ```bash
-npm link
+npm install -g github:amsonix/trellis
 trellis --help
+
+# or run it once
+npx github:amsonix/trellis --help
+
+# or from a local clone
+npm link
 ```
+
+The package is not on the npm registry yet; `@amsonix/trellis` is reserved for
+a future publish.
 
 ---
 

@@ -58,12 +58,20 @@ node bin/trellis.mjs next --dir /tmp/demo --role architect
 node bin/trellis.mjs gate G0 --approve --by human:alice --dir /tmp/demo
 ```
 
-或者把命令安装到本地：
+或者直接从仓库安装——不需要 npm registry：
 
 ```bash
-npm link
+npm install -g github:amsonix/trellis
 trellis --help
+
+# 或者临时运行一次
+npx github:amsonix/trellis --help
+
+# 或者从本地克隆安装
+npm link
 ```
+
+包还没有发布到 npm；`@amsonix/trellis` 是预留给以后发布的。
 
 ---
 
