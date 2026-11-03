@@ -77,13 +77,16 @@ export async function acquireLease(root, { taskId, actor, domains }) {
   return lease;
 }
 
-export async function releaseLease(root, taskId) {
+export async function releaseLease(root, taskId, actor = null) {
+  if (!taskId) throw new UsageError('releaseLease needs a task id');
+  const parsedActor = actor ? parseActor(actor) : null;
   const ledger = await loadLeases(root);
   let changed = false;
   for (const lease of ledger.items) {
     if (lease.taskId === taskId && lease.state === 'held') {
       lease.state = 'released';
       lease.releasedAt = nowIso();
+      lease.releasedBy = parsedActor?.raw ?? null;
       changed = true;
     }
   }

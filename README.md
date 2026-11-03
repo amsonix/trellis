@@ -165,6 +165,7 @@ trellis evidence list [--task <T-NNN>] [--json]
 trellis verify <T-NNN> [--json]
 
 trellis lease status [--json]
+trellis lease release <T-NNN> --by <role>:<name>
 trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
 trellis reindex [dir] [--json]
 trellis profile list [--json]

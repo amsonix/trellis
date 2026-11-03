@@ -43,7 +43,9 @@ Gate: G2 (Architecture)
   concrete question; do not write a long status essay
 ```
 
-The brief is generated from the profile, the stage and the role. The tools are
-the enforcement: `trellis check` and `trellis gate` decide
-whether the artifacts are structurally complete; a human decides whether the
-content is right.
+A full runtime would generate this brief from the profile, the stage and the
+role. The reference CLI does not generate it yet: `trellis next --role <role>`
+prints the next gate and the checks, and the brief above is the shape a runtime
+passes to the agent. The tools are the enforcement: `trellis check` and
+`trellis gate` decide whether the artifacts are structurally complete; a human
+decides whether the content is right.

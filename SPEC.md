@@ -262,6 +262,10 @@ A lease is a held claim over write domains, recorded in
 - `task claim` acquires a lease over the task's scope; a conflicting lease
   refuses the claim.
 - `task report --state done` releases the lease.
+- `lease release <T-NNN> --by <role>:<name>` releases a held lease without
+  completing the task — the recovery path when a task is abandoned or blocked.
+  The record keeps `releasedAt` and `releasedBy`; releasing a lease nobody
+  holds is refused.
 - `guard commit --task <id> --staged` reads `git diff --cached --name-only` and
   refuses a staged path that is outside the task's scope or covered by another
   task's held lease.
@@ -313,10 +317,10 @@ Implemented in `0.1.0`:
 - task table parsing, graph validation, scope-overlap check, status transitions;
 - gates `G0`–`G7`, approver roles, order, waivers, per-task `G5`;
 - evidence ledger, passing/failing/inconclusive verification;
-- leases on task claim, conflict detection, `guard commit --staged` with
-  `--observe`;
+- leases on task claim, release, conflict detection, `guard commit --staged`
+  with `--observe`;
 - `status`, `check`, `next`, `reindex`, JSON envelope, exit codes;
-- 32 `node:test` cases.
+- 38 `node:test` cases.
 
 Not in `0.1.0`:
 

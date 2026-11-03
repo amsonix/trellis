@@ -22,9 +22,15 @@ All notable changes to this project are recorded here. The format follows
 - Task table parsing, dependency-cycle detection and write-scope overlap checks.
 - Evidence ledger with `pass` / `fail` / `inconclusive`; `done` requires a pass.
 - Leases acquired by `task claim`; `guard commit --staged` with `--observe`.
+- `lease release <T-NNN> --by <role>:<name>` frees a held lease when a task is
+  abandoned, blocked or crashed; the record keeps `releasedAt` and `releasedBy`.
 - `status`, `check`, `next`, `gate`, `task`, `evidence`, `verify`, `lease`,
   `guard`, `reindex`, `profile`, `--json` and stable exit codes.
-- 32 `node:test` cases, including negative controls for every blocking rule.
+- 38 `node:test` cases, including negative controls for every blocking rule.
+
+### Fixed
+
+- `examples/agent-brief.md` no longer claims that the CLI generates the brief.
 
 ### Not yet
 

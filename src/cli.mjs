@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { PROTOCOL_VERSION } from './core/constants.mjs';
-import { ProtocolError, UsageError, UnavailableError } from './core/errors.mjs';
+import { ProtocolError, RefusedError, UsageError, UnavailableError } from './core/errors.mjs';
 import { summarize } from './core/checks.mjs';
 import {
   initProject,
@@ -20,7 +20,7 @@ import {
   listProfiles
 } from './core/project.mjs';
 import { parseTasks } from './core/tasks.mjs';
-import { leaseStatus, guardCommit } from './core/lease.mjs';
+import { leaseStatus, guardCommit, releaseLease } from './core/lease.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -109,6 +109,7 @@ Usage:
   trellis evidence list [--task <T-NNN>] [--dir <dir>] [--json]
   trellis verify <T-NNN> [--dir <dir>] [--json]
   trellis lease status [--dir <dir>] [--json]
+  trellis lease release <T-NNN> --by <role>:<name> [--dir <dir>]
   trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
   trellis reindex [dir] [--json]
   trellis profile list [--json]
@@ -327,16 +328,27 @@ async function dispatch(args) {
   }
 
   if (command === 'lease') {
-    if (subcommand !== 'status') throw new UsageError(`unknown lease subcommand '${subcommand}' (status)`);
-    const items = await leaseStatus(dirOf(args));
-    return {
-      data: { items },
-      exitCode: 0,
-      print: () => {
-        if (items.length === 0) console.log('no held leases');
-        for (const lease of items) console.log(`${lease.taskId}  ${lease.actor}  ${lease.domains.join(', ')}`);
-      }
-    };
+    const dir = dirOf(args);
+    if (subcommand === 'status') {
+      const items = await leaseStatus(dir);
+      return {
+        data: { items },
+        exitCode: 0,
+        print: () => {
+          if (items.length === 0) console.log('no held leases');
+          for (const lease of items) console.log(`${lease.taskId}  ${lease.actor}  ${lease.domains.join(', ')}`);
+        }
+      };
+    }
+    if (subcommand === 'release') {
+      const taskId = args.positionals[0];
+      if (!taskId) throw new UsageError('lease release needs a task id');
+      if (!options.by) throw new UsageError('lease release needs --by <role>:<name>');
+      const released = await releaseLease(dir, taskId, options.by);
+      if (!released) throw new RefusedError('LEASE_NOT_HELD', `no held lease for ${taskId}`, { task: taskId });
+      return { data: { taskId, released }, exitCode: 0, print: () => console.log(`released ${taskId}`) };
+    }
+    throw new UsageError(`unknown lease subcommand '${subcommand}' (status|release)`);
   }
 
   if (command === 'guard') {
