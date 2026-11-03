@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { access, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { initProject, projectStatus, runChecks } from '../src/core/project.mjs';
@@ -53,6 +53,31 @@ test('library profile does not require OPERATIONS', async () => {
     assert.equal(state.project.profile, 'library');
     const checks = await runChecks(dir);
     assert.equal(checks.summary.fail, 0);
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('init writes the agent skill next to .trellis', async () => {
+  const dir = await makeProject('generic');
+  try {
+    const skill = await readFile(path.join(dir, '.agents/skills/trellis/SKILL.md'), 'utf8');
+    assert.match(skill, /^---\nname: trellis$/m);
+    assert.match(skill, /\.trellis\//);
+    assert.match(skill, /never approve your own work/i);
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('init does not overwrite an existing agent skill', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'pp-skill-'));
+  try {
+    const skillPath = path.join(dir, '.agents/skills/trellis/SKILL.md');
+    await mkdir(path.dirname(skillPath), { recursive: true });
+    await writeFile(skillPath, 'hand-written skill\n');
+    await initProject({ dir, name: 'keep', profile: 'generic' });
+    assert.equal(await readFile(skillPath, 'utf8'), 'hand-written skill\n');
   } finally {
     await cleanup(dir);
   }

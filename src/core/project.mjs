@@ -24,6 +24,7 @@ import { nowIso, parseActor, writeText } from './util.mjs';
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const TEMPLATE_DIR = path.join(PACKAGE_ROOT, 'templates');
+const SKILL_SOURCE = path.join(PACKAGE_ROOT, 'skills', 'trellis', 'SKILL.md');
 
 const TEMPLATE_MAP = {
   'README.md': 'README.md',
@@ -84,6 +85,26 @@ export async function initProject({ dir, name = null, profile: profileId = 'gene
   const state = defaultState({ name: projectName, profile: profile.id });
   appendAudit(state, 'project.init', null, { dir: root, managementDir: meta, profile: profile.id });
   await saveState(root, state);
+
+  // The agent skill is written once, next to .trellis/, and never overwritten.
+  // A missing skill source is not fatal: init must still work from a package
+  // that was built without it.
+  const skillTarget = path.join(root, '.agents', 'skills', 'trellis', 'SKILL.md');
+  let skill = null;
+  try {
+    skill = await fs.readFile(SKILL_SOURCE, 'utf8');
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  if (skill !== null) {
+    await fs.mkdir(path.dirname(skillTarget), { recursive: true });
+    try {
+      await fs.writeFile(skillTarget, skill, { encoding: 'utf8', flag: 'wx' });
+      created.push('.agents/skills/trellis/SKILL.md');
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+    }
+  }
 
   return {
     dir: root,

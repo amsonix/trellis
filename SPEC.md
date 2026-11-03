@@ -48,9 +48,10 @@ It answers five questions at every moment:
    separate record that names the task, the actor and the write domains.
 4. **A gate is an approval event**, not a file. It is recorded in the state
    ledger with the approver, time and note.
-5. **`init` may run on an existing project.** It creates only
-   `.trellis/` and never touches `README.md`, `TASKS.md`, `docs/` or
-   any other existing file. It refuses a non-empty `.trellis/`.
+5. **`init` may run on an existing project.** It creates `.trellis/` and,
+   when absent, the agent skill `.agents/skills/trellis/SKILL.md`. It never
+   overwrites an existing file — including `README.md`, `TASKS.md` and
+   `docs/` — and refuses a non-empty `.trellis/`.
 
 ## 4. Stages
 
@@ -305,7 +306,8 @@ artifact.
 Implemented in `0.1.0`:
 
 - `init` on a new or existing project; it creates a fixed
-  `<project>/.trellis/` and never overwrites existing files;
+  `<project>/.trellis/`, writes the agent skill once, and never overwrites
+  existing files;
 - `generic` (default), `web-app`, `library` and `cli` profiles;
 - artifact existence, front-matter, required-section and special checks;
 - task table parsing, graph validation, scope-overlap check, status transitions;
@@ -314,7 +316,7 @@ Implemented in `0.1.0`:
 - leases on task claim, conflict detection, `guard commit --staged` with
   `--observe`;
 - `status`, `check`, `next`, `reindex`, JSON envelope, exit codes;
-- 30 `node:test` cases.
+- 32 `node:test` cases.
 
 Not in `0.1.0`:
 

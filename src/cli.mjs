@@ -93,7 +93,8 @@ tasks and evidence. Files are the source of truth; .trellis/ is the index.
 
 Usage:
   trellis init [project-dir] [--profile <generic|web-app|library|cli>] [--name <name>]
-      (works on an existing project; creates <project>/.trellis/ only;
+      (works on an existing project; creates <project>/.trellis/ and, once,
+       the agent skill .agents/skills/trellis/SKILL.md; never overwrites;
        profile defaults to generic, name defaults to the directory name)
   trellis status [dir] [--json]
   trellis check [dir] [--stage <stage>] [--json]
@@ -125,7 +126,7 @@ Exit codes:
 function printInit(data) {
   console.log(`initialised ${data.name} (${data.profile}) in ${data.dir}`);
   console.log(`  management: ${data.managementDir}`);
-  console.log(`  created ${data.created.length} artifacts`);
+  console.log(`  created ${data.created.length} files`);
   console.log('  next:');
   for (const line of data.next) console.log(`    ${line}`);
 }

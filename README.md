@@ -23,8 +23,8 @@ everything in one fixed directory inside the project:
 
 The Markdown artifacts there are the source of truth; `state.json`,
 `evidence.json` and `leases.json` are the ledger. `init` can run on an existing
-project: it creates `.trellis/` and never touches `README.md`,
-`TASKS.md`, `docs/` or any other existing file.
+project: it creates `.trellis/` and, once, the agent skill at
+`.agents/skills/trellis/SKILL.md`. It never overwrites an existing file.
 
 ```text
 intake → discovery → architecture → plan → ready → executing → integrating → releasing → maintained
@@ -89,6 +89,10 @@ trellis --help
 A profile selects which artifacts are required. It is **optional**; the default
 is `generic`.
 
+It also writes `.agents/skills/trellis/SKILL.md` once, outside `.trellis/`: the
+agent skill that tells a runtime how to operate this project (see
+[Agent skill](#agent-skill)).
+
 | Profile | Use | Required artifacts |
 |---|---|---|
 | `generic` | any project (default) | `PROJECT`, `ARCHITECTURE`, `ROADMAP`, `TASKS`, `VERIFICATION` |
@@ -97,6 +101,26 @@ is `generic`.
 | `cli` | command-line tool | core five plus `RESEARCH`; `OPERATIONS` optional |
 
 `--name` is also optional; it defaults to the project directory name.
+
+---
+
+## Agent skill
+
+`init` writes the skill at `.agents/skills/trellis/SKILL.md`. Runtimes that read
+the `.agents/skills/` convention — DSH among them — load it automatically when
+the project is opened, so the agent starts from `status` and `next` instead of
+guessing the stage.
+
+The skill carries the rules that matter: claim a task before writing its scope,
+record passing evidence before a `done` report, ask one question when blocked,
+and never approve a gate for work you produced.
+
+To make it available in every project, install it at the user level:
+
+```bash
+mkdir -p ~/.agents/skills
+cp -R skills/trellis ~/.agents/skills/trellis
+```
 
 ---
 
@@ -207,6 +231,7 @@ src/core/     pure domain: artifacts, tasks, gates, evidence, leases, store
 src/index.mjs public library surface (import this, not a deep path)
 src/cli.mjs   argument parsing, human output, JSON envelope
 templates/    the files `init` writes
+skills/       the agent skill `init` writes into a project
 schema/       JSON Schemas for the state, task, evidence and profile
 test/         node:test suites and fixtures
 ```

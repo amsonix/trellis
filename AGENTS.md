@@ -15,6 +15,7 @@ check, add the case that proves it can be red.
 src/core/       pure domain; no network, no clock, no process.exit
 src/cli.mjs     argument parsing, human output, JSON envelope
 templates/      the files `init` writes into a new project
+skills/         the agent skill `init` writes into a project
 schema/         JSON Schemas for the state, task, evidence and profile
 test/           node:test suites and fixtures
 ```

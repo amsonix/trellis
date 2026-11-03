@@ -23,6 +23,7 @@
     "bin/",
     "src/",
     "templates/",
+    "skills/",
     "schema/",
     "README.md",
     "SPEC.md",

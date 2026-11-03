@@ -11,6 +11,9 @@ All notable changes to this project are recorded here. The format follows
 - A dependency-free Node.js protocol and CLI for agent-facing project building.
 - A fixed `<project>/.trellis/` management directory; `init` can run on
   an existing project and never overwrites existing files.
+- An agent skill at `.agents/skills/trellis/SKILL.md`: `init` writes it
+  once, and a runtime that reads `.agents/skills/` loads it automatically
+  for that project.
 - `generic` profile (the default); `--profile` and `--name` are optional.
 - Profiles: `web-app`, `library`, `cli`.
 - Stages and gates `G0`–`G7`, including the per-task `G5` review.
@@ -21,7 +24,7 @@ All notable changes to this project are recorded here. The format follows
 - Leases acquired by `task claim`; `guard commit --staged` with `--observe`.
 - `status`, `check`, `next`, `gate`, `task`, `evidence`, `verify`, `lease`,
   `guard`, `reindex`, `profile`, `--json` and stable exit codes.
-- 30 `node:test` cases, including negative controls for every blocking rule.
+- 32 `node:test` cases, including negative controls for every blocking rule.
 
 ### Not yet
 

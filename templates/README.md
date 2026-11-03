@@ -1,6 +1,6 @@
 # {{PROJECT_NAME}}
 
-> Created with [trellis](https://github.com/example/trellis)
+> Created with [trellis](https://github.com/amsonix/trellis)
 > on {{DATE}} using the `{{PROFILE}}` profile.
 
 ## What this is
@@ -33,3 +33,8 @@ trellis next --role architect
 - [`docs/TASKS.md`](docs/TASKS.md) — the task board
 - [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — how correctness is checked
 - [`docs/OPERATIONS.md`](docs/OPERATIONS.md) — deploy, rollback, runbook
+
+The agent skill for this project is at
+[`../.agents/skills/trellis/SKILL.md`](../.agents/skills/trellis/SKILL.md): it
+tells an agent to read `status` and `next` before writing, claim a task before
+touching its scope, record evidence, and never approve its own work.
