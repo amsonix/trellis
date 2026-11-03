@@ -17,20 +17,23 @@ import {
   nextAction,
   agentBrief,
   projectReport,
+  verifyTask,
+  evidenceFor,
+  listProfiles
+} from '../core/project.mjs';
+import {
   addTask,
   askTask,
   answerTask,
   claimTask,
   reportTask,
   addTaskEvidence,
-  verifyTask,
-  evidenceFor,
   reindex,
-  listProfiles
-} from '../core/project.mjs';
+  retractEvidence,
+  releaseLease
+} from '../core/mutations.mjs';
 import { parseTasks } from '../core/tasks.mjs';
-import { leaseStatus, releaseLease } from '../core/lease.mjs';
-import { retractEvidence } from '../core/evidence.mjs';
+import { leaseStatus } from '../core/lease.mjs';
 import { ProtocolError, RefusedError } from '../core/errors.mjs';
 
 const SERVER_INFO = { name: 'trellis', version: PROTOCOL_VERSION };

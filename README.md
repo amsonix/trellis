@@ -176,6 +176,11 @@ A runtime loops: run the `tasks` batch, claim each task, record evidence, report
 a task review, a stale approval, a blocked task or a failing check. Ready work
 never waits for a person; decisions do.
 
+Writes are serialized through `.trellis/.lock`: two agents claiming, recording
+evidence or asking questions at the same time queue behind each other instead of
+overwriting one another. A lock older than ten seconds is treated as stale and
+stolen.
+
 ---
 
 ## The lifecycle

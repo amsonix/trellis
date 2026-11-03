@@ -31,7 +31,10 @@ export async function readJson(file) {
 }
 
 export async function writeJson(file, value) {
-  await writeText(file, `${JSON.stringify(value, null, 2)}\n`);
+  await ensureDir(path.dirname(file));
+  const tmp = `${file}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+  await fs.writeFile(tmp, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+  await fs.rename(tmp, file);
 }
 
 export async function listDir(dir) {

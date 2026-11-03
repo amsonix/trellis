@@ -11,22 +11,25 @@ import {
   nextAction,
   agentBrief,
   projectReport,
+  verifyTask,
+  evidenceFor,
+  listProfiles
+} from './core/project.mjs';
+import {
   addTask,
   askTask,
   answerTask,
   claimTask,
   reportTask,
   addTaskEvidence,
-  verifyTask,
-  evidenceFor,
   reindex,
   approveGate,
   waiveGate,
-  listProfiles
-} from './core/project.mjs';
+  retractEvidence,
+  releaseLease
+} from './core/mutations.mjs';
 import { parseTasks } from './core/tasks.mjs';
-import { leaseStatus, guardCommit, releaseLease } from './core/lease.mjs';
-import { retractEvidence } from './core/evidence.mjs';
+import { leaseStatus, guardCommit } from './core/lease.mjs';
 
 const execFileAsync = promisify(execFile);
 

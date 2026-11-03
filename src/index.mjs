@@ -13,17 +13,26 @@ export {
   nextAction,
   agentBrief,
   projectReport,
+  verifyTask,
+  evidenceFor,
+  listProfiles
+} from './core/project.mjs';
+
+export {
   claimTask,
   addTask,
   reportTask,
   addTaskEvidence,
-  verifyTask,
-  evidenceFor,
+  askTask,
+  answerTask,
   reindex,
   approveGate,
   waiveGate,
-  listProfiles
-} from './core/project.mjs';
+  acquireLease,
+  releaseLease,
+  addEvidence,
+  retractEvidence
+} from './core/mutations.mjs';
 
 export {
   parseTasks,
@@ -43,15 +52,11 @@ export {
 } from './core/store.mjs';
 
 export {
-  acquireLease,
-  releaseLease,
   leaseStatus,
   guardCommit
 } from './core/lease.mjs';
 
 export {
-  addEvidence,
-  retractEvidence,
   listEvidence,
   verifyTaskEvidence,
   requirePassingEvidence

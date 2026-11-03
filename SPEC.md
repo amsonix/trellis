@@ -276,6 +276,11 @@ Exit codes:
 `status` and `check` never write. `gate`, `task`, `evidence`, `lease` and
 `reindex` write the ledger and append an audit entry.
 
+Every mutating command holds `.trellis/.lock` for the duration of its
+read-modify-write, so concurrent processes serialize instead of losing updates;
+JSON ledgers are written through a temporary file and renamed. A lock older than
+ten seconds is treated as stale.
+
 `next` is the loop contract: it returns `kind: "tasks"` with `needsUser: false`
 when a batch is ready to run, or `needsUser: true` with a `reason` when a gate,
 a task review, a stale approval, a blocked task or a failing check needs a
@@ -368,7 +373,7 @@ Implemented in `0.1.0`:
   codes;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 86 `node:test` cases.
+- 90 `node:test` cases.
 
 Not in `0.1.0`:
 
