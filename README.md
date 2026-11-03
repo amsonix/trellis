@@ -199,6 +199,9 @@ entries with a worker id (attribution, not authentication).
 
 `trellis compact` folds the evidence event log into one record per id and
 rotates `audit.jsonl` when it exceeds 5 MB; `--dry-run` reports the sizes.
+`--archive-retracted <days>` moves retracted records older than that to
+`evidence.archive.jsonl`; passing or failing evidence is never archived, because
+verification still needs it.
 
 Spec Kit users can capture a `tasks.md` checklist through
 [`examples/spec-kit/`](examples/spec-kit/): Spec Kit keeps the spec and the plan,
@@ -263,7 +266,7 @@ trellis lease status [--json]
 trellis lease release <T-NNN> --by <role>:<name>
 trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
 trellis reindex [dir] [--json]
-trellis compact [dir] [--dry-run] [--json]
+trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
 trellis profile list [--json]
 ```
 
@@ -365,7 +368,9 @@ test/         node:test suites and fixtures
 ```
 
 See [`SPEC.md`](SPEC.md) for the normative protocol and [`AGENTS.md`](AGENTS.md)
-for the rules an agent working on this repository follows.
+for the rules an agent working on this repository follows. 中文参考：
+[`SPEC.zh.md`](SPEC.zh.md) · [`CONTRIBUTING.zh.md`](CONTRIBUTING.zh.md) ·
+[`docs/v0.3.0-plan.md`](docs/v0.3.0-plan.md).
 
 Contributions are welcome; see [`CONTRIBUTING.md`](CONTRIBUTING.md). Issues and
 pull requests live at <https://github.com/amsonix/trellis>. Report security

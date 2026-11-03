@@ -57,6 +57,55 @@ test('dry run reports sizes without touching the log', async () => {
   }
 });
 
+test('retracted evidence older than the cutoff is archived', async () => {
+  const dir = await makeProject('generic');
+  try {
+    const retractedId = await seedTrace(dir);
+    const file = path.join(dir, '.trellis/evidence.jsonl');
+    const lines = (await readFile(file, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    for (const line of lines) {
+      if (line.type === 'add' && line.id === retractedId) line.producedAt = '2020-01-01T00:00:00.000Z';
+    }
+    await writeFile(file, `${lines.map((line) => JSON.stringify(line)).join('\n')}\n`);
+
+    const result = await compact(dir, { archiveRetractedDays: 30 });
+    assert.equal(result.evidence.archived, 1);
+
+    const active = (await readFile(file, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    assert.equal(active.length, 1);
+    assert.equal(active[0].verdict, 'pass');
+
+    const archive = (await readFile(path.join(dir, '.trellis/evidence.archive.jsonl'), 'utf8'))
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    assert.equal(archive.length, 1);
+    assert.equal(archive[0].id, retractedId);
+
+    assert.equal((await verifyTaskEvidence(dir, 'T-001')).some((check) => check.code === 'EVIDENCE_FAIL'), false);
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('dry run does not archive retracted evidence', async () => {
+  const dir = await makeProject('generic');
+  try {
+    const retractedId = await seedTrace(dir);
+    const file = path.join(dir, '.trellis/evidence.jsonl');
+    const lines = (await readFile(file, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    for (const line of lines) {
+      if (line.type === 'add' && line.id === retractedId) line.producedAt = '2020-01-01T00:00:00.000Z';
+    }
+    await writeFile(file, `${lines.map((line) => JSON.stringify(line)).join('\n')}\n`);
+
+    await compact(dir, { archiveRetractedDays: 30, dryRun: true });
+    await assert.rejects(() => access(path.join(dir, '.trellis/evidence.archive.jsonl')));
+  } finally {
+    await cleanup(dir);
+  }
+});
+
 test('a large audit stream is rotated', async () => {
   const dir = await makeProject('generic');
   try {

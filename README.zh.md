@@ -186,7 +186,9 @@ DSH 配置：
 `TRELLIS_AGENT` 会给租约、证据和审计打上 worker 标识（用于归因，不是认证）。
 
 `trellis compact` 会把证据事件日志折叠成每条记录一行，并在 `audit.jsonl` 超过
-5 MB 时轮转；`--dry-run` 只报告大小。
+5 MB 时轮转；`--dry-run` 只报告大小。`--archive-retracted <天数>` 会把超过该
+天数的已撤回证据移到 `evidence.archive.jsonl`；通过或失败的证据不会被归档，
+因为验证还需要它们。
 
 Spec Kit 用户可以用 [`examples/spec-kit/`](examples/spec-kit/) 把 `tasks.md`
 清单接进任务板：Spec Kit 管规格与计划，Trellis 记谁在做、凭什么算完成。
@@ -247,7 +249,7 @@ trellis lease status [--json]
 trellis lease release <T-NNN> --by <role>:<name>
 trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
 trellis reindex [dir] [--json]
-trellis compact [dir] [--dry-run] [--json]
+trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
 trellis profile list [--json]
 ```
 
@@ -338,8 +340,9 @@ schema/       state、task、evidence、profile 的 JSON Schema
 test/         node:test 测试与夹具
 ```
 
-协议规范见 [`SPEC.md`](SPEC.md)；在本仓库上工作的 agent 遵循的规则见
-[`AGENTS.md`](AGENTS.md)。
+协议规范见 [`SPEC.md`](SPEC.md)（英文，唯一权威）；中文参考见
+[`SPEC.zh.md`](SPEC.zh.md)。在本仓库上工作的 agent 遵循的规则见
+[`AGENTS.md`](AGENTS.md)。路线图见 [`docs/v0.3.0-plan.md`](docs/v0.3.0-plan.md)。
 
 欢迎贡献，见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。Issue 与 PR 在
 <https://github.com/amsonix/trellis>。

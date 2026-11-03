@@ -7,7 +7,7 @@
  */
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { EVIDENCE_FILE, evidencePath, loadEvidence } from './evidence.mjs';
+import { EVIDENCE_ARCHIVE, EVIDENCE_FILE, evidenceArchivePath, evidencePath, loadEvidence } from './evidence.mjs';
 import { AUDIT_FILE, STATE_DIR } from './store.mjs';
 import { readText } from './util.mjs';
 
@@ -23,19 +23,40 @@ async function readSize(file) {
   }
 }
 
-async function compactEvidence(root, { dryRun = false } = {}) {
+async function compactEvidence(root, { dryRun = false, archiveRetractedDays = 0 } = {}) {
   const file = evidencePath(root);
   const before = await readSize(file);
   const { items } = await loadEvidence(root);
-  const text = items.length > 0 ? `${items.map((item) => JSON.stringify({ type: 'add', ...item })).join('\n')}\n` : '';
-  const after = { lines: items.length, bytes: Buffer.byteLength(text) };
+
+  const cutoff = archiveRetractedDays > 0 ? Date.now() - archiveRetractedDays * 86_400_000 : null;
+  const archived = cutoff
+    ? items.filter((item) => item.retracted && Date.parse(item.producedAt) < cutoff)
+    : [];
+  const kept = cutoff ? items.filter((item) => !archived.includes(item)) : items;
+
+  const line = (item) => JSON.stringify({ type: 'add', ...item });
+  const text = kept.length > 0 ? `${kept.map(line).join('\n')}\n` : '';
+  const after = { lines: kept.length, bytes: Buffer.byteLength(text) };
+
   if (!dryRun) {
+    if (archived.length > 0) {
+      const archive = evidenceArchivePath(root);
+      await fs.mkdir(path.dirname(archive), { recursive: true });
+      await fs.appendFile(archive, `${archived.map(line).join('\n')}\n`, 'utf8');
+    }
     await fs.mkdir(path.dirname(file), { recursive: true });
     const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2, 8)}.tmp`;
     await fs.writeFile(tmp, text, 'utf8');
     await fs.rename(tmp, file);
   }
-  return { file: EVIDENCE_FILE, before, after, dryRun };
+  return {
+    file: EVIDENCE_FILE,
+    before,
+    after,
+    archived: archived.length,
+    archive: archived.length > 0 ? EVIDENCE_ARCHIVE : null,
+    dryRun
+  };
 }
 
 async function rotateAudit(root, { maxBytes = DEFAULT_AUDIT_BYTES, dryRun = false } = {}) {

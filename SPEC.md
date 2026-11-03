@@ -4,6 +4,8 @@
 **Scope:** a normative protocol for an agent (or a team of agents and humans) to
 build a project: stages, artifacts, gates, roles, tasks and evidence.
 
+中文参考译本：[`SPEC.zh.md`](SPEC.zh.md)（英文版为唯一权威）。
+
 This document is the contract. The reference implementation is in `src/`; the
 JSON Schemas in `schema/` are the machine-readable subset. Where the code and
 this document disagree, this document is the intent and the code is a bug —
@@ -290,7 +292,8 @@ ten seconds is treated as stale.
 
 Audit entries are appended to `.trellis/audit.jsonl`; `state.json` keeps the most
 recent 200 so it does not grow with history. `compact` folds the evidence log into
-one record per id and rotates the audit stream past 5 MB. `TRELLIS_STRICT=1` makes `task claim`
+one record per id, can archive retracted records older than a cutoff, and
+rotates the audit stream past 5 MB. `TRELLIS_STRICT=1` makes `task claim`
 refuse before `G4` instead of only warning.
 
 `next` is the loop contract: it returns `kind: "tasks"` with `needsUser: false`
@@ -388,7 +391,7 @@ Implemented through `0.2.x`:
 - `TRELLIS_AGENT` attribution and `TRELLIS_STRICT=1`;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 106 `node:test` cases.
+- 108 `node:test` cases.
 
 Not yet:
 

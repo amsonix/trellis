@@ -8,10 +8,15 @@ import { STATE_DIR } from './store.mjs';
 import { currentAgent } from './identity.mjs';
 
 export const EVIDENCE_FILE = `${STATE_DIR}/evidence.jsonl`;
+export const EVIDENCE_ARCHIVE = `${STATE_DIR}/evidence.archive.jsonl`;
 export const LEGACY_EVIDENCE_FILE = `${STATE_DIR}/evidence.json`;
 
 export function evidencePath(root) {
   return path.join(root, EVIDENCE_FILE);
+}
+
+export function evidenceArchivePath(root) {
+  return path.join(root, EVIDENCE_ARCHIVE);
 }
 
 function legacyPath(root) {

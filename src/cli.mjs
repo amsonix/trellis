@@ -55,6 +55,7 @@ const VALUE_OPTIONS = new Set([
   'verification',
   'depends-on',
   'follow-up-of',
+  'archive-retracted',
   'question',
   'decision',
   'id'
@@ -140,7 +141,7 @@ Usage:
   trellis lease release <T-NNN> --by <role>:<name> [--dir <dir>]
   trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
   trellis reindex [dir] [--json]
-  trellis compact [dir] [--dry-run] [--json]
+  trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
   trellis profile list [--json]
   trellis --version
   trellis --help
@@ -237,6 +238,9 @@ function printCompact(data) {
   const { before, after } = data.evidence;
   const suffix = data.evidence.dryRun ? ' (dry run)' : '';
   console.log(`evidence: ${before.lines} events / ${before.bytes} B -> ${after.lines} records / ${after.bytes} B${suffix}`);
+  if (data.evidence.archived > 0) {
+    console.log(`archived: ${data.evidence.archived} retracted record(s) -> ${data.evidence.archive}${suffix}`);
+  }
   if (data.audit) {
     console.log(`audit: rotated ${data.audit.from} (${data.audit.bytes} B) -> ${data.audit.to}${suffix}`);
   }
@@ -550,7 +554,14 @@ async function dispatch(args) {
   }
 
   if (command === 'compact') {
-    const data = await compact(dirOf(args), { dryRun: Boolean(options['dry-run']) });
+    const archiveRetractedDays = Number.parseInt(options['archive-retracted'] ?? '0', 10);
+    if (!Number.isFinite(archiveRetractedDays) || archiveRetractedDays < 0) {
+      throw new UsageError('--archive-retracted needs a positive number of days');
+    }
+    const data = await compact(dirOf(args), {
+      dryRun: Boolean(options['dry-run']),
+      archiveRetractedDays
+    });
     return { data, exitCode: 0, print: () => printCompact(data) };
   }
 

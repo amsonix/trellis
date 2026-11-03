@@ -6,6 +6,13 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `compact --archive-retracted <days>`: move retracted evidence older than the
+  cutoff to `evidence.archive.jsonl`; pass/fail evidence is never archived.
+- Chinese `CONTRIBUTING.zh.md`, a Chinese `SPEC.zh.md` reference translation and
+  `docs/v0.3.0-plan.md`.
+
 ### Changed
 
 - Document installing from GitHub (`npm install -g github:amsonix/trellis`,

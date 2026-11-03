@@ -110,7 +110,7 @@ trellis gate <G0..G7> --approve --by <role>:<name> [--task <T-NNN>] [--note <tex
 trellis gate <G0..G7> --waive --by human:<name> --reason <text> [--task <T-NNN>]
 
 trellis reindex [dir] [--json]
-trellis compact [dir] [--dry-run] [--json]
+trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
 trellis profile list [--json]
 ```
 
