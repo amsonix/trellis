@@ -31,6 +31,7 @@ import {
 } from './core/mutations.mjs';
 import { parseTasks } from './core/tasks.mjs';
 import { leaseStatus, guardCommit } from './core/lease.mjs';
+import { exportA2A } from './core/export-a2a.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -61,7 +62,7 @@ const VALUE_OPTIONS = new Set([
   'id'
 ]);
 
-const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run']);
+const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a']);
 
 function parseArgv(argv) {
   const positionals = [];
@@ -142,6 +143,7 @@ Usage:
   trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
   trellis reindex [dir] [--json]
   trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
+  trellis export --a2a [dir] [--json]
   trellis profile list [--json]
   trellis --version
   trellis --help
@@ -551,6 +553,12 @@ async function dispatch(args) {
   if (command === 'reindex') {
     const data = await reindex(dirOf(args));
     return { data, exitCode: 0, print: () => console.log(`reindexed ${data.project.name} (${data.project.profile}); stage ${data.stage}`) };
+  }
+
+  if (command === 'export') {
+    if (!options.a2a) throw new UsageError('export needs --a2a');
+    const data = await exportA2A(dirOf(args));
+    return { data, exitCode: 0, print: () => console.log(`exported ${data.tasks.length} task(s) as A2A`) };
   }
 
   if (command === 'compact') {

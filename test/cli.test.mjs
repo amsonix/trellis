@@ -229,6 +229,21 @@ test('a failing evidence can be retracted by a reviewer', async () => {
   }
 });
 
+test('the A2A export returns tasks', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'pp-cli-a2a-'));
+  try {
+    await run(['init', dir, '--name', 'demo', '--json']);
+    await run(['task', 'claim', 'T-001', '--by', 'executor:w1', '--dir', dir, '--json']);
+    const exported = await run(['export', '--a2a', '--dir', dir, '--json']);
+    assert.equal(exported.code, 0);
+    const data = JSON.parse(exported.stdout).data;
+    assert.equal(data.kind, 'a2a.tasks');
+    assert.equal(data.tasks[0].status.state, 'working');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('the report command summarises progress and gaps', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'pp-cli-report-'));
   try {

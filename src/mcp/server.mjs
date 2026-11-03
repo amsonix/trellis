@@ -35,6 +35,7 @@ import {
 } from '../core/mutations.mjs';
 import { parseTasks } from '../core/tasks.mjs';
 import { leaseStatus } from '../core/lease.mjs';
+import { exportA2A } from '../core/export-a2a.mjs';
 import { ProtocolError, RefusedError } from '../core/errors.mjs';
 
 const SERVER_INFO = { name: 'trellis', version: PROTOCOL_VERSION };
@@ -108,6 +109,12 @@ const readTools = [
     description: 'Held write leases.',
     inputSchema: object({ dir: dirProp }),
     run: (args) => leaseStatus(dirOf(args))
+  },
+  {
+    name: 'trellis_export_a2a',
+    description: 'Read-only A2A view of the task board: Trellis statuses projected onto the A2A task lifecycle.',
+    inputSchema: object({ dir: dirProp }),
+    run: (args) => exportA2A(dirOf(args))
   },
   {
     name: 'trellis_profile_list',

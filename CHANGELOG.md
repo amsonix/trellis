@@ -8,6 +8,8 @@ All notable changes to this project are recorded here. The format follows
 
 ### Added
 
+- `export --a2a`: read-only A2A task view with the Trellis fields kept under
+  `metadata.trellis`.
 - `compact --archive-retracted <days>`: move retracted evidence older than the
   cutoff to `evidence.archive.jsonl`; pass/fail evidence is never archived.
 - Chinese `CONTRIBUTING.zh.md`, a Chinese `SPEC.zh.md` reference translation and

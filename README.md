@@ -143,7 +143,8 @@ cp -R skills/trellis ~/.agents/skills/trellis
 `bin/trellis-mcp.mjs` is a dependency-free MCP server over stdio. By default it
 exposes the read side: `trellis_status`, `trellis_check`, `trellis_next`,
 `trellis_brief`, `trellis_report`, `trellis_task_list`, `trellis_evidence_list`,
-`trellis_verify`, `trellis_lease_status` and `trellis_profile_list`.
+`trellis_verify`, `trellis_lease_status`, `trellis_profile_list` and
+`trellis_export_a2a`.
 
 With `TRELLIS_MCP_WRITE=1` it also exposes `trellis_init`, `trellis_task_add`,
 `trellis_task_ask`, `trellis_task_answer`, `trellis_task_claim`,
@@ -209,6 +210,23 @@ Trellis records who is doing the work and what proves it.
 
 ---
 
+## A2A export
+
+`trellis export --a2a --json` projects the task board onto the A2A task
+lifecycle for runtimes that speak it:
+
+| Trellis | A2A |
+|---|---|
+| `todo`, `ready` | `submitted` |
+| `in_progress`, `review` | `working` |
+| `blocked` | `input-required` |
+| `done` | `completed` |
+
+The full Trellis status, role, scope, dependencies, acceptance and verification
+stay under `metadata.trellis`; the export is read-only.
+
+---
+
 ## The lifecycle
 
 | Gate | Stage | Approver | What it means |
@@ -267,6 +285,7 @@ trellis lease release <T-NNN> --by <role>:<name>
 trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
 trellis reindex [dir] [--json]
 trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
+trellis export --a2a [dir] [--json]
 trellis profile list [--json]
 ```
 

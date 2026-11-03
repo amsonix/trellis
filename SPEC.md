@@ -296,6 +296,9 @@ one record per id, can archive retracted records older than a cutoff, and
 rotates the audit stream past 5 MB. `TRELLIS_STRICT=1` makes `task claim`
 refuse before `G4` instead of only warning.
 
+`export --a2a` is a read-only projection of the task board onto the A2A task
+lifecycle; the Trellis status and fields stay under `metadata.trellis`.
+
 `next` is the loop contract: it returns `kind: "tasks"` with `needsUser: false`
 when a batch is ready to run, or `needsUser: true` with a `reason` when a gate,
 a task review, a stale approval, a blocked task or a failing check needs a
@@ -385,13 +388,13 @@ Implemented through `0.2.x`:
   passing/failing/inconclusive verification, retraction, and `compact` to fold it;
 - leases on task claim, release, conflict detection, `guard commit --staged`
   with `--observe`, and released leases archived to `leases.archive.jsonl`;
-- `status`, `check`, `next`, `brief`, `report`, `compact`, `reindex`, JSON
-  envelope, exit codes;
+- `status`, `check`, `next`, `brief`, `report`, `compact`, `reindex`, an A2A
+  export, JSON envelope and exit codes;
 - a per-project write lock and atomic JSON writes;
 - `TRELLIS_AGENT` attribution and `TRELLIS_STRICT=1`;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 108 `node:test` cases.
+- 111 `node:test` cases.
 
 Not yet:
 

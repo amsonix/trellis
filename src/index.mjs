@@ -74,4 +74,6 @@ export {
 
 export { makeCheck, summarize, hasBlocking, exitCodeFor } from './core/checks.mjs';
 
+export { A2A_STATES, mapTaskState, exportA2A } from './core/export-a2a.mjs';
+
 export { parseFrontMatter } from './core/frontmatter.mjs';

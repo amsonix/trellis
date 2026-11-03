@@ -136,7 +136,7 @@ cp -R skills/trellis ~/.agents/skills/trellis
 `bin/trellis-mcp.mjs` 是一个零依赖的 stdio MCP 服务。默认只暴露读工具：
 `trellis_status`、`trellis_check`、`trellis_next`、`trellis_brief`、
 `trellis_report`、`trellis_task_list`、`trellis_evidence_list`、`trellis_verify`、
-`trellis_lease_status`、`trellis_profile_list`。
+`trellis_lease_status`、`trellis_profile_list`、`trellis_export_a2a`。
 
 设置 `TRELLIS_MCP_WRITE=1` 后额外暴露写工具：`trellis_init`、
 `trellis_task_add`、`trellis_task_ask`、`trellis_task_answer`、
@@ -195,6 +195,23 @@ Spec Kit 用户可以用 [`examples/spec-kit/`](examples/spec-kit/) 把 `tasks.m
 
 ---
 
+## A2A 导出
+
+`trellis export --a2a --json` 把任务板投影成 A2A 的任务生命周期，供支持 A2A
+的运行时读取：
+
+| Trellis | A2A |
+|---|---|
+| `todo`、`ready` | `submitted` |
+| `in_progress`、`review` | `working` |
+| `blocked` | `input-required` |
+| `done` | `completed` |
+
+Trellis 的状态、角色、写域、依赖、验收和验证方式都保留在
+`metadata.trellis` 下；导出是只读的。
+
+---
+
 ## 生命周期
 
 | Gate | 阶段 | 批准者 | 含义 |
@@ -250,6 +267,7 @@ trellis lease release <T-NNN> --by <role>:<name>
 trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
 trellis reindex [dir] [--json]
 trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
+trellis export --a2a [dir] [--json]
 trellis profile list [--json]
 ```
 
