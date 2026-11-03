@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
-const bin = fileURLToPath(new URL('../bin/project-protocol.mjs', import.meta.url));
+const bin = fileURLToPath(new URL('../bin/trellis.mjs', import.meta.url));
 
 async function run(args) {
   try {

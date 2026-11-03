@@ -8,7 +8,7 @@ import { cleanup, makeProject, replace } from './helpers.mjs';
 test('reindex rebuilds the state from the artifacts', async () => {
   const dir = await makeProject();
   try {
-    await rm(path.join(dir, '.project-protocol/state.json'));
+    await rm(path.join(dir, '.trellis/state.json'));
     const result = await reindex(dir);
     assert.equal(result.project.name, 'test-project');
     assert.equal(result.stage, 'intake');
@@ -22,7 +22,7 @@ test('reindex rebuilds the state from the artifacts', async () => {
 test('reindex follows the project front-matter', async () => {
   const dir = await makeProject();
   try {
-    await replace(dir, '.project-protocol/PROJECT.md', 'project: test-project', 'project: renamed-project');
+    await replace(dir, '.trellis/PROJECT.md', 'project: test-project', 'project: renamed-project');
     const result = await reindex(dir);
     assert.equal(result.project.name, 'renamed-project');
     const status = await projectStatus(dir);

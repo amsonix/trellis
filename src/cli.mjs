@@ -86,33 +86,33 @@ function dirOf(args, positionalIndex = 0) {
 }
 
 function usage() {
-  return `project-protocol ${PROTOCOL_VERSION}
+  return `trellis ${PROTOCOL_VERSION}
 
 An agent-facing protocol for building projects: stages, artifacts, gates, roles,
-tasks and evidence. Files are the source of truth; .project-protocol/ is the index.
+tasks and evidence. Files are the source of truth; .trellis/ is the index.
 
 Usage:
-  project-protocol init [project-dir] [--profile <generic|web-app|library|cli>] [--name <name>]
-      (works on an existing project; creates <project>/.project-protocol/ only;
+  trellis init [project-dir] [--profile <generic|web-app|library|cli>] [--name <name>]
+      (works on an existing project; creates <project>/.trellis/ only;
        profile defaults to generic, name defaults to the directory name)
-  project-protocol status [dir] [--json]
-  project-protocol check [dir] [--stage <stage>] [--json]
-  project-protocol next [dir] [--role <role>] [--json]
-  project-protocol gate <G0|G1|G2|G3|G4|G5|G6|G7> --approve|--waive --by <role>:<name>
+  trellis status [dir] [--json]
+  trellis check [dir] [--stage <stage>] [--json]
+  trellis next [dir] [--role <role>] [--json]
+  trellis gate <G0|G1|G2|G3|G4|G5|G6|G7> --approve|--waive --by <role>:<name>
                               [--task <T-NNN>] [--note <text>|--reason <text>] [--dir <dir>]
-  project-protocol task list [dir] [--json]
-  project-protocol task claim <T-NNN> --by <role>:<name> [--dir <dir>]
-  project-protocol task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dir <dir>]
-  project-protocol evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit>
+  trellis task list [dir] [--json]
+  trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
+  trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dir <dir>]
+  trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit>
                               --verdict <pass|fail|inconclusive> --by <role>:<name> [--dir <dir>]
-  project-protocol evidence list [--task <T-NNN>] [--dir <dir>] [--json]
-  project-protocol verify <T-NNN> [--dir <dir>] [--json]
-  project-protocol lease status [--dir <dir>] [--json]
-  project-protocol guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
-  project-protocol reindex [dir] [--json]
-  project-protocol profile list [--json]
-  project-protocol --version
-  project-protocol --help
+  trellis evidence list [--task <T-NNN>] [--dir <dir>] [--json]
+  trellis verify <T-NNN> [--dir <dir>] [--json]
+  trellis lease status [--dir <dir>] [--json]
+  trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
+  trellis reindex [dir] [--json]
+  trellis profile list [--json]
+  trellis --version
+  trellis --help
 
 Exit codes:
   0 success / checks pass

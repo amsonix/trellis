@@ -1,4 +1,4 @@
-# project-protocol
+# Trellis
 
 **An agent-facing protocol for building projects.**
 
@@ -14,12 +14,12 @@ The protocol is a small, dependency-free Node.js library and CLI. It stores
 everything in one fixed directory inside the project:
 
 ```text
-<project>/.project-protocol/
+<project>/.trellis/
 ```
 
 The Markdown artifacts there are the source of truth; `state.json`,
 `evidence.json` and `leases.json` are the ledger. `init` can run on an existing
-project: it creates `.project-protocol/` and never touches `README.md`,
+project: it creates `.trellis/` and never touches `README.md`,
 `TASKS.md`, `docs/` or any other existing file.
 
 ```text
@@ -33,29 +33,29 @@ intake → discovery → architecture → plan → ready → executing → integ
 Requires Node.js 20 or newer. There are no runtime dependencies.
 
 ```bash
-cd project-protocol
+cd trellis
 npm test
 
 # Create the management directory of a project (new or existing)
-node bin/project-protocol.mjs init /tmp/demo
+node bin/trellis.mjs init /tmp/demo
 
 # Optional: choose a profile or a display name
-node bin/project-protocol.mjs init /tmp/demo --profile web-app --name demo
+node bin/trellis.mjs init /tmp/demo --profile web-app --name demo
 
 # Inspect it
-node bin/project-protocol.mjs status --dir /tmp/demo
-node bin/project-protocol.mjs check --dir /tmp/demo
-node bin/project-protocol.mjs next --dir /tmp/demo --role architect
+node bin/trellis.mjs status --dir /tmp/demo
+node bin/trellis.mjs check --dir /tmp/demo
+node bin/trellis.mjs next --dir /tmp/demo --role architect
 
 # Approve the first gate (a human does this, not the executor)
-node bin/project-protocol.mjs gate G0 --approve --by human:alice --dir /tmp/demo
+node bin/trellis.mjs gate G0 --approve --by human:alice --dir /tmp/demo
 ```
 
 Or install the binary locally:
 
 ```bash
 npm link
-project-protocol --help
+trellis --help
 ```
 
 ---
@@ -63,7 +63,7 @@ project-protocol --help
 ## What it creates
 
 ```text
-<project>/.project-protocol/
+<project>/.trellis/
   PROJECT.md                   problem, users, scope, non-goals, constraints, acceptance
   README.md                    quickstart for the protocol root
   docs/RESEARCH.md             questions, prior art, unknowns, risks
@@ -116,27 +116,27 @@ recorded in the audit log.
 ## Commands
 
 ```text
-project-protocol init [project-dir] [--profile <generic|web-app|library|cli>] [--name <name>]
-project-protocol status [dir] [--json]
-project-protocol check [dir] [--stage <stage>] [--json]
-project-protocol next [dir] [--role <role>] [--json]
+trellis init [project-dir] [--profile <generic|web-app|library|cli>] [--name <name>]
+trellis status [dir] [--json]
+trellis check [dir] [--stage <stage>] [--json]
+trellis next [dir] [--role <role>] [--json]
 
-project-protocol gate <G0..G7> --approve --by <role>:<name> [--task <T-NNN>] [--note <text>]
-project-protocol gate <G0..G7> --waive   --by human:<name> --reason <text> [--task <T-NNN>]
+trellis gate <G0..G7> --approve --by <role>:<name> [--task <T-NNN>] [--note <text>]
+trellis gate <G0..G7> --waive   --by human:<name> --reason <text> [--task <T-NNN>]
 
-project-protocol task list [dir] [--json]
-project-protocol task claim <T-NNN> --by <role>:<name> [--dir <dir>]
-project-protocol task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> [--note <text>] [--by <role>:<name>]
+trellis task list [dir] [--json]
+trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
+trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> [--note <text>] [--by <role>:<name>]
 
-project-protocol evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> \
+trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> \
                               --verdict <pass|fail|inconclusive> --by <role>:<name>
-project-protocol evidence list [--task <T-NNN>] [--json]
-project-protocol verify <T-NNN> [--json]
+trellis evidence list [--task <T-NNN>] [--json]
+trellis verify <T-NNN> [--json]
 
-project-protocol lease status [--json]
-project-protocol guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
-project-protocol reindex [dir] [--json]
-project-protocol profile list [--json]
+trellis lease status [--json]
+trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
+trellis reindex [dir] [--json]
+trellis profile list [--json]
 ```
 
 Exit codes are part of the contract:
@@ -159,7 +159,7 @@ Exit codes are part of the contract:
 
 ## Design principles
 
-1. **The fixed `.project-protocol/` directory is the source of truth.** Its artifacts are committed Markdown; the
+1. **The fixed `.trellis/` directory is the source of truth.** Its artifacts are committed Markdown; the
    JSON ledger is an index and an audit trail. `reindex` can rebuild it.
 2. **No LLM in the core.** The protocol validates structure, roles, tasks and
    evidence. The model writes the content; the protocol checks it.

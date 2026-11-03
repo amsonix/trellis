@@ -1,4 +1,4 @@
-# AGENTS.md — working on project-protocol
+# AGENTS.md — working on Trellis
 
 This repository is the reference implementation of the protocol in
 [`SPEC.md`](SPEC.md). Read the spec before changing a rule.
@@ -21,7 +21,7 @@ test/           node:test suites and fixtures
 
 - Keep `src/core/` free of filesystem and terminal concerns where possible.
   The store, evidence and lease modules are the only core modules that touch
-  `.project-protocol/`.
+  `.trellis/`.
 - Do not add a runtime dependency without a written reason; the project is
   intentionally dependency-free.
 - `node --test` must pass before a change is called done.
@@ -30,14 +30,14 @@ test/           node:test suites and fixtures
 
 ```bash
 npm test
-node bin/project-protocol.mjs --help
-node bin/project-protocol.mjs init /tmp/pp-check
-node bin/project-protocol.mjs status --dir /tmp/pp-check
+node bin/trellis.mjs --help
+node bin/trellis.mjs init /tmp/pp-check
+node bin/trellis.mjs status --dir /tmp/pp-check
 ```
 
 ## Protocol discipline for agents
 
-The management directory is fixed at `<project>/.project-protocol/`. `init` may
+The management directory is fixed at `<project>/.trellis/`. `init` may
 run on an existing project; it must never overwrite `README.md`, `TASKS.md`,
 `docs/` or any other existing file.
 
@@ -54,7 +54,7 @@ When you use this protocol on a real project:
    question, not a long status essay.
 6. **Use `--observe` before enforcing a guard.** Record what it would block;
    review the audit; then make it block.
-7. **Do not edit `.project-protocol/evidence.json` by hand.** Use
+7. **Do not edit `.trellis/evidence.json` by hand.** Use
    `evidence add`; the record needs an id, a producer and a verdict.
 
 ## What is intentionally missing

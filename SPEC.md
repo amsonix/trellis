@@ -1,4 +1,4 @@
-# Project Protocol — Specification
+# Trellis — Specification
 
 **Status:** draft, version 0.1.0.
 **Scope:** a normative protocol for an agent (or a team of agents and humans) to
@@ -38,19 +38,19 @@ It answers five questions at every moment:
 
 ## 3. Source of truth
 
-1. **The fixed management directory `<project>/.project-protocol/` holds the
+1. **The fixed management directory `<project>/.trellis/` holds the
    artifacts.** `PROJECT.md`, `docs/*.md` and `docs/adr/*.md` inside it are the
    source of truth and are committed with the project.
 2. **The same directory holds the ledger.** `state.json`, `evidence.json` and
    `leases.json` record gates, evidence, leases and history. The ledger can be
    rebuilt with `reindex` when the artifacts are intact.
-3. **A task is a row in `.project-protocol/docs/TASKS.md`.** A lease is a
+3. **A task is a row in `.trellis/docs/TASKS.md`.** A lease is a
    separate record that names the task, the actor and the write domains.
 4. **A gate is an approval event**, not a file. It is recorded in the state
    ledger with the approver, time and note.
 5. **`init` may run on an existing project.** It creates only
-   `.project-protocol/` and never touches `README.md`, `TASKS.md`, `docs/` or
-   any other existing file. It refuses a non-empty `.project-protocol/`.
+   `.trellis/` and never touches `README.md`, `TASKS.md`, `docs/` or
+   any other existing file. It refuses a non-empty `.trellis/`.
 
 ## 4. Stages
 
@@ -112,15 +112,15 @@ Then a Markdown body with level-2 sections. The required sections are:
 
 | Artifact | Path | Required sections |
 |---|---|---|
-| `PROJECT` | `.project-protocol/PROJECT.md` | Problem, Users, Scope, Non-goals, Constraints, Acceptance |
-| `RESEARCH` | `.project-protocol/docs/RESEARCH.md` | Questions, Prior art, Unknowns, Risks |
-| `ARCHITECTURE` | `.project-protocol/docs/ARCHITECTURE.md` | Context, Containers, Components, Data model, Interfaces, Failure modes, Security, Deployment, Observability, Open questions |
-| `ROADMAP` | `.project-protocol/docs/ROADMAP.md` | at least one `## M...` milestone, each with `Exit criteria` |
-| `TASKS` | `.project-protocol/docs/TASKS.md` | a task table (see §7) |
-| `VERIFICATION` | `.project-protocol/docs/VERIFICATION.md` | Strategy, Oracle, Fixtures, Evidence |
-| `OPERATIONS` | `.project-protocol/docs/OPERATIONS.md` | Deploy, Rollback, Monitoring, Runbook |
-| `GLOSSARY` | `.project-protocol/docs/GLOSSARY.md` | Terms |
-| `INVARIANTS` | `.project-protocol/docs/INVARIANTS.md` | Invariants |
+| `PROJECT` | `.trellis/PROJECT.md` | Problem, Users, Scope, Non-goals, Constraints, Acceptance |
+| `RESEARCH` | `.trellis/docs/RESEARCH.md` | Questions, Prior art, Unknowns, Risks |
+| `ARCHITECTURE` | `.trellis/docs/ARCHITECTURE.md` | Context, Containers, Components, Data model, Interfaces, Failure modes, Security, Deployment, Observability, Open questions |
+| `ROADMAP` | `.trellis/docs/ROADMAP.md` | at least one `## M...` milestone, each with `Exit criteria` |
+| `TASKS` | `.trellis/docs/TASKS.md` | a task table (see §7) |
+| `VERIFICATION` | `.trellis/docs/VERIFICATION.md` | Strategy, Oracle, Fixtures, Evidence |
+| `OPERATIONS` | `.trellis/docs/OPERATIONS.md` | Deploy, Rollback, Monitoring, Runbook |
+| `GLOSSARY` | `.trellis/docs/GLOSSARY.md` | Terms |
+| `INVARIANTS` | `.trellis/docs/INVARIANTS.md` | Invariants |
 
 Special checks:
 
@@ -128,13 +128,13 @@ Special checks:
 - `ARCHITECTURE.Context` contains at least one Mermaid block (warning if not).
 - `ARCHITECTURE.Containers` contains a Markdown table with `Container`,
   `Responsibility` and `Interface` columns.
-- `.project-protocol/docs/adr/` contains at least one ADR (warning if not).
+- `.trellis/docs/adr/` contains at least one ADR (warning if not).
 - A rendered diagram or a link that does not resolve is a warning, not a
   failure, until a renderer/link checker is wired in.
 
 ## 7. Tasks
 
-`.project-protocol/docs/TASKS.md` contains exactly one task table with this header:
+`.trellis/docs/TASKS.md` contains exactly one task table with this header:
 
 ```text
 | ID | Milestone | Title | Role | Scope | Depends on | Acceptance | Verification | Status |
@@ -191,7 +191,7 @@ done        → (terminal)
 
 Rules:
 
-- Evidence is stored in `.project-protocol/evidence.json`.
+- Evidence is stored in `.trellis/evidence.json`.
 - A local file URI gets a sha256 at add time; a changed file needs new evidence.
 - A task cannot be `done` without a `pass` and with any `fail`.
 - A gate cannot be approved on a task whose evidence does not verify.
@@ -256,7 +256,7 @@ controls for each blocking rule.
 ## 12. Leases (execution constraint)
 
 A lease is a held claim over write domains, recorded in
-`.project-protocol/leases.json`.
+`.trellis/leases.json`.
 
 - `task claim` acquires a lease over the task's scope; a conflicting lease
   refuses the claim.
@@ -305,7 +305,7 @@ artifact.
 Implemented in `0.1.0`:
 
 - `init` on a new or existing project; it creates a fixed
-  `<project>/.project-protocol/` and never overwrites existing files;
+  `<project>/.trellis/` and never overwrites existing files;
 - `generic` (default), `web-app`, `library` and `cli` profiles;
 - artifact existence, front-matter, required-section and special checks;
 - task table parsing, graph validation, scope-overlap check, status transitions;

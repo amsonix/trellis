@@ -15,4 +15,4 @@ created: {{DATE}}
 - No task is marked done without passing evidence.
 - No two concurrent tasks share a write domain.
 - A gate cannot be approved by the role that produced the work.
-- The source of truth is in git; `.project-protocol/` is an index.
+- The source of truth is in git; `.trellis/` is an index.

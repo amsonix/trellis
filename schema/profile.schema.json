@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.local/project-protocol/profile.schema.json",
-  "title": "Project Protocol profile",
+  "$id": "https://example.local/trellis/profile.schema.json",
+  "title": "Trellis profile",
   "type": "object",
   "required": ["id", "title", "requiredArtifacts", "optionalArtifacts", "gates"],
   "properties": {

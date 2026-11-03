@@ -4,7 +4,7 @@ This is the whole loop, using only the CLI. The project is a placeholder; the
 commands are the point.
 
 ```bash
-PROJECT_PROTOCOL="node /path/to/project-protocol/bin/project-protocol.mjs"
+PROJECT_PROTOCOL="node /path/to/trellis/bin/trellis.mjs"
 DEMO=/tmp/pp-demo
 
 # 1. Create the artifact set. Nothing is approved yet.
@@ -13,7 +13,7 @@ $PROJECT_PROTOCOL init "$DEMO"
 # 2. Read the state. The stage is intake; G0 is pending.
 $PROJECT_PROTOCOL status --dir "$DEMO"
 
-# 3. Fill .project-protocol/PROJECT.md, then check the structure.
+# 3. Fill .trellis/PROJECT.md, then check the structure.
 $PROJECT_PROTOCOL check --dir "$DEMO" --stage intake
 
 # 4. A human approves the scope. An executor cannot.

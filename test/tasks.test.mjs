@@ -35,7 +35,7 @@ test('two concurrent tasks cannot share a write domain', async () => {
 test('a dependency cycle is rejected', async () => {
   const dir = await makeProject();
   try {
-    await replace(dir, '.project-protocol/docs/TASKS.md', '| src, test, package.json, README.md | - |', '| src, test, package.json, README.md | T-002 |');
+    await replace(dir, '.trellis/docs/TASKS.md', '| src, test, package.json, README.md | - |', '| src, test, package.json, README.md | T-002 |');
     await appendTask(
       dir,
       '| T-002 | M0 | Second task | executor | docs | T-001 | Build passes | `npm test` | todo |'
@@ -51,7 +51,7 @@ test('a dependency cycle is rejected', async () => {
 test('a task without acceptance is rejected', async () => {
   const dir = await makeProject();
   try {
-    await replace(dir, '.project-protocol/docs/TASKS.md', '| Build, test, and lint pass |', '|  |');
+    await replace(dir, '.trellis/docs/TASKS.md', '| Build, test, and lint pass |', '|  |');
     const { tasks } = await parseTasks(dir);
     const checks = validateTasks(tasks, { milestones: [{ id: 'M0' }] });
     assert.ok(checks.some((check) => check.code === 'TASK_ACCEPTANCE_EMPTY'));
@@ -65,7 +65,7 @@ test('updateTaskStatus rewrites only the status cell', async () => {
   try {
     const changed = await updateTaskStatus(dir, 'T-001', 'in_progress');
     assert.equal(changed, true);
-    const text = await read(dir, '.project-protocol/docs/TASKS.md');
+    const text = await read(dir, '.trellis/docs/TASKS.md');
     assert.match(text, /\| in_progress \|/);
     const { tasks } = await parseTasks(dir);
     assert.equal(tasks[0].status, 'in_progress');

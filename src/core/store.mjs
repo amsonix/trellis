@@ -49,7 +49,7 @@ export async function loadState(root) {
     state = await readJson(file);
   } catch (error) {
     if (error.code === 'ENOENT') {
-      throw new UnavailableError(`no protocol state at ${STATE_DIR}/state.json; run "project-protocol reindex" or "project-protocol init"`, {
+      throw new UnavailableError(`no protocol state at ${STATE_DIR}/state.json; run "trellis reindex" or "trellis init"`, {
         path: file
       });
     }

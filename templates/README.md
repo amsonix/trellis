@@ -1,6 +1,6 @@
 # {{PROJECT_NAME}}
 
-> Created with [project-protocol](https://github.com/example/project-protocol)
+> Created with [trellis](https://github.com/example/trellis)
 > on {{DATE}} using the `{{PROFILE}}` profile.
 
 ## What this is
@@ -21,8 +21,8 @@ echo "replace me"
 The project is in the `intake` stage. Start with:
 
 ```bash
-project-protocol status
-project-protocol next --role architect
+trellis status
+trellis next --role architect
 ```
 
 ## Documents

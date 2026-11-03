@@ -14,6 +14,6 @@ npm test
 Create a throwaway project:
 
 ```bash
-node ../bin/project-protocol.mjs init /tmp/pp-demo
-node ../bin/project-protocol.mjs status --dir /tmp/pp-demo
+node ../bin/trellis.mjs init /tmp/pp-demo
+node ../bin/trellis.mjs status --dir /tmp/pp-demo
 ```

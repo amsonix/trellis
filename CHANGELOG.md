@@ -9,7 +9,7 @@ All notable changes to this project are recorded here. The format follows
 ### Added
 
 - A dependency-free Node.js protocol and CLI for agent-facing project building.
-- A fixed `<project>/.project-protocol/` management directory; `init` can run on
+- A fixed `<project>/.trellis/` management directory; `init` can run on
   an existing project and never overwrites existing files.
 - `generic` profile (the default); `--profile` and `--name` are optional.
 - Profiles: `web-app`, `library`, `cli`.
@@ -30,4 +30,4 @@ All notable changes to this project are recorded here. The format follows
 - DSH / Super-agent integration.
 - SQLite, HTTP and multi-host.
 
-[0.1.0]: https://example.local/project-protocol/CHANGELOG.md
+[0.1.0]: https://example.local/trellis/CHANGELOG.md

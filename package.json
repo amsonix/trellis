@@ -1,7 +1,7 @@
 {
-  "name": "project-protocol",
+  "name": "trellis",
   "version": "0.1.0",
-  "description": "An agent-facing protocol for building projects: stages, artifacts, gates, roles, tasks and evidence.",
+  "description": "Trellis: an agent-facing protocol for building projects: stages, artifacts, gates, roles, tasks and evidence.",
   "type": "module",
   "main": "./src/index.mjs",
   "exports": {
@@ -9,7 +9,7 @@
     "./cli": "./src/cli.mjs"
   },
   "bin": {
-    "project-protocol": "./bin/project-protocol.mjs"
+    "trellis": "./bin/trellis.mjs"
   },
   "files": [
     "bin/",
@@ -24,8 +24,8 @@
   ],
   "scripts": {
     "test": "node --test",
-    "check": "node --test && node bin/project-protocol.mjs --version",
-    "demo": "node bin/project-protocol.mjs init /tmp/project-protocol-demo --profile web-app --name demo"
+    "check": "node --test && node bin/trellis.mjs --version",
+    "demo": "node bin/trellis.mjs init /tmp/trellis-demo"
   },
   "engines": {
     "node": ">=20"

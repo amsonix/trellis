@@ -26,17 +26,17 @@ test('init creates the artifact set and a pending gate ledger', async () => {
   }
 });
 
-test('init on an existing project preserves files and creates .project-protocol', async () => {
+test('init on an existing project preserves files and creates .trellis', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'pp-existing-'));
   try {
     await writeFile(path.join(dir, 'README.md'), 'do not overwrite');
     await writeFile(path.join(dir, 'TASKS.md'), 'legacy board');
     const result = await initProject({ dir, name: 'existing', profile: 'generic' });
-    assert.equal(result.managementDir, path.join(dir, '.project-protocol'));
+    assert.equal(result.managementDir, path.join(dir, '.trellis'));
     assert.equal(await readFile(path.join(dir, 'README.md'), 'utf8'), 'do not overwrite');
     assert.equal(await readFile(path.join(dir, 'TASKS.md'), 'utf8'), 'legacy board');
-    await access(path.join(dir, '.project-protocol/PROJECT.md'));
-    await access(path.join(dir, '.project-protocol/docs/TASKS.md'));
+    await access(path.join(dir, '.trellis/PROJECT.md'));
+    await access(path.join(dir, '.trellis/docs/TASKS.md'));
     await assert.rejects(
       () => initProject({ dir, name: 'existing', profile: 'generic' }),
       (error) => error.code === 'ALREADY_INITIALIZED'

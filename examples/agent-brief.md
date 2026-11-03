@@ -11,18 +11,18 @@ Stage: architecture
 Gate: G2 (Architecture)
 
 ## Read
-- .project-protocol/PROJECT.md
-- .project-protocol/docs/RESEARCH.md
-- .project-protocol/docs/GLOSSARY.md
+- .trellis/PROJECT.md
+- .trellis/docs/RESEARCH.md
+- .trellis/docs/GLOSSARY.md
 
 ## Write
-- .project-protocol/docs/ARCHITECTURE.md
-- .project-protocol/docs/adr/*.md
-- .project-protocol/docs/GLOSSARY.md (terms only)
+- .trellis/docs/ARCHITECTURE.md
+- .trellis/docs/adr/*.md
+- .trellis/docs/GLOSSARY.md (terms only)
 
 ## Do not
 - write product code
-- edit .project-protocol/docs/ROADMAP.md or .project-protocol/docs/TASKS.md (that is the Plan stage)
+- edit .trellis/docs/ROADMAP.md or .trellis/docs/TASKS.md (that is the Plan stage)
 - approve G2 yourself
 
 ## Checklist
@@ -37,13 +37,13 @@ Gate: G2 (Architecture)
 - [ ] At least one ADR records a key decision
 
 ## Done
-- run `project-protocol check --stage architecture`
-- when it has no fail, run `project-protocol gate G2 --approve --by architect:<you>`
-- if blocked, run `project-protocol task report ... --state blocked` with one
+- run `trellis check --stage architecture`
+- when it has no fail, run `trellis gate G2 --approve --by architect:<you>`
+- if blocked, run `trellis task report ... --state blocked` with one
   concrete question; do not write a long status essay
 ```
 
 The brief is generated from the profile, the stage and the role. The tools are
-the enforcement: `project-protocol check` and `project-protocol gate` decide
+the enforcement: `trellis check` and `trellis gate` decide
 whether the artifacts are structurally complete; a human decides whether the
 content is right.

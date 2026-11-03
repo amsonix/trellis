@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.local/project-protocol/evidence.schema.json",
-  "title": "Project Protocol evidence",
+  "$id": "https://example.local/trellis/evidence.schema.json",
+  "title": "Trellis evidence",
   "type": "object",
   "required": ["id", "taskId", "kind", "uri", "verdict", "producedBy", "producedAt"],
   "properties": {

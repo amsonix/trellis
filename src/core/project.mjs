@@ -47,7 +47,7 @@ export async function initProject({ dir, name = null, profile: profileId = 'gene
   const projectName = name || path.basename(root) || 'project';
   if (!root || root === '/') throw new UsageError('refusing to initialise the filesystem root');
 
-  // The management directory is fixed: <project>/.project-protocol/.
+  // The management directory is fixed: <project>/.trellis/.
   // init may run on an existing project: it only creates that directory and
   // never touches README.md, TASKS.md, docs/ or any other existing file.
   const meta = path.join(root, META_DIR);
@@ -94,8 +94,8 @@ export async function initProject({ dir, name = null, profile: profileId = 'gene
     next: [
       `cd ${root}`,
       `read ${META_DIR}/PROJECT.md and fill the scope, non-goals and acceptance`,
-      `run: project-protocol check --dir ${root}`,
-      'run: project-protocol gate G0 --approve --by human:<you>'
+      `run: trellis check --dir ${root}`,
+      'run: trellis gate G0 --approve --by human:<you>'
     ]
   };
 }
@@ -227,7 +227,7 @@ async function nextFrom(root, state, tasks, checks, role = null) {
         gate: { id: 'G5', title: GATE_DEFS.G5.title, task: reviewed.id },
         checks: [],
         summary: { pass: 0, warn: 0, fail: 0, unavailable: 0, total: 0 },
-        command: `project-protocol gate G5 --task ${reviewed.id} --approve --by reviewer:<name>`
+        command: `trellis gate G5 --task ${reviewed.id} --approve --by reviewer:<name>`
       };
     }
     return { kind: 'waiting', attention: await buildAttention(root, state, tasks, checks) };
@@ -242,7 +242,7 @@ async function nextFrom(root, state, tasks, checks, role = null) {
         gate: { id: 'G5', title: GATE_DEFS.G5.title, task: reviewed.id },
         checks: [],
         summary: { pass: 0, warn: 0, fail: 0, unavailable: 0, total: 0 },
-        command: `project-protocol gate G5 --task ${reviewed.id} --approve --by reviewer:<name>`
+        command: `trellis gate G5 --task ${reviewed.id} --approve --by reviewer:<name>`
       };
     }
   }
@@ -256,7 +256,7 @@ async function nextFrom(root, state, tasks, checks, role = null) {
       gate: { ...state.gates[gate], id: gate, title: GATE_DEFS[gate]?.title ?? gate },
       checks: gateChecksResult,
       summary: summarize(gateChecksResult),
-      command: `project-protocol gate ${gate} --approve --by <role>:<name>`
+      command: `trellis gate ${gate} --approve --by <role>:<name>`
     };
   }
   return { kind: 'waiting', attention: await buildAttention(root, state, tasks, checks) };
