@@ -105,6 +105,14 @@ export async function gateChecks(root, gateId, { profile, state, tasks, taskId =
         );
       }
       checks.push(...(await verifyTaskEvidence(root, task.id)));
+      if (!taskGateSatisfied(state, task.id)) {
+        checks.push(
+          makeCheck('TASK_REVIEW_MISSING', 'fail', `task ${task.id} has not passed G5`, {
+            stage: 'integrating',
+            task: task.id
+          })
+        );
+      }
     }
   }
 

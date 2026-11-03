@@ -92,6 +92,29 @@ test('G5 is blocked when a task has no evidence', async () => {
   }
 });
 
+test('G6 is blocked until every task has passed G5', async () => {
+  const dir = await makeProject();
+  try {
+    await approveProjectGates(dir, 'G4');
+    await claimTask(dir, 'T-001', { by: 'executor:worker-1' });
+    await writeFile(path.join(dir, 'test.log'), 'ok\n');
+    await addTaskEvidence(dir, {
+      taskId: 'T-001',
+      kind: 'test',
+      uri: 'test.log',
+      verdict: 'pass',
+      by: 'verifier:ci'
+    });
+    await reportTask(dir, 'T-001', { state: 'done' });
+    await assert.rejects(
+      () => approveGate(dir, 'G6', { by: 'verifier:ci' }),
+      (error) => error.code === 'GATE_BLOCKED' && error.details.checks.some((check) => check.code === 'TASK_REVIEW_MISSING')
+    );
+  } finally {
+    await cleanup(dir);
+  }
+});
+
 test('G4 is blocked by overlapping write scopes', async () => {
   const dir = await makeProject();
   try {
