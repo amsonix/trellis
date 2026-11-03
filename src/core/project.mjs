@@ -152,6 +152,17 @@ export async function runChecks(root, stage = null) {
     if (!taskChecks.some((check) => check.severity === 'fail' || check.severity === 'unavailable')) {
       checks.push(makeCheck('TASKS_VALID', 'pass', `${parsed.tasks.length} task(s) form a valid graph`, { stage: 'ready' }));
     }
+    const started = parsed.tasks.filter((task) => ['in_progress', 'review', 'done'].includes(task.status));
+    if (started.length > 0 && !gateSatisfied(state, 'G4')) {
+      checks.push(
+        makeCheck(
+          'TASK_BEFORE_PLAN',
+          'warn',
+          `${started.length} task(s) started before G4 Ready; approve the plan gates first`,
+          { stage: 'executing', tasks: started.map((task) => task.id) }
+        )
+      );
+    }
   }
 
   const stale = await staleGates(root, state);

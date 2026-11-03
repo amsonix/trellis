@@ -57,7 +57,9 @@ All notable changes to this project are recorded here. The format follows
   claims or evidence records are serialized instead of losing updates.
 - Gate digests hash normalized content (whitespace-only edits no longer stale a
   gate) and G2 now covers `docs/adr/*.md`.
-- 92 `node:test` cases, including negative controls for every blocking rule.
+- `check` warns with `TASK_BEFORE_PLAN` when a task is already in progress
+  before `G4`, instead of silently allowing execution before planning.
+- 93 `node:test` cases, including negative controls for every blocking rule.
 
 ### Fixed
 

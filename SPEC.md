@@ -364,6 +364,7 @@ Implemented in `0.1.0`:
   `task add` with the same validation, controlled follow-ups (same milestone,
   inside the parent scope, ≤3 children, ≤2 levels), and questions that only a
   human can answer;
+- a warning (`TASK_BEFORE_PLAN`) when work is already in progress before `G4`;
 - gates `G0`–`G7`, approver roles, order, waivers, per-task `G5`, and digests
   that make a passed gate stale when its artifacts change;
 - evidence ledger, passing/failing/inconclusive verification, and retraction
@@ -374,7 +375,7 @@ Implemented in `0.1.0`:
   codes;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 92 `node:test` cases.
+- 93 `node:test` cases.
 
 Not in `0.1.0`:
 

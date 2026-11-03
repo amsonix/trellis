@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { approveGate, claimTask, reportTask, addTaskEvidence, projectStatus, nextAction } from '../src/core/project.mjs';
+import { approveGate, claimTask, reportTask, addTaskEvidence, projectStatus, nextAction, runChecks } from '../src/core/project.mjs';
 import { cleanup, makeProject, appendTask } from './helpers.mjs';
 
 test('G5 cannot be approved before G4', async () => {
@@ -16,6 +16,24 @@ test('G5 cannot be approved before G4', async () => {
       () => approveGate(dir, 'G5', { by: 'reviewer:rita', taskId: 'T-001' }),
       (error) => error.code === 'GATE_OUT_OF_ORDER'
     );
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('work started before G4 is reported as a warning', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await claimTask(dir, 'T-001', { by: 'executor:w1' });
+    const before = await runChecks(dir);
+    assert.ok(before.checks.some((check) => check.code === 'TASK_BEFORE_PLAN' && check.severity === 'warn'));
+
+    await addTaskEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'npm test', verdict: 'pass', by: 'executor:w1' });
+    await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+    await approveProjectGates(dir, 'G4');
+
+    const after = await runChecks(dir);
+    assert.equal(after.checks.some((check) => check.code === 'TASK_BEFORE_PLAN'), false);
   } finally {
     await cleanup(dir);
   }
