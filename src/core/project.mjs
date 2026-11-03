@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TASK_TRANSITIONS, GATE_DEFS, ROLES, PROJECT_GATES, META_DIR } from './constants.mjs';
+import { TASK_TRANSITIONS, GATE_DEFS, ROLES, PROJECT_GATES, META_DIR, TASK_PRIORITIES } from './constants.mjs';
 import { makeCheck, summarize, hasBlocking, exitCodeFor } from './checks.mjs';
 import { getProfile, listProfiles } from './profiles.mjs';
 import { checkAllArtifacts, readArtifact, ARTIFACTS } from './artifacts.mjs';
@@ -296,7 +296,7 @@ async function computeNext(root, state, tasks, checks, role = null) {
     if (ready.length > 0) {
       return {
         kind: 'tasks',
-        tasks: ready.map(({ id, title, role: taskRole, scope, acceptance }) => ({ id, title, role: taskRole, scope, acceptance }))
+        tasks: ready.map(({ id, title, role: taskRole, scope, acceptance, priority }) => ({ id, title, role: taskRole, scope, acceptance, priority }))
       };
     }
     const active = tasks.filter((task) => task.status === 'in_progress' && (!role || task.role === role));
@@ -664,12 +664,17 @@ export async function addTask(
     acceptance = '',
     verification = '',
     dependsOn = [],
+    priority = 'medium',
     id = null,
     followUpOf = null,
     by
   } = {}
 ) {
   if (!by) throw new UsageError('task add needs --by <role>:<name>');
+  const normalizedPriority = String(priority ?? 'medium').trim().toLowerCase();
+  if (!TASK_PRIORITIES.includes(normalizedPriority)) {
+    throw new UsageError(`--priority must be one of: ${TASK_PRIORITIES.join(', ')}`);
+  }
   const actor = parseActor(by);
   for (const [field, value] of Object.entries({ title, acceptance, verification })) {
     const text = String(value ?? '').trim();
@@ -740,7 +745,8 @@ export async function addTask(
     dependsOn: [...new Set(dependencies)],
     acceptance: String(acceptance).trim(),
     verification: String(verification).trim(),
-    status: 'todo'
+    status: 'todo',
+    priority: normalizedPriority
   };
 
   const checks = validateTasks([...tasks, task], { milestones });
@@ -853,7 +859,8 @@ export async function answerTask(root, questionId, { decision, by }) {
   return { question: record, task: { id: record.taskId, status: record.previousStatus } };
 }
 
-export async function reportTask(root, taskId, { state: newStatus, note = null, by }) {  if (!newStatus) throw new UsageError('task report needs --state <status>');
+export async function reportTask(root, taskId, { state: newStatus, note = null, by }) {
+  if (!newStatus) throw new UsageError('task report needs --state <status>');
   const actor = by ? parseActor(by) : null;
   const state = await loadState(root);
   const { tasks } = await parseTasks(root);

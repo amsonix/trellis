@@ -140,6 +140,7 @@ test('task add writes the task board', async () => {
       '--acceptance', 'a regression test covers the crash and passes',
       '--verification', 'npm test',
       '--depends-on', 'T-001',
+      '--priority', 'high',
       '--by', 'coordinator:kim',
       '--dir', dir,
       '--json'
@@ -148,7 +149,16 @@ test('task add writes the task board', async () => {
     assert.equal(JSON.parse(add.stdout).data.task.id, 'T-002');
 
     const list = await run(['task', 'list', '--dir', dir, '--json']);
-    assert.equal(JSON.parse(list.stdout).data.tasks.length, 2);
+    const tasks = JSON.parse(list.stdout).data.tasks;
+    assert.equal(tasks.length, 2);
+    assert.equal(tasks.find((task) => task.id === 'T-002').priority, 'high');
+
+    const badPriority = await run([
+      'task', 'add', '--title', 'x', '--scope', 'docs/x', '--acceptance', 'y',
+      '--verification', 'manual', '--priority', 'urgent', '--by', 'coordinator:kim',
+      '--dir', dir, '--json'
+    ]);
+    assert.equal(badPriority.code, 2);
 
     const bad = await run([
       'task', 'add', '--title', 'x', '--scope', 'docs', '--acceptance', 'y',

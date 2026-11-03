@@ -156,7 +156,7 @@ Special checks:
 `.trellis/docs/TASKS.md` contains exactly one task table with this header:
 
 ```text
-| ID | Milestone | Title | Role | Scope | Depends on | Acceptance | Verification | Status |
+| ID | Milestone | Title | Role | Scope | Depends on | Acceptance | Verification | Status | Priority |
 ```
 
 Rules:
@@ -175,21 +175,24 @@ Rules:
 9. Two tasks that may run concurrently (`todo`, `ready` or `in_progress`) must
    not share a write domain unless one depends on the other. Add a dependency
    or narrow the scope.
-10. `done` requires at least one `pass` evidence item for the task and no
+10. `Priority` is `high`, `medium` or `low`; a missing column or cell means
+    `medium`.
+11. `next` sorts ready tasks by priority (`high`, `medium`, `low`), then by id.
+12. `done` requires at least one `pass` evidence item for the task and no
     `fail` evidence. `inconclusive` is not a pass.
-11. New work — a requirement, a bug report, test feedback — is added with
+13. New work — a requirement, a bug report, test feedback — is added with
     `task add`, which validates rules 1–9 before appending the row and records
     `task.added` with the actor. Overlapping scope without a dependency is
     refused, so the caller must declare the dependency rather than widen the
     domain.
-12. A **follow-up** (`task add --follow-up-of T-NNN`) is execution-time work
+14. A **follow-up** (`task add --follow-up-of T-NNN`) is execution-time work
     discovered while doing a task: it inherits the parent's milestone, its scope
     must be covered by the parent's scope, it depends on the parent, and it is
     limited to three children per task and two levels deep. A follow-up does not
     make G3/G4 stale — their digests are refreshed and the change is audited as
     `task.followUp` — so a runtime can keep the loop running inside the approved
     plan. Anything else is a normal `task add` and stales the plan gates.
-13. A **question** (`task ask`) blocks the task and records the question with
+15. A **question** (`task ask`) blocks the task and records the question with
     the status it had before. Only a human may answer (`task answer`); the answer
     is recorded in the ledger and the task returns to its previous status. An
     open question appears in `next` as `needsUser: true` and in `report` as

@@ -56,6 +56,7 @@ const VALUE_OPTIONS = new Set([
   'verification',
   'depends-on',
   'follow-up-of',
+  'priority',
   'archive-retracted',
   'question',
   'decision',
@@ -128,7 +129,8 @@ Usage:
   trellis task list [dir] [--json]
   trellis task add --title <text> --scope <paths> --acceptance <text> --verification <text>
                    [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>]
-                   [--follow-up-of <T-NNN>] [--id <T-NNN>] --by <role>:<name> [--dir <dir>]
+                   [--priority <high|medium|low>] [--follow-up-of <T-NNN>] [--id <T-NNN>]
+                   --by <role>:<name> [--dir <dir>]
   trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
   trellis task ask <T-NNN> --question <text> --by <role>:<name> [--dir <dir>]
   trellis task answer <Q-NNN> --decision <text> --by human:<name> [--dir <dir>]
@@ -409,6 +411,7 @@ async function dispatch(args) {
         milestone: options.milestone || null,
         acceptance: options.acceptance,
         verification: options.verification,
+        priority: options.priority || 'medium',
         dependsOn: options['depends-on'] || [],
         followUpOf: options['follow-up-of'] || null,
         id: options.id || null,

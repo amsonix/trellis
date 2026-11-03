@@ -95,6 +95,9 @@ export const ROLES = [
   'operator'
 ];
 
+export const TASK_PRIORITIES = ['high', 'medium', 'low'];
+export const TASK_PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
+
 export const TASK_STATUSES = [
   'todo',
   'ready',

@@ -4,6 +4,15 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- A `Priority` column (`high`/`medium`/`low`, default `medium`) on the task
+  board; `next` orders ready tasks by priority, then id. Old nine-column boards
+  keep working and parse as `medium`.
+- 116 `node:test` cases.
+
 ## [0.3.2] - 2026-11-03
 
 ### Fixed

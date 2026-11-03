@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { ROLES, TASK_STATUSES, META_DIR } from './constants.mjs';
+import { ROLES, TASK_STATUSES, TASK_PRIORITIES, TASK_PRIORITY_RANK, META_DIR } from './constants.mjs';
 import { makeCheck } from './checks.mjs';
 import { UsageError } from './errors.mjs';
 import {
@@ -22,7 +22,8 @@ export const TASK_HEADERS = [
   'Depends on',
   'Acceptance',
   'Verification',
-  'Status'
+  'Status',
+  'Priority'
 ];
 
 const HEADER_ALIASES = {
@@ -36,7 +37,8 @@ const HEADER_ALIASES = {
   dependencies: 'dependsOn',
   acceptance: 'acceptance',
   verification: 'verification',
-  status: 'status'
+  status: 'status',
+  priority: 'priority'
 };
 
 function normalizeHeader(value) {
@@ -106,6 +108,7 @@ export async function parseTasks(root) {
       acceptance: row[mapping.acceptance]?.trim() ?? '',
       verification: row[mapping.verification]?.trim() ?? '',
       status: (row[mapping.status]?.trim().toLowerCase() || 'todo'),
+      priority: (row[mapping.priority]?.trim().toLowerCase() || 'medium'),
       row: table.start + 2 + index
     });
   }
@@ -190,6 +193,9 @@ export function validateTasks(tasks, { milestones = [] } = {}) {
     if (!task.verification) {
       add('TASK_VERIFICATION_EMPTY', 'fail', `task ${task.id} has no verification method`, { task: task.id });
     }
+    if (!TASK_PRIORITIES.includes(task.priority)) {
+      add('TASK_PRIORITY_INVALID', 'fail', `task ${task.id} has unknown priority '${task.priority}'`, { task: task.id });
+    }
     if (!task.milestone) {
       add('TASK_MILESTONE_EMPTY', 'fail', `task ${task.id} has no milestone`, { task: task.id });
     } else if (milestones.length > 0 && !milestones.some((milestone) => milestone.id === task.milestone)) {
@@ -267,7 +273,10 @@ export function readyTasks(tasks, role) {
     .filter((task) => ['todo', 'ready'].includes(task.status))
     .filter((task) => task.dependsOn.every((dependency) => done.has(dependency)))
     .filter((task) => !role || task.role === role)
-    .sort((a, b) => a.id.localeCompare(b.id));
+    .sort((a, b) => {
+      const rank = (TASK_PRIORITY_RANK[a.priority] ?? 1) - (TASK_PRIORITY_RANK[b.priority] ?? 1);
+      return rank !== 0 ? rank : a.id.localeCompare(b.id);
+    });
 }
 
 export function nextTaskId(tasks) {
@@ -288,6 +297,9 @@ export async function appendTask(root, task) {
     if (/^\s*\|/.test(lines[i])) lastRow = i;
   }
   if (lastRow === -1) throw new UsageError(`${TASKS_FILE} has no Markdown table to append to`);
+  const headerLine = lines.find((line) => /^\s*\|/.test(line));
+  const headerCells = headerLine ? splitRow(headerLine) : [];
+  const hasPriority = headerCells.some((cell) => HEADER_ALIASES[normalizeHeader(cell)] === 'priority');
   const cells = [
     task.id,
     task.milestone,
@@ -299,6 +311,7 @@ export async function appendTask(root, task) {
     task.verification,
     task.status
   ];
+  if (hasPriority) cells.push(task.priority ?? 'medium');
   lines.splice(lastRow + 1, 0, `| ${cells.join(' | ')} |`);
   await writeText(file, lines.join('\n'));
 }
@@ -307,13 +320,23 @@ export async function updateTaskStatus(root, id, status) {
   const file = path.join(root, META_DIR, TASKS_FILE);
   const text = await readText(file);
   const lines = text.split(/\r?\n/);
+  let statusIndex = -1;
+  for (const line of lines) {
+    if (!/^\s*\|/.test(line)) continue;
+    const header = splitRow(line);
+    const found = header.findIndex((cell) => HEADER_ALIASES[normalizeHeader(cell)] === 'status');
+    if (found !== -1) {
+      statusIndex = found;
+      break;
+    }
+  }
   let changed = false;
   for (let i = 0; i < lines.length; i += 1) {
     if (!/^\s*\|/.test(lines[i])) continue;
     const cells = splitRow(lines[i]);
     if (cells[0] !== id) continue;
     if (cells.length < 2) continue;
-    cells[cells.length - 1] = status;
+    cells[statusIndex === -1 ? cells.length - 1 : statusIndex] = status;
     lines[i] = `| ${cells.join(' | ')} |`;
     changed = true;
     break;

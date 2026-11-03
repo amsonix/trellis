@@ -91,7 +91,7 @@ trellis brief [dir] [--role <role>] [--json]
 trellis report [dir] [--json]
 
 trellis task list [dir] [--json]
-trellis task add --title <text> --scope <paths> --acceptance <text> --verification <text> --by <role>:<name>
+trellis task add --title <text> --scope <paths> --acceptance <text> --verification <text> [--priority <high|medium|low>] --by <role>:<name>
 trellis task claim <T-NNN> --by <role>:<name>
 trellis task ask <T-NNN> --question <text> --by <role>:<name>
 trellis task answer <Q-NNN> --decision <text> --by human:<name>

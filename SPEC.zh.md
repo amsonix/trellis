@@ -87,7 +87,7 @@ version、created），正文用二级标题组织。必需章节见英文版表
 
 ## 7. 任务
 
-表头：`| ID | Milestone | Title | Role | Scope | Depends on | Acceptance | Verification | Status |`
+表头：`| ID | Milestone | Title | Role | Scope | Depends on | Acceptance | Verification | Status | Priority |`
 
 1. ID 唯一，形如 `T-001`。
 2. Milestone 必须匹配 ROADMAP 中的 `## M...`。
@@ -98,12 +98,14 @@ version、created），正文用二级标题组织。必需章节见英文版表
 7. Acceptance 说明什么必须为真；Verification 说明怎么检查。
 8. 依赖图必须无环。
 9. 可并发运行的任务不能共享写域，除非有依赖。
-10. done 需要至少一条 pass 证据且没有 fail；inconclusive 不算通过。
-11. 新工作用 `task add` 加入：校验第 1–9 条后追加，记录 `task.added`。
-12. 跟进（`--follow-up-of`）：继承父里程碑、写域在父范围内、依赖父任务、
+10. Priority 为 `high`/`medium`/`low`；缺少整列或单元格时按 `medium` 处理。
+11. `next` 先按 priority（高→中→低）排序，再按 id 排序。
+12. done 需要至少一条 pass 证据且没有 fail；inconclusive 不算通过。
+13. 新工作用 `task add` 加入：校验第 1–9 条后追加，记录 `task.added`。
+14. 跟进（`--follow-up-of`）：继承父里程碑、写域在父范围内、依赖父任务、
     每父最多 3 个、最多 2 层；不使 G3/G4 失效，而是刷新摘要并记
     `task.followUp`。
-13. 问题（`task ask`）：任务置 blocked 并记录原状态；只有 human 能
+15. 问题（`task ask`）：任务置 blocked 并记录原状态；只有 human 能
     `task answer`；回答后恢复原状态；未答问题出现在 `next` 与 `report`。
 
 状态转移：

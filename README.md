@@ -273,8 +273,9 @@ trellis gate <G0..G7> --waive   --by human:<name> --reason <text> [--task <T-NNN
 
 trellis task list [dir] [--json]
 trellis task add --title <text> --scope <paths> --acceptance <text> --verification <text> \
-                 [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>] \
-                 [--follow-up-of <T-NNN>] --by <role>:<name>
+                   [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>] \
+                   [--priority <high|medium|low>] [--follow-up-of <T-NNN>] \
+                   --by <role>:<name>
 trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
 trellis task ask <T-NNN> --question <text> --by <role>:<name>
 trellis task answer <Q-NNN> --decision <text> --by human:<name>
