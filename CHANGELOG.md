@@ -36,7 +36,9 @@ All notable changes to this project are recorded here. The format follows
 - `report [--json]`: gate and task counts plus the gaps — blocking checks, the
   pending gate, blocked tasks, tasks marked done without passing evidence, and
   leases older than 24 hours — with the next command.
-- 54 `node:test` cases, including negative controls for every blocking rule.
+- `task add`: validate and append a task row from a requirement or a bug report,
+  including the write-scope overlap check, and record `task.added` with the actor.
+- 60 `node:test` cases, including negative controls for every blocking rule.
 
 ### Fixed
 

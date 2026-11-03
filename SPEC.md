@@ -159,6 +159,11 @@ Rules:
    or narrow the scope.
 10. `done` requires at least one `pass` evidence item for the task and no
     `fail` evidence. `inconclusive` is not a pass.
+11. New work — a requirement, a bug report, test feedback — is added with
+    `task add`, which validates rules 1–9 before appending the row and records
+    `task.added` with the actor. Overlapping scope without a dependency is
+    refused, so the caller must declare the dependency rather than widen the
+    domain.
 
 Allowed status transitions:
 
@@ -314,7 +319,8 @@ Implemented in `0.1.0`:
   existing files;
 - `generic` (default), `web-app`, `library` and `cli` profiles;
 - artifact existence, front-matter, required-section and special checks;
-- task table parsing, graph validation, scope-overlap check, status transitions;
+- task table parsing, graph validation, scope-overlap check, status transitions,
+  and `task add` with the same validation;
 - gates `G0`–`G7`, approver roles, order, waivers, per-task `G5`;
 - evidence ledger, passing/failing/inconclusive verification;
 - leases on task claim, release, conflict detection, `guard commit --staged`
@@ -323,7 +329,7 @@ Implemented in `0.1.0`:
   codes;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 54 `node:test` cases.
+- 60 `node:test` cases.
 
 Not in `0.1.0`:
 

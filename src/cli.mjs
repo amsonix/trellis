@@ -11,6 +11,7 @@ import {
   nextAction,
   agentBrief,
   projectReport,
+  addTask,
   claimTask,
   reportTask,
   addTaskEvidence,
@@ -39,7 +40,14 @@ const VALUE_OPTIONS = new Set([
   'kind',
   'uri',
   'verdict',
-  'state'
+  'state',
+  'title',
+  'scope',
+  'milestone',
+  'acceptance',
+  'verification',
+  'depends-on',
+  'id'
 ]);
 
 const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force']);
@@ -106,6 +114,9 @@ Usage:
   trellis gate <G0|G1|G2|G3|G4|G5|G6|G7> --approve|--waive --by <role>:<name>
                               [--task <T-NNN>] [--note <text>|--reason <text>] [--dir <dir>]
   trellis task list [dir] [--json]
+  trellis task add --title <text> --scope <paths> --acceptance <text> --verification <text>
+                   [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>] [--id <T-NNN>]
+                   --by <role>:<name> [--dir <dir>]
   trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
   trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dir <dir>]
   trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit>
@@ -344,6 +355,25 @@ async function dispatch(args) {
 
   if (command === 'task') {
     const dir = path.resolve(options.dir || (subcommand === 'list' ? args.positionals[0] : args.positionals[1]) || process.cwd());
+    if (subcommand === 'add') {
+      if (!options.title) throw new UsageError('task add needs --title');
+      if (!options.scope) throw new UsageError('task add needs --scope');
+      if (!options.acceptance) throw new UsageError('task add needs --acceptance');
+      if (!options.verification) throw new UsageError('task add needs --verification');
+      if (!options.by) throw new UsageError('task add needs --by <role>:<name>');
+      const data = await addTask(dir, {
+        title: options.title,
+        role: options.role || 'executor',
+        scope: options.scope,
+        milestone: options.milestone || null,
+        acceptance: options.acceptance,
+        verification: options.verification,
+        dependsOn: options['depends-on'] || [],
+        id: options.id || null,
+        by: options.by
+      });
+      return { data, exitCode: 0, print: () => console.log(`added ${data.task.id}: ${data.task.title}`) };
+    }
     if (subcommand === 'list') {
       const { tasks, error } = await parseTasks(dir);
       if (error) throw new UnavailableError(error.message, error);

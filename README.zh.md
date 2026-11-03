@@ -130,8 +130,8 @@ cp -R skills/trellis ~/.agents/skills/trellis
 `trellis_lease_status`、`trellis_profile_list`。
 
 设置 `TRELLIS_MCP_WRITE=1` 后额外暴露写工具：`trellis_init`、
-`trellis_task_claim`、`trellis_task_report`、`trellis_evidence_add`、
-`trellis_lease_release`、`trellis_reindex`。
+`trellis_task_add`、`trellis_task_claim`、`trellis_task_report`、
+`trellis_evidence_add`、`trellis_lease_release`、`trellis_reindex`。
 
 gate 批准**故意不暴露**：批准者不能是产出这项工作的角色，这个决定留在 CLI 里。
 
@@ -184,6 +184,8 @@ trellis gate <G0..G7> --approve --by <role>:<name> [--task <T-NNN>] [--note <tex
 trellis gate <G0..G7> --waive   --by human:<name> --reason <text> [--task <T-NNN>]
 
 trellis task list [dir] [--json]
+trellis task add --title <text> --scope <paths> --acceptance <text> --verification <text> \
+                 [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>] --by <role>:<name>
 trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
 trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> [--note <text>] [--by <role>:<name>]
 
@@ -201,6 +203,11 @@ trellis profile list [--json]
 
 `trellis report` 回答「项目到哪一步了、卡在哪」：gate 与任务计数、阻塞检查、被阻塞
 的任务、标了 done 却没有通过证据的任务，以及超过 24 小时的租约。
+
+新需求或 bug 反馈通过 `trellis task add` 进入任务板：它先校验 milestone、角色、
+验收标准、验证方式和写域重叠，再把行追加到 `.trellis/docs/TASKS.md`，并在审计里
+记一条 `task.added`。如果和未完成任务写域重叠，用 `--depends-on` 声明依赖，而
+不是扩大自己的 scope。
 
 退出码是约定的一部分：
 

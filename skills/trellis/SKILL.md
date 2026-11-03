@@ -32,6 +32,21 @@ If the runtime exposes Trellis MCP tools (`trellis_*`), they follow the same
 rules. Gate approval is not available there by design; a human runs it from the
 CLI.
 
+## Capturing new work
+
+When the user gives you a requirement, a bug report or test feedback, put it on
+the task board instead of only discussing it:
+
+```bash
+trellis task add --title "<one line>" --scope "<paths>" \
+  --acceptance "<what proves it done>" --verification "<how it is checked>" \
+  --by coordinator:<you>
+```
+
+If the scope overlaps an open task, pass `--depends-on T-NNN` instead of
+widening it. `--milestone` defaults to the first milestone. Ask one question only
+when the scope or the acceptance is genuinely unknown.
+
 ## The rules
 
 1. **A stage is not a suggestion.** Write only the artifacts the current stage

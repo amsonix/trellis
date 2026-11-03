@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { ROLES, TASK_STATUSES, META_DIR } from './constants.mjs';
 import { makeCheck } from './checks.mjs';
+import { UsageError } from './errors.mjs';
 import {
   exists,
   readText,
@@ -267,6 +268,39 @@ export function readyTasks(tasks, role) {
     .filter((task) => task.dependsOn.every((dependency) => done.has(dependency)))
     .filter((task) => !role || task.role === role)
     .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+export function nextTaskId(tasks) {
+  const highest = tasks
+    .map((task) => /^T-(\d+)$/.exec(task.id))
+    .filter(Boolean)
+    .map((match) => Number(match[1]))
+    .reduce((max, value) => Math.max(max, value), 0);
+  return `T-${String(highest + 1).padStart(3, '0')}`;
+}
+
+export async function appendTask(root, task) {
+  const file = path.join(root, META_DIR, TASKS_FILE);
+  const text = await readText(file);
+  const lines = text.split(/\r?\n/);
+  let lastRow = -1;
+  for (let i = 0; i < lines.length; i += 1) {
+    if (/^\s*\|/.test(lines[i])) lastRow = i;
+  }
+  if (lastRow === -1) throw new UsageError(`${TASKS_FILE} has no Markdown table to append to`);
+  const cells = [
+    task.id,
+    task.milestone,
+    task.title,
+    task.role,
+    task.scope.join(', '),
+    task.dependsOn.length > 0 ? task.dependsOn.join(', ') : '-',
+    task.acceptance,
+    task.verification,
+    task.status
+  ];
+  lines.splice(lastRow + 1, 0, `| ${cells.join(' | ')} |`);
+  await writeText(file, lines.join('\n'));
 }
 
 export async function updateTaskStatus(root, id, status) {

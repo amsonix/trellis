@@ -17,6 +17,7 @@ import {
   nextAction,
   agentBrief,
   projectReport,
+  addTask,
   claimTask,
   reportTask,
   addTaskEvidence,
@@ -122,6 +123,36 @@ const writeTools = [
       ['dir']
     ),
     run: (args) => initProject({ dir: args.dir, name: args.name ?? null, profile: args.profile ?? 'generic' })
+  },
+  {
+    name: 'trellis_task_add',
+    description:
+      'Add a task row to .trellis/docs/TASKS.md from a requirement or a bug report. Validates milestone, role, acceptance, verification and write scope before writing.',
+    inputSchema: object(
+      {
+        dir: dirProp,
+        title: text('What must be done.'),
+        scope: text('Comma-separated write paths.'),
+        acceptance: text('What makes it done.'),
+        verification: text('How it is checked.'),
+        role: text('Role that owns it. Defaults to executor.'),
+        milestone: text('Milestone id from ROADMAP. Defaults to the first milestone.'),
+        dependsOn: text('Comma-separated task ids.'),
+        by: text('Actor as role:name.')
+      },
+      ['title', 'scope', 'acceptance', 'verification', 'by']
+    ),
+    run: (args) =>
+      addTask(dirOf(args), {
+        title: args.title,
+        role: args.role ?? 'executor',
+        scope: args.scope,
+        milestone: args.milestone ?? null,
+        acceptance: args.acceptance,
+        verification: args.verification,
+        dependsOn: args.dependsOn ?? [],
+        by: args.by
+      })
   },
   {
     name: 'trellis_task_claim',

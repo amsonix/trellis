@@ -5,7 +5,7 @@ import { TASK_TRANSITIONS, GATE_DEFS, ROLES, PROJECT_GATES, META_DIR } from './c
 import { makeCheck, summarize, hasBlocking, exitCodeFor } from './checks.mjs';
 import { getProfile, listProfiles } from './profiles.mjs';
 import { checkAllArtifacts, readArtifact, ARTIFACTS } from './artifacts.mjs';
-import { parseTasks, validateTasks, milestonesFromRoadmap, taskById, readyTasks, updateTaskStatus } from './tasks.mjs';
+import { parseTasks, validateTasks, milestonesFromRoadmap, taskById, readyTasks, updateTaskStatus, appendTask, nextTaskId } from './tasks.mjs';
 import {
   approveGate,
   waiveGate,
@@ -20,7 +20,7 @@ import { addEvidence, verifyTaskEvidence, requirePassingEvidence, listEvidence }
 import { acquireLease, releaseLease, leaseStatus } from './lease.mjs';
 import { defaultState, loadState, saveState, appendAudit } from './store.mjs';
 import { RefusedError, UnavailableError, UsageError } from './errors.mjs';
-import { nowIso, parseActor, writeText } from './util.mjs';
+import { nowIso, parseActor, parseScope, writeText } from './util.mjs';
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const TEMPLATE_DIR = path.join(PACKAGE_ROOT, 'templates');
@@ -538,6 +538,56 @@ export async function claimTask(root, taskId, { by }) {
   appendAudit(state, 'task.claimed', actor, { task: taskId, lease: lease.id });
   await saveState(root, state);
   return { task: { ...task, status: 'in_progress' }, lease };
+}
+
+export async function addTask(
+  root,
+  { title, role = 'executor', scope = '', milestone = null, acceptance = '', verification = '', dependsOn = [], id = null, by } = {}
+) {
+  if (!by) throw new UsageError('task add needs --by <role>:<name>');
+  const actor = parseActor(by);
+  for (const [field, value] of Object.entries({ title, acceptance, verification })) {
+    const text = String(value ?? '').trim();
+    if (text === '') throw new UsageError(`task add needs --${field}`);
+    if (/[|\n\r]/.test(text)) throw new UsageError(`--${field} must not contain '|' or a newline`);
+  }
+
+  const { tasks } = await parseTasks(root);
+  const milestones = await milestonesFromRoadmap(root);
+  const taskId = id ? String(id).trim() : nextTaskId(tasks);
+  if (!/^T-\d+$/.test(taskId)) throw new UsageError(`task id '${taskId}' does not look like T-001`);
+  if (tasks.some((task) => task.id === taskId)) {
+    throw new RefusedError('TASK_ID_DUPLICATE', `task ${taskId} is already on the board`, { task: taskId });
+  }
+
+  const dependencies = (Array.isArray(dependsOn) ? dependsOn : [dependsOn])
+    .flatMap((value) => String(value ?? '').split(','))
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const task = {
+    id: taskId,
+    milestone: milestone ?? milestones[0]?.id ?? null,
+    title: String(title).trim(),
+    role,
+    scope: parseScope(scope),
+    dependsOn: [...new Set(dependencies)],
+    acceptance: String(acceptance).trim(),
+    verification: String(verification).trim(),
+    status: 'todo'
+  };
+
+  const checks = validateTasks([...tasks, task], { milestones });
+  const blocking = checks.filter((check) => check.severity === 'fail');
+  if (blocking.length > 0) {
+    throw new RefusedError('TASK_INVALID', blocking.map((check) => check.message).join('; '), { checks: blocking });
+  }
+
+  await appendTask(root, task);
+  const state = await loadState(root);
+  appendAudit(state, 'task.added', actor, { task: task.id, title: task.title, milestone: task.milestone });
+  await saveState(root, state);
+  return { task };
 }
 
 export async function reportTask(root, taskId, { state: newStatus, note = null, by }) {

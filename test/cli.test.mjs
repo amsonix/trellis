@@ -129,6 +129,37 @@ test('the brief command prints a role brief', async () => {
   }
 });
 
+test('task add writes the task board', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'pp-cli-add-'));
+  try {
+    await run(['init', dir, '--name', 'demo', '--json']);
+    const add = await run([
+      'task', 'add',
+      '--title', 'Fix the login crash reported in testing',
+      '--scope', 'src/auth, test',
+      '--acceptance', 'a regression test covers the crash and passes',
+      '--verification', 'npm test',
+      '--depends-on', 'T-001',
+      '--by', 'coordinator:kim',
+      '--dir', dir,
+      '--json'
+    ]);
+    assert.equal(add.code, 0);
+    assert.equal(JSON.parse(add.stdout).data.task.id, 'T-002');
+
+    const list = await run(['task', 'list', '--dir', dir, '--json']);
+    assert.equal(JSON.parse(list.stdout).data.tasks.length, 2);
+
+    const bad = await run([
+      'task', 'add', '--title', 'x', '--scope', 'docs', '--acceptance', 'y',
+      '--verification', 'z', '--milestone', 'M9', '--by', 'coordinator:kim', '--dir', dir, '--json'
+    ]);
+    assert.equal(bad.code, 3);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('the report command summarises progress and gaps', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'pp-cli-report-'));
   try {

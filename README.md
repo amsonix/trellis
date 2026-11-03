@@ -134,9 +134,9 @@ exposes the read side: `trellis_status`, `trellis_check`, `trellis_next`,
 `trellis_brief`, `trellis_report`, `trellis_task_list`, `trellis_evidence_list`,
 `trellis_verify`, `trellis_lease_status` and `trellis_profile_list`.
 
-With `TRELLIS_MCP_WRITE=1` it also exposes `trellis_init`, `trellis_task_claim`,
-`trellis_task_report`, `trellis_evidence_add`, `trellis_lease_release` and
-`trellis_reindex`.
+With `TRELLIS_MCP_WRITE=1` it also exposes `trellis_init`, `trellis_task_add`,
+`trellis_task_claim`, `trellis_task_report`, `trellis_evidence_add`,
+`trellis_lease_release` and `trellis_reindex`.
 
 Gate approval is deliberately **not** exposed: a gate approver must not be the
 role that produced the work, so that decision stays in the CLI.
@@ -192,6 +192,8 @@ trellis gate <G0..G7> --approve --by <role>:<name> [--task <T-NNN>] [--note <tex
 trellis gate <G0..G7> --waive   --by human:<name> --reason <text> [--task <T-NNN>]
 
 trellis task list [dir] [--json]
+trellis task add --title <text> --scope <paths> --acceptance <text> --verification <text> \
+                 [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>] --by <role>:<name>
 trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
 trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> [--note <text>] [--by <role>:<name>]
 
@@ -210,6 +212,12 @@ trellis profile list [--json]
 `trellis report` answers "where is this project and what is blocking it": gate
 and task counts, blocking checks, blocked tasks, tasks marked done without
 passing evidence, and leases older than 24 hours.
+
+New requirements and bug reports go in through `trellis task add`: it validates
+the milestone, role, acceptance, verification and write-scope overlap before
+appending the row to `.trellis/docs/TASKS.md`, and records `task.added` in the
+audit. If the work overlaps an open task, pass `--depends-on` instead of widening
+its scope.
 
 Exit codes are part of the contract:
 

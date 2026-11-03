@@ -105,6 +105,7 @@ test('write tools appear only with TRELLIS_MCP_WRITE=1 and claim tasks', async (
       const list = await client.request('tools/list');
       const names = list.result.tools.map((tool) => tool.name);
       assert.ok(names.includes('trellis_task_claim'));
+      assert.ok(names.includes('trellis_task_add'));
       assert.ok(names.every((name) => !name.includes('gate')));
 
       const claim = await call(client, 'trellis_task_claim', { dir, task: 'T-001', by: 'executor:w1' });

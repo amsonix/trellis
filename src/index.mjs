@@ -14,6 +14,7 @@ export {
   agentBrief,
   projectReport,
   claimTask,
+  addTask,
   reportTask,
   addTaskEvidence,
   verifyTask,
