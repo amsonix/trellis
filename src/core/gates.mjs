@@ -273,7 +273,14 @@ export async function approveGate(root, gateId, { by, note = null, taskId = null
     }
   }
 
-  const blockingStale = stale.filter((item) => item.gate !== gateId);
+  // Only earlier gates may block: re-approval happens in order, and two stale
+  // gates that share artifacts must not deadlock each other.
+  const targetGate = gateId === 'G5' ? 'G4' : gateId;
+  const targetIndex = PROJECT_GATES.indexOf(targetGate);
+  const blockingStale = stale.filter((item) => {
+    const index = PROJECT_GATES.indexOf(item.gate);
+    return index !== -1 && targetIndex !== -1 && index < targetIndex;
+  });
   if (blockingStale.length > 0) {
     throw new RefusedError(
       'GATE_STALE',

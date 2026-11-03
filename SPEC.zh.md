@@ -72,7 +72,7 @@ intake → discovery → architecture → plan → ready → executing → integ
 5. 已通过的 gate 不能重复批准——除非它已 stale。
 6. 批准时记录依赖产物的摘要（G2 含 `docs/adr/*.md`）。
 7. 产物变化后 gate 变 **stale**：`check` 报 `GATE_STALE`，后续 gate 被拒，
-   必须重新批准。摘要对空白/换行不敏感。
+   必须重新批准；重批按 gate 顺序进行，更早的 stale gate 会阻塞更晚的，反之不成立。摘要对空白/换行不敏感。
 8. TASKS 摘要只含结构（id、里程碑、角色、写域、依赖、验收、验证），不含
    status——claim/done 不会让规划 gate 失效。
 

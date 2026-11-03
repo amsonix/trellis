@@ -110,6 +110,37 @@ test('a whitespace-only edit does not stale an approval', async () => {
   }
 });
 
+test('two stale plan gates are re-approved in order, not blocked by each other', async () => {
+  const dir = await makeProject('generic');
+  try {
+    for (const [gate, by] of [
+      ['G0', 'human:alice'],
+      ['G1', 'architect:ann'],
+      ['G2', 'architect:ann'],
+      ['G3', 'human:alice'],
+      ['G4', 'coordinator:kim']
+    ]) {
+      await approveGate(dir, gate, { by });
+    }
+    await addTask(dir, {
+      title: 'Later work',
+      scope: 'docs',
+      acceptance: 'the docs say it',
+      verification: 'manual review',
+      by: 'coordinator:kim'
+    });
+    assert.deepEqual((await projectStatus(dir)).staleGates.map((item) => item.gate).sort(), ['G3', 'G4']);
+
+    await approveGate(dir, 'G3', { by: 'human:alice' });
+    assert.deepEqual((await projectStatus(dir)).staleGates.map((item) => item.gate), ['G4']);
+
+    await approveGate(dir, 'G4', { by: 'coordinator:kim' });
+    assert.equal((await projectStatus(dir)).staleGates.length, 0);
+  } finally {
+    await cleanup(dir);
+  }
+});
+
 test('a new ADR stales the architecture approval', async () => {
   const dir = await makeProject('generic');
   try {

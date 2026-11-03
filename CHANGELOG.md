@@ -4,6 +4,15 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.1] - 2026-11-03
+
+### Fixed
+
+- Two stale plan gates that share artifacts (G3 and G4) no longer deadlock each
+  other: only an earlier stale gate blocks a re-approval, so they can be
+  re-approved in order. `G5` is ordered after `G4`.
+- 112 `node:test` cases.
+
 ## [0.3.0] - 2026-11-03
 
 ### Added
@@ -147,3 +156,4 @@ All notable changes to this project are recorded here. The format follows
 [0.1.1]: https://github.com/amsonix/trellis/releases/tag/v0.1.1
 [0.1.0]: https://github.com/amsonix/trellis/releases/tag/v0.1.0
 [0.3.0]: https://github.com/amsonix/trellis/releases/tag/v0.3.0
+[0.3.1]: https://github.com/amsonix/trellis/releases/tag/v0.3.1

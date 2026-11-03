@@ -102,7 +102,8 @@ Rules:
    `TASKS` and `VERIFICATION` for G6, `OPERATIONS` for G7.
 7. If those artifacts change after approval, the gate is **stale**: `check`
    reports `GATE_STALE`, and any later gate is refused until the stale gate is
-   re-approved. Re-approval is the only way to clear it; a waiver does not go
+   re-approved. Re-approval happens in gate order: an earlier stale gate blocks
+   later ones, never the reverse. Re-approval is the only way to clear it; a waiver does not go
    stale because it is an explicit human decision. The digest hashes normalized
    content, so line-ending and trailing-whitespace edits do not stale a gate.
 8. The `TASKS` digest covers the task *structure* — id, milestone, title, role,
@@ -394,7 +395,7 @@ Implemented through `0.2.x`:
 - `TRELLIS_AGENT` attribution and `TRELLIS_STRICT=1`;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 111 `node:test` cases.
+- 112 `node:test` cases.
 
 Not yet:
 
