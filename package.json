@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "description": "Trellis: an agent-facing protocol for building projects: stages, artifacts, gates, roles, tasks and evidence.",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amsonix/trellis.git"
+  },
+  "homepage": "https://github.com/amsonix/trellis#readme",
+  "bugs": {
+    "url": "https://github.com/amsonix/trellis/issues"
+  },
   "main": "./src/index.mjs",
   "exports": {
     ".": "./src/index.mjs",

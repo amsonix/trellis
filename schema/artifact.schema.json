@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.local/trellis/artifact.schema.json",
+  "$id": "https://raw.githubusercontent.com/amsonix/trellis/main/schema/artifact.schema.json",
   "title": "Trellis artifact front-matter",
   "type": "object",
   "required": ["id", "project", "stage", "status", "owners", "version"],

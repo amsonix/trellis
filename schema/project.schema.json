@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.local/trellis/project.schema.json",
+  "$id": "https://raw.githubusercontent.com/amsonix/trellis/main/schema/project.schema.json",
   "title": "Trellis state",
   "type": "object",
   "required": ["schemaVersion", "project", "gates", "taskGates", "audit"],

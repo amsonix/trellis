@@ -30,4 +30,4 @@ All notable changes to this project are recorded here. The format follows
 - DSH / Super-agent integration.
 - SQLite, HTTP and multi-host.
 
-[0.1.0]: https://example.local/trellis/CHANGELOG.md
+[0.1.0]: https://github.com/amsonix/trellis/releases/tag/v0.1.0

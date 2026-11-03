@@ -1,5 +1,9 @@
 # Trellis
 
+[![CI](https://github.com/amsonix/trellis/actions/workflows/ci.yml/badge.svg)](https://github.com/amsonix/trellis/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](package.json)
+
 **An agent-facing protocol for building projects.**
 
 It does not teach an agent how to write code. It tells an agent, at every step:
@@ -33,6 +37,7 @@ intake → discovery → architecture → plan → ready → executing → integ
 Requires Node.js 20 or newer. There are no runtime dependencies.
 
 ```bash
+git clone https://github.com/amsonix/trellis.git
 cd trellis
 npm test
 
@@ -208,6 +213,17 @@ test/         node:test suites and fixtures
 
 See [`SPEC.md`](SPEC.md) for the normative protocol and [`AGENTS.md`](AGENTS.md)
 for the rules an agent working on this repository follows.
+
+Contributions are welcome; see [`CONTRIBUTING.md`](CONTRIBUTING.md). Issues and
+pull requests live at <https://github.com/amsonix/trellis>.
+
+---
+
+## Acknowledgments
+
+The stage and gate model in Trellis is informed by DeepSeek's Super Agent. This
+is an independent implementation: the repository contains no code from that
+project, and nothing here depends on it at runtime.
 
 ---
 

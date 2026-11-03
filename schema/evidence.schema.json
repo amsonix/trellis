@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.local/trellis/evidence.schema.json",
+  "$id": "https://raw.githubusercontent.com/amsonix/trellis/main/schema/evidence.schema.json",
   "title": "Trellis evidence",
   "type": "object",
   "required": ["id", "taskId", "kind", "uri", "verdict", "producedBy", "producedAt"],
