@@ -47,6 +47,11 @@ If the scope overlaps an open task, pass `--depends-on T-NNN` instead of
 widening it. `--milestone` defaults to the first milestone. Ask one question only
 when the scope or the acceptance is genuinely unknown.
 
+For a bug, record the failing reproduction with `--verdict fail`, fix it, have a
+reviewer or verifier retract the failing record with a reason, then add the
+passing evidence. The retracted record stays in the ledger; the producing role
+cannot retract its own failure.
+
 ## The rules
 
 1. **A stage is not a suggestion.** Write only the artifacts the current stage

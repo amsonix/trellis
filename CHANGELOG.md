@@ -41,7 +41,10 @@ All notable changes to this project are recorded here. The format follows
 - Gate digests: a passed gate goes stale when the artifacts it approved change;
   `check` reports `GATE_STALE`, later approvals are refused, and re-approval is
   the only way to clear it.
-- 65 `node:test` cases, including negative controls for every blocking rule.
+- `evidence retract <EV-id> --reason ...`: a human, reviewer or verifier can
+  retire a failed record without deleting it, so a bug can go from a failing
+  reproduction to a passing fix.
+- 70 `node:test` cases, including negative controls for every blocking rule.
 
 ### Fixed
 

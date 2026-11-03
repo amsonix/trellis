@@ -28,6 +28,7 @@ import {
 } from '../core/project.mjs';
 import { parseTasks } from '../core/tasks.mjs';
 import { leaseStatus, releaseLease } from '../core/lease.mjs';
+import { retractEvidence } from '../core/evidence.mjs';
 import { ProtocolError, RefusedError } from '../core/errors.mjs';
 
 const SERVER_INFO = { name: 'trellis', version: PROTOCOL_VERSION };
@@ -200,6 +201,21 @@ const writeTools = [
         by: args.by,
         note: args.note ?? null
       })
+  },
+  {
+    name: 'trellis_evidence_retract',
+    description:
+      'Retract an evidence record with a reason. Retracted evidence stays in the ledger but no longer blocks done; only human, reviewer and verifier may retract.',
+    inputSchema: object(
+      {
+        dir: dirProp,
+        id: text('Evidence id, e.g. EV-abc123.'),
+        by: text('Actor as role:name; must be human, reviewer or verifier.'),
+        reason: text('Why the record is no longer valid.')
+      },
+      ['id', 'by', 'reason']
+    ),
+    run: (args) => retractEvidence(dirOf(args), args.id, { by: args.by, reason: args.reason })
   },
   {
     name: 'trellis_lease_release',

@@ -131,7 +131,8 @@ cp -R skills/trellis ~/.agents/skills/trellis
 
 设置 `TRELLIS_MCP_WRITE=1` 后额外暴露写工具：`trellis_init`、
 `trellis_task_add`、`trellis_task_claim`、`trellis_task_report`、
-`trellis_evidence_add`、`trellis_lease_release`、`trellis_reindex`。
+`trellis_evidence_add`、`trellis_evidence_retract`、`trellis_lease_release`、
+`trellis_reindex`。
 
 gate 批准**故意不暴露**：批准者不能是产出这项工作的角色，这个决定留在 CLI 里。
 
@@ -196,6 +197,7 @@ trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done>
 
 trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> \
                               --verdict <pass|fail|inconclusive> --by <role>:<name>
+trellis evidence retract <EV-id> --by <role>:<name> --reason <text>
 trellis evidence list [--task <T-NNN>] [--json]
 trellis verify <T-NNN> [--json]
 
@@ -213,6 +215,11 @@ trellis profile list [--json]
 验收标准、验证方式和写域重叠，再把行追加到 `.trellis/docs/TASKS.md`，并在审计里
 记一条 `task.added`。如果和未完成任务写域重叠，用 `--depends-on` 声明依赖，而
 不是扩大自己的 scope。
+
+失败证据可以由 human、reviewer 或 verifier 带理由撤回：`evidence retract <EV-id>
+--reason "..."`。记录仍留在 `evidence.json` 里并标为 `retracted`，但不再阻塞
+`done`，所以 bug 流程是真实的：先记录失败的复现，修好后撤回失败证据，再补一条
+通过证据。产出者角色不能撤回自己的失败。
 
 退出码是约定的一部分：
 

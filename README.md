@@ -136,7 +136,7 @@ exposes the read side: `trellis_status`, `trellis_check`, `trellis_next`,
 
 With `TRELLIS_MCP_WRITE=1` it also exposes `trellis_init`, `trellis_task_add`,
 `trellis_task_claim`, `trellis_task_report`, `trellis_evidence_add`,
-`trellis_lease_release` and `trellis_reindex`.
+`trellis_evidence_retract`, `trellis_lease_release` and `trellis_reindex`.
 
 Gate approval is deliberately **not** exposed: a gate approver must not be the
 role that produced the work, so that decision stays in the CLI.
@@ -205,6 +205,7 @@ trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done>
 
 trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> \
                               --verdict <pass|fail|inconclusive> --by <role>:<name>
+trellis evidence retract <EV-id> --by <role>:<name> --reason <text>
 trellis evidence list [--task <T-NNN>] [--json]
 trellis verify <T-NNN> [--json]
 
@@ -224,6 +225,12 @@ the milestone, role, acceptance, verification and write-scope overlap before
 appending the row to `.trellis/docs/TASKS.md`, and records `task.added` in the
 audit. If the work overlaps an open task, pass `--depends-on` instead of widening
 its scope.
+
+Failed evidence can be retracted by a human, reviewer or verifier with a reason:
+`evidence retract <EV-id> --reason "..."`. The record stays in `evidence.json`
+marked `retracted` and stops blocking `done`, so the bug flow is real: record the
+failing reproduction, fix it, retract the failure, add the passing evidence. The
+producing role cannot retract its own failure.
 
 Exit codes are part of the contract:
 

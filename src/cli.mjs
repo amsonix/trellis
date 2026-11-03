@@ -24,6 +24,7 @@ import {
 } from './core/project.mjs';
 import { parseTasks } from './core/tasks.mjs';
 import { leaseStatus, guardCommit, releaseLease } from './core/lease.mjs';
+import { retractEvidence } from './core/evidence.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -121,6 +122,7 @@ Usage:
   trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dir <dir>]
   trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit>
                               --verdict <pass|fail|inconclusive> --by <role>:<name> [--dir <dir>]
+  trellis evidence retract <EV-id> --by <role>:<name> --reason <text> [--dir <dir>]
   trellis evidence list [--task <T-NNN>] [--dir <dir>] [--json]
   trellis verify <T-NNN> [--dir <dir>] [--json]
   trellis lease status [--dir <dir>] [--json]
@@ -279,9 +281,11 @@ function printEvidence(items) {
     return;
   }
   for (const item of items) {
-    console.log(`${item.id}  ${item.taskId}  ${item.kind.padEnd(10)} ${item.verdict.padEnd(12)} ${item.uri}`);
+    const mark = item.retracted ? ' [retracted]' : '';
+    console.log(`${item.id}  ${item.taskId}  ${item.kind.padEnd(10)} ${item.verdict.padEnd(12)} ${item.uri}${mark}`);
     if (item.sha256) console.log(`      sha256: ${item.sha256}`);
     if (item.note) console.log(`      note: ${item.note}`);
+    if (item.retracted) console.log(`      retracted by ${item.retracted.by}: ${item.retracted.reason}`);
   }
 }
 
@@ -418,6 +422,18 @@ async function dispatch(args) {
     if (subcommand === 'list') {
       const items = await evidenceFor(dir, options.task || null);
       return { data: { items }, exitCode: 0, print: () => printEvidence(items) };
+    }
+    if (subcommand === 'retract') {
+      const evidenceId = args.positionals[0];
+      if (!evidenceId) throw new UsageError('evidence retract needs an evidence id');
+      if (!options.by) throw new UsageError('evidence retract needs --by <role>:<name>');
+      if (!options.reason) throw new UsageError('evidence retract needs --reason "<why>"');
+      const record = await retractEvidence(dir, evidenceId, { by: options.by, reason: options.reason });
+      return {
+        data: record,
+        exitCode: 0,
+        print: () => console.log(`retracted ${record.id} (${record.verdict}) by ${record.retracted.by}`)
+      };
     }
     throw new UsageError(`unknown evidence subcommand '${subcommand}' (add|list)`);
   }

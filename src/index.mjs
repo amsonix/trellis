@@ -51,6 +51,7 @@ export {
 
 export {
   addEvidence,
+  retractEvidence,
   listEvidence,
   verifyTaskEvidence,
   requirePassingEvidence

@@ -160,6 +160,43 @@ test('task add writes the task board', async () => {
   }
 });
 
+test('a failing evidence can be retracted by a reviewer', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'pp-cli-retract-'));
+  try {
+    await run(['init', dir, '--name', 'demo', '--json']);
+    await run(['task', 'claim', 'T-001', '--by', 'executor:w1', '--dir', dir, '--json']);
+
+    const added = await run([
+      'evidence', 'add', '--task', 'T-001', '--kind', 'test', '--uri', 'npm test',
+      '--verdict', 'fail', '--by', 'executor:w1', '--dir', dir, '--json'
+    ]);
+    assert.equal(added.code, 0);
+    const evidenceId = JSON.parse(added.stdout).data.id;
+
+    const refusedDone = await run(['task', 'report', 'T-001', '--state', 'done', '--by', 'executor:w1', '--dir', dir, '--json']);
+    assert.equal(refusedDone.code, 3);
+
+    const wrongRole = await run([
+      'evidence', 'retract', evidenceId, '--by', 'executor:w1', '--reason', 'trust me', '--dir', dir, '--json'
+    ]);
+    assert.equal(wrongRole.code, 3);
+
+    const retracted = await run([
+      'evidence', 'retract', evidenceId, '--by', 'reviewer:rita', '--reason', 'fixed in 048795a', '--dir', dir, '--json'
+    ]);
+    assert.equal(retracted.code, 0);
+
+    await run([
+      'evidence', 'add', '--task', 'T-001', '--kind', 'test', '--uri', 'npm test',
+      '--verdict', 'pass', '--by', 'executor:w1', '--dir', dir, '--json'
+    ]);
+    const done = await run(['task', 'report', 'T-001', '--state', 'done', '--by', 'executor:w1', '--dir', dir, '--json']);
+    assert.equal(done.code, 0);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('the report command summarises progress and gaps', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'pp-cli-report-'));
   try {

@@ -16,7 +16,17 @@
     "verdict": { "type": "string", "enum": ["pass", "fail", "inconclusive"] },
     "producedBy": { "type": "string", "minLength": 1 },
     "producedAt": { "type": "string" },
-    "note": { "type": ["string", "null"] }
+    "note": { "type": ["string", "null"] },
+    "retracted": {
+      "type": ["object", "null"],
+      "properties": {
+        "by": { "type": "string", "minLength": 1 },
+        "at": { "type": "string" },
+        "reason": { "type": "string", "minLength": 1 }
+      },
+      "required": ["by", "at", "reason"],
+      "additionalProperties": false
+    }
   },
   "additionalProperties": true
 }

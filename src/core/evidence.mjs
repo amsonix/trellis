@@ -34,8 +34,7 @@ export async function listEvidence(root, taskId = null) {
   return taskId ? ledger.items.filter((item) => item.taskId === taskId) : ledger.items;
 }
 
-export async function addEvidence(root, { taskId, kind, uri, verdict, by, note = null }) {
-  if (!taskId) throw new UsageError('evidence add needs --task <T-NNN>');
+export async function addEvidence(root, { taskId, kind, uri, verdict, by, note = null }) {  if (!taskId) throw new UsageError('evidence add needs --task <T-NNN>');
   if (!EVIDENCE_KINDS.includes(kind)) {
     throw new UsageError(`--kind must be one of: ${EVIDENCE_KINDS.join(', ')}`);
   }
@@ -68,14 +67,46 @@ export async function addEvidence(root, { taskId, kind, uri, verdict, by, note =
   return record;
 }
 
+export const RETRACTOR_ROLES = ['human', 'reviewer', 'verifier'];
+
+export async function retractEvidence(root, evidenceId, { by, reason }) {
+  if (!evidenceId) throw new UsageError('evidence retract needs an evidence id');
+  if (!by) throw new UsageError('evidence retract needs --by <role>:<name>');
+  if (!reason || String(reason).trim() === '') {
+    throw new UsageError('evidence retract needs --reason "<why>"');
+  }
+  const actor = parseActor(by);
+  if (!RETRACTOR_ROLES.includes(actor.role)) {
+    throw new RefusedError(
+      'EVIDENCE_RETRACT_ROLE',
+      `${actor.raw} cannot retract evidence; allowed: ${RETRACTOR_ROLES.join(', ')}`,
+      { actor: actor.raw, allowed: RETRACTOR_ROLES }
+    );
+  }
+
+  const ledger = await loadEvidence(root);
+  const record = ledger.items.find((item) => item.id === evidenceId);
+  if (!record) {
+    throw new RefusedError('EVIDENCE_UNKNOWN', `no evidence record '${evidenceId}'`, { evidence: evidenceId });
+  }
+  if (record.retracted) {
+    throw new RefusedError('EVIDENCE_ALREADY_RETRACTED', `evidence ${evidenceId} is already retracted`, {
+      evidence: evidenceId
+    });
+  }
+  record.retracted = { by: actor.raw, at: nowIso(), reason: String(reason).trim() };
+  await saveEvidence(root, ledger);
+  return record;
+}
+
 export async function verifyTaskEvidence(root, taskId) {
-  const items = await listEvidence(root, taskId);
+  const items = (await listEvidence(root, taskId)).filter((item) => !item.retracted);
   const checks = [];
   const add = (code, severity, message, extra = {}) =>
     checks.push(makeCheck(code, severity, message, { stage: 'executing', task: taskId, ...extra }));
 
   if (items.length === 0) {
-    add('EVIDENCE_MISSING', 'fail', `task ${taskId} has no evidence`);
+    add('EVIDENCE_MISSING', 'fail', `task ${taskId} has no active evidence`);
     return checks;
   }
 

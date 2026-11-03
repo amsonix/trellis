@@ -214,6 +214,10 @@ Rules:
 - A task cannot be `done` without a `pass` and with any `fail`.
 - A gate cannot be approved on a task whose evidence does not verify.
 - Evidence is not a claim in a report; it is a checkable record.
+- A record can be **retracted** by a human, reviewer or verifier with a written
+  reason. The record stays in the ledger marked `retracted` and no longer counts
+  toward verification; the producing role cannot retract its own failure. This
+  is how a bug goes from a failing reproduction to a passing fix.
 
 ## 9. Roles
 
@@ -335,14 +339,15 @@ Implemented in `0.1.0`:
   and `task add` with the same validation;
 - gates `G0`–`G7`, approver roles, order, waivers, per-task `G5`, and digests
   that make a passed gate stale when its artifacts change;
-- evidence ledger, passing/failing/inconclusive verification;
+- evidence ledger, passing/failing/inconclusive verification, and retraction
+  with a reason by a human, reviewer or verifier;
 - leases on task claim, release, conflict detection, `guard commit --staged`
   with `--observe`;
 - `status`, `check`, `next`, `brief`, `report`, `reindex`, JSON envelope, exit
   codes;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 65 `node:test` cases.
+- 70 `node:test` cases.
 
 Not in `0.1.0`:
 
