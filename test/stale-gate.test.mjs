@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { appendFile, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { approveGate } from '../src/core/gates.mjs';
-import { addTask, claimTask, projectReport, projectStatus, runChecks } from '../src/core/project.mjs';
+import { addTask, claimTask, nextAction, projectReport, projectStatus, runChecks } from '../src/core/project.mjs';
 import { cleanup, makeProject } from './helpers.mjs';
 
 async function approveG0(dir) {
@@ -136,6 +136,28 @@ test('two stale plan gates are re-approved in order, not blocked by each other',
 
     await approveGate(dir, 'G4', { by: 'coordinator:kim' });
     assert.equal((await projectStatus(dir)).staleGates.length, 0);
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('next still lists claimable work while a gate waits', async () => {
+  const dir = await makeProject('generic');
+  try {
+    for (const [gate, by] of [
+      ['G0', 'human:alice'], ['G1', 'architect:ann'], ['G2', 'architect:ann'],
+      ['G3', 'human:alice'], ['G4', 'coordinator:kim']
+    ]) {
+      await approveGate(dir, gate, { by });
+    }
+    await addTask(dir, {
+      title: 'Later work', scope: 'docs', acceptance: 'done', verification: 'manual', by: 'coordinator:kim'
+    });
+
+    const next = await nextAction(dir, 'executor');
+    assert.equal(next.kind, 'gate');
+    assert.equal(next.needsUser, true);
+    assert.ok(next.alsoReady.some((task) => task.id === 'T-002'));
   } finally {
     await cleanup(dir);
   }

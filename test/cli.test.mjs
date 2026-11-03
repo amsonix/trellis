@@ -324,6 +324,11 @@ test('the read side of the CLI returns envelopes', async () => {
 
     const guard = await run(['guard', 'commit', '--task', 'T-001', '--staged', '--dir', dir, '--json']);
     assert.equal(guard.code, 4);
+
+    const guarded = await run(['guard', 'commit', '--task', 'T-001', '--paths', 'src/ok.mjs', '--dir', dir, '--json']);
+    assert.equal(guarded.code, 0);
+    const outside = await run(['guard', 'commit', '--task', 'T-001', '--paths', 'docs/nope.md', '--dir', dir, '--json']);
+    assert.equal(outside.code, 3);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

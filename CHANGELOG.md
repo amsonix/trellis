@@ -4,6 +4,16 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `guard commit --paths <a,b>` checks an explicit path set, so parallel lanes
+  sharing one git index no longer block each other.
+- `next` returns `alsoReady` when it stops at a gate but execution is still
+  possible, instead of hiding the claimable tasks.
+- 117 `node:test` cases.
+
 ## [0.4.0] - 2026-11-03
 
 ### Added

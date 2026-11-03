@@ -289,7 +289,7 @@ trellis verify <T-NNN> [--json]
 
 trellis lease status [--json]
 trellis lease release <T-NNN> --by <role>:<name>
-trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
+trellis guard commit --task <T-NNN> (--staged | --paths <a,b>) [--observe] [--dir <dir>]
 trellis reindex [dir] [--json]
 trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
 trellis export --a2a [dir] [--json]

@@ -168,7 +168,8 @@ gate/评审/失效批准/阻塞/检查失败时 `needsUser=true` 并给 `reason`
 
 - `task claim` 按任务写域取租约，冲突则拒绝；
 - `task report --state done` 释放租约；
-- `guard commit` 检查暂存路径是否在写域内、是否被其他任务租用；
+- `guard commit` 检查暂存路径（或显式 `--paths a,b`，避免并行 lane 共用 index）
+  是否在写域内、是否被其他任务租用；
 - `--observe` 只报告不阻断；
 - 租约是建议性的，不是内核锁，也不是安全边界。
 

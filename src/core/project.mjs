@@ -272,6 +272,12 @@ function stopReason(result) {
 async function nextFrom(root, state, tasks, checks, role = null) {
   const result = await computeNext(root, state, tasks, checks, role);
   const needsUser = result.kind !== 'tasks';
+  if (needsUser && gateSatisfied(state, 'G4') && !gateSatisfied(state, 'G6')) {
+    const ready = readyTasks(tasks, role);
+    if (ready.length > 0) {
+      result.alsoReady = ready.map(({ id, title, priority }) => ({ id, title, priority }));
+    }
+  }
   return { ...result, needsUser, reason: needsUser ? stopReason(result) : null };
 }
 

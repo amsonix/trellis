@@ -57,6 +57,7 @@ const VALUE_OPTIONS = new Set([
   'depends-on',
   'follow-up-of',
   'priority',
+  'paths',
   'archive-retracted',
   'question',
   'decision',
@@ -142,7 +143,7 @@ Usage:
   trellis verify <T-NNN> [--dir <dir>] [--json]
   trellis lease status [--dir <dir>] [--json]
   trellis lease release <T-NNN> --by <role>:<name> [--dir <dir>]
-  trellis guard commit --task <T-NNN> --staged [--observe] [--dir <dir>]
+  trellis guard commit --task <T-NNN> (--staged | --paths <a,b>) [--observe] [--dir <dir>]
   trellis reindex [dir] [--json]
   trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
   trellis export --a2a [dir] [--json]
@@ -533,8 +534,12 @@ async function dispatch(args) {
     if (subcommand !== 'commit') throw new UsageError(`unknown guard subcommand '${subcommand}' (commit)`);
     const dir = dirOf(args);
     if (!options.task) throw new UsageError('guard commit needs --task <T-NNN>');
-    if (!options.staged) throw new UsageError('guard commit needs --staged (reads git diff --cached)');
-    const stagedPaths = await gitStagedPaths(dir);
+    if (!options.staged && !options.paths) {
+      throw new UsageError('guard commit needs --staged (git diff --cached) or --paths <a,b>');
+    }
+    const stagedPaths = options.paths
+      ? String(options.paths).split(',').map((value) => value.trim()).filter(Boolean)
+      : await gitStagedPaths(dir);
     if (stagedPaths.length === 0) throw new UsageError('guard commit: no staged paths');
     const result = await guardCommit(dir, { taskId: options.task, stagedPaths, observe: Boolean(options.observe) });
     const exitCode = result.ok ? 0 : 3;
