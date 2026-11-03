@@ -1,7 +1,7 @@
 ---
 name: trellis
 version: 1.0.0
-description: "Use when a project contains a .trellis/ directory, when the user mentions Trellis, stages, gates, tasks, leases or evidence, or when you are asked to plan, review, verify or release a project that uses this protocol. Reads the protocol state before writing, claims tasks, records evidence and never self-approves."
+description: "Use when a project contains a .trellis/ directory, when the user mentions Trellis, stages, gates, tasks, leases or evidence, or when you are asked to plan, review, verify or release a project that uses this protocol. Reads the protocol state before writing, claims tasks, records evidence and never self-approves. 中文：项目里有 .trellis/，或用户提到 Trellis、阶段、gate、任务、租约、证据时使用。"
 whenToUse: "Any change to a project that has .trellis/, or any request to plan, review, verify or release such a project."
 ---
 

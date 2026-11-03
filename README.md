@@ -1,5 +1,7 @@
 # Trellis
 
+**English** | [中文](README.zh.md)
+
 [![CI](https://github.com/amsonix/trellis/actions/workflows/ci.yml/badge.svg)](https://github.com/amsonix/trellis/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](package.json)
