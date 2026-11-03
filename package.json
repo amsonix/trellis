@@ -1,0 +1,26 @@
+{
+  "name": "project-protocol",
+  "version": "0.1.0",
+  "description": "An agent-facing protocol for building projects: stages, artifacts, gates, roles, tasks and evidence.",
+  "type": "module",
+  "bin": {
+    "project-protocol": "./bin/project-protocol.mjs"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --test && node bin/project-protocol.mjs --version",
+    "demo": "node bin/project-protocol.mjs init /tmp/project-protocol-demo --profile web-app --name demo"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "keywords": [
+    "agents",
+    "project-management",
+    "protocol",
+    "gates",
+    "artifacts",
+    "evidence"
+  ]
+}

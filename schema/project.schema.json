@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/project-protocol/project.schema.json",
+  "title": "Project Protocol state",
+  "type": "object",
+  "required": ["schemaVersion", "project", "gates", "taskGates", "audit"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "project": {
+      "type": "object",
+      "required": ["name", "profile", "createdAt", "updatedAt"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "profile": { "type": "string", "enum": ["web-app", "library", "cli"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["id", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "type": "string", "enum": ["pending", "passed", "waived"] },
+          "approvedBy": { "type": ["string", "null"] },
+          "at": { "type": ["string", "null"] },
+          "note": { "type": ["string", "null"] },
+          "reason": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "taskGates": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["id", "taskId", "status"],
+        "properties": {
+          "id": { "const": "G5" },
+          "taskId": { "type": "string" },
+          "status": { "type": "string", "enum": ["pending", "passed", "waived"] },
+          "approvedBy": { "type": ["string", "null"] },
+          "at": { "type": ["string", "null"] },
+          "note": { "type": ["string", "null"] },
+          "reason": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "audit": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["at", "action"],
+        "properties": {
+          "at": { "type": "string" },
+          "action": { "type": "string" },
+          "actor": { "type": ["string", "null"] },
+          "detail": { "type": ["object", "null"] }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/project-protocol/evidence.schema.json",
+  "title": "Project Protocol evidence",
+  "type": "object",
+  "required": ["id", "taskId", "kind", "uri", "verdict", "producedBy", "producedAt"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "taskId": { "type": "string", "pattern": "^T-[0-9]+$" },
+    "kind": {
+      "type": "string",
+      "enum": ["test", "benchmark", "review", "approval", "log", "screenshot", "doc"]
+    },
+    "uri": { "type": "string", "minLength": 1 },
+    "sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+    "verdict": { "type": "string", "enum": ["pass", "fail", "inconclusive"] },
+    "producedBy": { "type": "string", "minLength": 1 },
+    "producedAt": { "type": "string" },
+    "note": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}

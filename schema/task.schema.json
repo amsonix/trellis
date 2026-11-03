@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/project-protocol/task.schema.json",
+  "title": "Project Protocol task",
+  "type": "object",
+  "required": [
+    "id",
+    "milestone",
+    "title",
+    "role",
+    "scope",
+    "dependsOn",
+    "acceptance",
+    "verification",
+    "status"
+  ],
+  "properties": {
+    "id": { "type": "string", "pattern": "^T-[0-9]+$" },
+    "milestone": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "role": {
+      "type": "string",
+      "enum": ["human", "coordinator", "architect", "executor", "reviewer", "verifier", "operator"]
+    },
+    "scope": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "dependsOn": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^T-[0-9]+$" }
+    },
+    "acceptance": { "type": "string", "minLength": 1 },
+    "verification": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["todo", "ready", "in_progress", "review", "blocked", "done"]
+    }
+  },
+  "additionalProperties": true
+}

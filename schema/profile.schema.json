@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/project-protocol/profile.schema.json",
+  "title": "Project Protocol profile",
+  "type": "object",
+  "required": ["id", "title", "requiredArtifacts", "optionalArtifacts", "gates"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "requiredArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "optionalArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "gates": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["G0", "G1", "G2", "G3", "G4", "G5", "G6", "G7"] }
+    }
+  },
+  "additionalProperties": false
+}
