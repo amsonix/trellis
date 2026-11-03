@@ -20,9 +20,11 @@ Update `CHANGELOG.md`: move `Unreleased` entries into the new version.
 node scripts/release-tarball.mjs
 ```
 
-It writes `dist/@amsonix-trellis-<version>.tgz` and prints the sha256. The file
-set comes from the `files` list in `package.json`, so the tarball and the npm
-package can never disagree.
+It writes `dist/amsonix-trellis-<version>.tgz`, prints the commit, the sha256
+and warns unless `HEAD` is tagged exactly `v<version>`. A tarball built from an
+untagged commit is a development build and must not be attached to an existing
+release. The file set comes from the `files` list in `package.json`, so the
+tarball and the npm package can never disagree.
 
 ## 3. Tag and publish the Release
 
