@@ -1,0 +1,27 @@
+name: Feature request
+description: A rule, a check or a command Trellis should have.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that Trellis makes hard today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+      description: The command, the rule or the artifact you would add.
+    validations:
+      required: true
+  - type: textarea
+    id: negative
+    attributes:
+      label: How it could fail
+      description: |
+        This repository requires a negative control for every blocking rule: a
+        fixture that makes the new check fail. Sketch one.
+    validations:
+      required: true

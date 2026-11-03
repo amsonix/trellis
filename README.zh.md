@@ -216,6 +216,7 @@ trellis profile list [--json]
 ```bash
 npm test              # node:test，无依赖
 node --test test/     # 同上
+npm run coverage      # 测试 + CI 强制的覆盖率门槛
 ```
 
 目录结构：

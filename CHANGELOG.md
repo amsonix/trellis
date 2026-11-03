@@ -28,7 +28,10 @@ All notable changes to this project are recorded here. The format follows
   `guard`, `reindex`, `profile`, `--json` and stable exit codes.
 - `brief [--role <role>]`: the current gate, the read/write set, the role's
   prohibitions and the next commands, from the profile, the stage and the role.
-- 42 `node:test` cases, including negative controls for every blocking rule.
+- A CI-enforced coverage gate (`npm run coverage`); the thresholds are a floor,
+  not a target.
+- `SECURITY.md` and issue templates for bug reports and feature requests.
+- 46 `node:test` cases, including negative controls for every blocking rule.
 
 ### Fixed
 

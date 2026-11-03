@@ -24,5 +24,7 @@ jobs:
           node-version: ${{ matrix.node }}
       - name: Test
         run: node --test
+      - name: Coverage gate
+        run: node scripts/coverage-gate.mjs
       - name: CLI smoke test
         run: node bin/trellis.mjs --version

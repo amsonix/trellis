@@ -320,7 +320,7 @@ Implemented in `0.1.0`:
 - leases on task claim, release, conflict detection, `guard commit --staged`
   with `--observe`;
 - `status`, `check`, `next`, `brief`, `reindex`, JSON envelope, exit codes;
-- 42 `node:test` cases.
+- 46 `node:test` cases.
 
 Not in `0.1.0`:
 

@@ -227,6 +227,7 @@ Exit codes are part of the contract:
 ```bash
 npm test              # node:test, no dependencies
 node --test test/     # same
+npm run coverage      # test + the coverage gate CI enforces
 ```
 
 Layout:
@@ -245,7 +246,8 @@ See [`SPEC.md`](SPEC.md) for the normative protocol and [`AGENTS.md`](AGENTS.md)
 for the rules an agent working on this repository follows.
 
 Contributions are welcome; see [`CONTRIBUTING.md`](CONTRIBUTING.md). Issues and
-pull requests live at <https://github.com/amsonix/trellis>.
+pull requests live at <https://github.com/amsonix/trellis>. Report security
+issues privately, as described in [`SECURITY.md`](SECURITY.md).
 
 ---
 

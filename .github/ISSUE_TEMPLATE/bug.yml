@@ -1,0 +1,49 @@
+name: Bug report
+description: Something in the protocol, the CLI or the skill is wrong.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report security issues here; see [SECURITY.md](../SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: Trellis version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      placeholder: "22.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - CLI
+        - core
+        - init / templates
+        - agent skill
+        - docs
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: The command you ran, what you expected and what you got. Paste the `--json` envelope when you have it.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: The smallest `init` plus command sequence that shows the problem.
+    validations:
+      required: true

@@ -33,6 +33,7 @@
   ],
   "scripts": {
     "test": "node --test",
+    "coverage": "node scripts/coverage-gate.mjs",
     "check": "node --test && node bin/trellis.mjs --version",
     "demo": "node bin/trellis.mjs init /tmp/trellis-demo"
   },
