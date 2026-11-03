@@ -282,6 +282,10 @@ read-modify-write, so concurrent processes serialize instead of losing updates;
 JSON ledgers are written through a temporary file and renamed. A lock older than
 ten seconds is treated as stale.
 
+Audit entries are appended to `.trellis/audit.jsonl`; `state.json` keeps the most
+recent 200 so it does not grow with history. `TRELLIS_STRICT=1` makes `task claim`
+refuse before `G4` instead of only warning.
+
 `next` is the loop contract: it returns `kind: "tasks"` with `needsUser: false`
 when a batch is ready to run, or `needsUser: true` with a `reason` when a gate,
 a task review, a stale approval, a blocked task or a failing check needs a
@@ -375,7 +379,7 @@ Implemented in `0.1.0`:
   codes;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 93 `node:test` cases.
+- 97 `node:test` cases.
 
 Not in `0.1.0`:
 

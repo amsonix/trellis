@@ -616,6 +616,11 @@ export async function agentBrief(root, { role = null } = {}) {
 export async function claimTask(root, taskId, { by }) {
   const actor = parseActor(by);
   const state = await loadState(root);
+  if (process.env.TRELLIS_STRICT === '1' && !gateSatisfied(state, 'G4')) {
+    throw new RefusedError('GATE_OUT_OF_ORDER', 'cannot claim a task before G4 Ready (TRELLIS_STRICT=1)', {
+      gate: 'G4'
+    });
+  }
   const { tasks } = await parseTasks(root);
   const task = taskById(tasks, taskId);
   if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });

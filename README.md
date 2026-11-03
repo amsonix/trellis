@@ -181,6 +181,10 @@ evidence or asking questions at the same time queue behind each other instead of
 overwriting one another. A lock older than ten seconds is treated as stale and
 stolen.
 
+Audit entries are appended to `.trellis/audit.jsonl`; `state.json` keeps only the
+most recent 200. Set `TRELLIS_STRICT=1` to make `task claim` refuse before `G4`
+instead of only warning.
+
 ---
 
 ## The lifecycle

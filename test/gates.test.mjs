@@ -39,6 +39,25 @@ test('work started before G4 is reported as a warning', async () => {
   }
 });
 
+test('TRELLIS_STRICT=1 blocks a claim before G4', async () => {
+  const dir = await makeProject('generic');
+  const previous = process.env.TRELLIS_STRICT;
+  process.env.TRELLIS_STRICT = '1';
+  try {
+    await assert.rejects(
+      () => claimTask(dir, 'T-001', { by: 'executor:w1' }),
+      (error) => error.code === 'GATE_OUT_OF_ORDER'
+    );
+    await approveProjectGates(dir, 'G4');
+    const claimed = await claimTask(dir, 'T-001', { by: 'executor:w1' });
+    assert.equal(claimed.task.status, 'in_progress');
+  } finally {
+    if (previous === undefined) delete process.env.TRELLIS_STRICT;
+    else process.env.TRELLIS_STRICT = previous;
+    await cleanup(dir);
+  }
+});
+
 async function approveProjectGates(dir, until = 'G4') {
   const sequence = [
     ['G0', 'human:alice'],

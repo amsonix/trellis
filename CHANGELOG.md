@@ -59,7 +59,10 @@ All notable changes to this project are recorded here. The format follows
   gate) and G2 now covers `docs/adr/*.md`.
 - `check` warns with `TASK_BEFORE_PLAN` when a task is already in progress
   before `G4`, instead of silently allowing execution before planning.
-- 93 `node:test` cases, including negative controls for every blocking rule.
+- Audit entries append to `.trellis/audit.jsonl`; `state.json` keeps the last 200
+  so it does not grow with history.
+- `TRELLIS_STRICT=1` makes `task claim` refuse before `G4` instead of warning.
+- 97 `node:test` cases, including negative controls for every blocking rule.
 
 ### Fixed
 
