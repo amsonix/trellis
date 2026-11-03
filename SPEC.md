@@ -364,7 +364,7 @@ artifact.
 
 ## 15. Implementation status
 
-Implemented in `0.1.0`:
+Implemented through `0.2.x`:
 
 - `init` on a new or existing project; it creates a fixed
   `<project>/.trellis/`, writes the agent skill once, and never overwrites
@@ -378,17 +378,19 @@ Implemented in `0.1.0`:
 - a warning (`TASK_BEFORE_PLAN`) when work is already in progress before `G4`;
 - gates `G0`–`G7`, approver roles, order, waivers, per-task `G5`, and digests
   that make a passed gate stale when its artifacts change;
-- evidence ledger, passing/failing/inconclusive verification, and retraction
-  with a reason by a human, reviewer or verifier;
+- evidence ledger as an append-only `evidence.jsonl` event log, with
+  passing/failing/inconclusive verification, retraction, and `compact` to fold it;
 - leases on task claim, release, conflict detection, `guard commit --staged`
-  with `--observe`;
-- `status`, `check`, `next`, `brief`, `report`, `reindex`, JSON envelope, exit
-  codes;
+  with `--observe`, and released leases archived to `leases.archive.jsonl`;
+- `status`, `check`, `next`, `brief`, `report`, `compact`, `reindex`, JSON
+  envelope, exit codes;
+- a per-project write lock and atomic JSON writes;
+- `TRELLIS_AGENT` attribution and `TRELLIS_STRICT=1`;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
 - 106 `node:test` cases.
 
-Not in `0.1.0`:
+Not yet:
 
 - measurement guard (shared target / renderer identity);
 - file-level write enforcement (only commit-time guard);

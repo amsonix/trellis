@@ -91,11 +91,15 @@ trellis brief [dir] [--role <role>] [--json]
 trellis report [dir] [--json]
 
 trellis task list [dir] [--json]
+trellis task add --title <text> --scope <paths> --acceptance <text> --verification <text> --by <role>:<name>
 trellis task claim <T-NNN> --by <role>:<name>
+trellis task ask <T-NNN> --question <text> --by <role>:<name>
+trellis task answer <Q-NNN> --decision <text> --by human:<name>
 trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> --by <role>:<name>
 
 trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> --by <role>:<name>
 trellis evidence list [--task <T-NNN>] [--json]
+trellis evidence retract <EV-id> --by <role>:<name> --reason <text>
 trellis verify <T-NNN> [--json]
 
 trellis lease status [--json]
@@ -106,6 +110,7 @@ trellis gate <G0..G7> --approve --by <role>:<name> [--task <T-NNN>] [--note <tex
 trellis gate <G0..G7> --waive --by human:<name> --reason <text> [--task <T-NNN>]
 
 trellis reindex [dir] [--json]
+trellis compact [dir] [--dry-run] [--json]
 trellis profile list [--json]
 ```
 
