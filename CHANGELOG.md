@@ -18,7 +18,7 @@ All notable changes to this project are recorded here. The format follows
 - Leases acquired by `task claim`; `guard commit --staged` with `--observe`.
 - `status`, `check`, `next`, `gate`, `task`, `evidence`, `verify`, `lease`,
   `guard`, `reindex`, `profile`, `--json` and stable exit codes.
-- 29 `node:test` cases, including negative controls for every blocking rule.
+- 30 `node:test` cases, including negative controls for every blocking rule.
 
 ### Not yet
 

@@ -3,9 +3,25 @@
   "version": "0.1.0",
   "description": "An agent-facing protocol for building projects: stages, artifacts, gates, roles, tasks and evidence.",
   "type": "module",
+  "main": "./src/index.mjs",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./cli": "./src/cli.mjs"
+  },
   "bin": {
     "project-protocol": "./bin/project-protocol.mjs"
   },
+  "files": [
+    "bin/",
+    "src/",
+    "templates/",
+    "schema/",
+    "README.md",
+    "SPEC.md",
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "node --test",
     "check": "node --test && node bin/project-protocol.mjs --version",

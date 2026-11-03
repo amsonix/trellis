@@ -181,6 +181,7 @@ Layout:
 
 ```text
 src/core/     pure domain: artifacts, tasks, gates, evidence, leases, store
+src/index.mjs public library surface (import this, not a deep path)
 src/cli.mjs   argument parsing, human output, JSON envelope
 templates/    the files `init` writes
 schema/       JSON Schemas for the state, task, evidence and profile
