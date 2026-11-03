@@ -24,7 +24,8 @@ everything in one fixed directory inside the project:
 ```
 
 The Markdown artifacts there are the source of truth; `state.json`,
-`evidence.json` and `leases.json` are the ledger. `init` can run on an existing
+`evidence.jsonl` (an append-only event log), `leases.json` (active leases
+only) and `leases.archive.jsonl` (released leases) are the ledger. `init` can run on an existing
 project: it creates `.trellis/` and, once, the agent skill at
 `.agents/skills/trellis/SKILL.md`. It never overwrites an existing file.
 
@@ -84,8 +85,9 @@ trellis --help
   docs/INVARIANTS.md           things that must never break
   docs/adr/0001-....md         the first architecture decision
   state.json                   gate ledger and audit
-  evidence.json                evidence ledger
-  leases.json                  write leases (the execution constraint)
+  evidence.jsonl               evidence event log (append-only)
+  leases.json                  active write leases (the execution constraint)
+  leases.archive.jsonl         released leases (append-only)
 ```
 
 A profile selects which artifacts are required. It is **optional**; the default
@@ -264,7 +266,7 @@ audit. If the work overlaps an open task, pass `--depends-on` instead of widenin
 its scope.
 
 Failed evidence can be retracted by a human, reviewer or verifier with a reason:
-`evidence retract <EV-id> --reason "..."`. The record stays in `evidence.json`
+`evidence retract <EV-id> --reason "..."`. The record stays in `evidence.jsonl`
 marked `retracted` and stops blocking `done`, so the bug flow is real: record the
 failing reproduction, fix it, retract the failure, add the passing evidence. The
 producing role cannot retract its own failure.

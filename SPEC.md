@@ -41,8 +41,9 @@ It answers five questions at every moment:
 1. **The fixed management directory `<project>/.trellis/` holds the
    artifacts.** `PROJECT.md`, `docs/*.md` and `docs/adr/*.md` inside it are the
    source of truth and are committed with the project.
-2. **The same directory holds the ledger.** `state.json`, `evidence.json` and
-   `leases.json` record gates, evidence, leases and history. The ledger can be
+2. **The same directory holds the ledger.** `state.json`, `evidence.jsonl`, `leases.json`, `leases.archive.jsonl` and
+   `audit.jsonl` record gates, evidence, active leases, released leases and
+   history. The ledger can be
    rebuilt with `reindex` when the artifacts are intact.
 3. **A task is a row in `.trellis/docs/TASKS.md`.** A lease is a
    separate record that names the task, the actor and the write domains.
@@ -223,7 +224,8 @@ done        → (terminal)
 
 Rules:
 
-- Evidence is stored in `.trellis/evidence.json`.
+- Evidence is stored in `.trellis/evidence.jsonl` as an append-only event log:
+  `add` and `retract` events are folded by evidence id when read.
 - A local file URI gets a sha256 at add time; a changed file needs new evidence.
 - A task cannot be `done` without a `pass` and with any `fail`.
 - A gate cannot be approved on a task whose evidence does not verify.
@@ -310,8 +312,8 @@ controls for each blocking rule.
 
 ## 12. Leases (execution constraint)
 
-A lease is a held claim over write domains, recorded in
-`.trellis/leases.json`.
+A lease is a held claim over write domains. Active leases are recorded in
+`.trellis/leases.json`; released leases move to `.trellis/leases.archive.jsonl`.
 
 - `task claim` acquires a lease over the task's scope; a conflicting lease
   refuses the claim.
@@ -383,7 +385,7 @@ Implemented in `0.1.0`:
   codes;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 101 `node:test` cases.
+- 103 `node:test` cases.
 
 Not in `0.1.0`:
 

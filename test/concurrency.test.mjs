@@ -37,9 +37,13 @@ test('parallel evidence writes are not lost', async () => {
     }
     await Promise.all(runs);
 
-    const ledger = await readJson(path.join(dir, '.trellis/evidence.json'));
-    assert.equal(ledger.items.length, 10);
-    assert.equal(new Set(ledger.items.map((item) => item.uri)).size, 10);
+    const lines = (await readFile(path.join(dir, '.trellis/evidence.jsonl'), 'utf8'))
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    const adds = lines.filter((event) => event.type === 'add');
+    assert.equal(adds.length, 10);
+    assert.equal(new Set(adds.map((event) => event.uri)).size, 10);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

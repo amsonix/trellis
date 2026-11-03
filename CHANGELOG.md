@@ -4,7 +4,7 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.0] - 2026-11-03
 
 ### Added
 
@@ -13,7 +13,13 @@ All notable changes to this project are recorded here. The format follows
 - `examples/spec-kit/sync.mjs`: capture a Spec Kit `tasks.md` checklist into the
   task board, idempotently and in order.
 - CI now runs on Windows as well as Linux, for Node 20, 22 and 24.
-- 101 `node:test` cases.
+- Evidence is an append-only `evidence.jsonl` event log: `add` appends without
+  reading the history, `retract` appends an event, and readers fold by id.
+- `leases.json` holds only active leases; released leases move to
+  `leases.archive.jsonl`, so the active file stays small.
+- Legacy `evidence.json` and oversized `leases.json` are migrated on first read
+  (`evidence.json` is renamed to `evidence.json.migrated`).
+- 103 `node:test` cases.
 
 ## [0.1.1] - 2026-11-03
 

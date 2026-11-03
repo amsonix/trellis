@@ -1,41 +1,87 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { EVIDENCE_KINDS, EVIDENCE_VERDICTS } from './constants.mjs';
 import { makeCheck } from './checks.mjs';
 import { RefusedError, UsageError } from './errors.mjs';
-import { exists, fileSha256, nowIso, parseActor, readJson, writeJson } from './util.mjs';
+import { exists, fileSha256, nowIso, parseActor, readText } from './util.mjs';
 import { STATE_DIR } from './store.mjs';
 import { currentAgent } from './identity.mjs';
 
-export const EVIDENCE_FILE = `${STATE_DIR}/evidence.json`;
+export const EVIDENCE_FILE = `${STATE_DIR}/evidence.jsonl`;
+export const LEGACY_EVIDENCE_FILE = `${STATE_DIR}/evidence.json`;
 
 export function evidencePath(root) {
   return path.join(root, EVIDENCE_FILE);
 }
 
-export async function loadEvidence(root) {
-  const file = evidencePath(root);
-  try {
-    const data = await readJson(file);
-    return {
-      schemaVersion: data.schemaVersion ?? 1,
-      items: Array.isArray(data.items) ? data.items : []
-    };
-  } catch (error) {
-    if (error.code === 'ENOENT') return { schemaVersion: 1, items: [] };
-    throw error;
-  }
+function legacyPath(root) {
+  return path.join(root, LEGACY_EVIDENCE_FILE);
 }
 
-export async function saveEvidence(root, ledger) {
-  await writeJson(evidencePath(root), ledger);
+async function appendEvent(file, event) {
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.appendFile(file, `${JSON.stringify(event)}\n`, 'utf8');
+}
+
+async function readEvents(root) {
+  const file = evidencePath(root);
+  let text;
+  try {
+    text = await readText(file);
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+  const events = [];
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    try {
+      events.push(JSON.parse(line));
+    } catch {
+      // A torn final line from a crash is ignored; the rest of the log is valid.
+    }
+  }
+  return events;
+}
+
+function fold(events) {
+  const records = new Map();
+  for (const event of events) {
+    if (event.type === 'add') {
+      const { type, ...record } = event;
+      records.set(record.id, { ...record, retracted: null });
+    } else if (event.type === 'retract') {
+      const record = records.get(event.id);
+      if (record) record.retracted = { by: event.by, at: event.at, reason: event.reason };
+    }
+  }
+  return [...records.values()];
+}
+
+export async function migrateLegacyEvidence(root) {
+  const legacy = legacyPath(root);
+  if (!(await exists(legacy))) return false;
+  const data = JSON.parse(await readText(legacy));
+  const items = Array.isArray(data.items) ? data.items : [];
+  if (items.length > 0) {
+    for (const item of items) await appendEvent(evidencePath(root), { type: 'add', ...item });
+  }
+  await fs.rename(legacy, `${legacy}.migrated`);
+  return true;
+}
+
+export async function loadEvidence(root) {
+  await migrateLegacyEvidence(root);
+  return { schemaVersion: 2, items: fold(await readEvents(root)) };
 }
 
 export async function listEvidence(root, taskId = null) {
-  const ledger = await loadEvidence(root);
-  return taskId ? ledger.items.filter((item) => item.taskId === taskId) : ledger.items;
+  const { items } = await loadEvidence(root);
+  return taskId ? items.filter((item) => item.taskId === taskId) : items;
 }
 
-export async function addEvidence(root, { taskId, kind, uri, verdict, by, note = null }) {  if (!taskId) throw new UsageError('evidence add needs --task <T-NNN>');
+export async function addEvidence(root, { taskId, kind, uri, verdict, by, note = null }) {
+  if (!taskId) throw new UsageError('evidence add needs --task <T-NNN>');
   if (!EVIDENCE_KINDS.includes(kind)) {
     throw new UsageError(`--kind must be one of: ${EVIDENCE_KINDS.join(', ')}`);
   }
@@ -51,8 +97,8 @@ export async function addEvidence(root, { taskId, kind, uri, verdict, by, note =
     digest = await fileSha256(local);
   }
 
-  const ledger = await loadEvidence(root);
   const record = {
+    type: 'add',
     id: `EV-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     taskId,
     kind,
@@ -64,9 +110,9 @@ export async function addEvidence(root, { taskId, kind, uri, verdict, by, note =
     agent: currentAgent(),
     note
   };
-  ledger.items.push(record);
-  await saveEvidence(root, ledger);
-  return record;
+  await appendEvent(evidencePath(root), record);
+  const { type, ...rest } = record;
+  return rest;
 }
 
 export const RETRACTOR_ROLES = ['human', 'reviewer', 'verifier'];
@@ -86,8 +132,8 @@ export async function retractEvidence(root, evidenceId, { by, reason }) {
     );
   }
 
-  const ledger = await loadEvidence(root);
-  const record = ledger.items.find((item) => item.id === evidenceId);
+  const { items } = await loadEvidence(root);
+  const record = items.find((item) => item.id === evidenceId);
   if (!record) {
     throw new RefusedError('EVIDENCE_UNKNOWN', `no evidence record '${evidenceId}'`, { evidence: evidenceId });
   }
@@ -96,9 +142,10 @@ export async function retractEvidence(root, evidenceId, { by, reason }) {
       evidence: evidenceId
     });
   }
-  record.retracted = { by: actor.raw, at: nowIso(), reason: String(reason).trim() };
-  await saveEvidence(root, ledger);
-  return record;
+
+  const event = { type: 'retract', id: evidenceId, by: actor.raw, at: nowIso(), reason: String(reason).trim() };
+  await appendEvent(evidencePath(root), event);
+  return { ...record, retracted: { by: event.by, at: event.at, reason: event.reason } };
 }
 
 export async function verifyTaskEvidence(root, taskId) {

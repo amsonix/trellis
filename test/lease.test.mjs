@@ -66,8 +66,13 @@ test('a released lease frees its domain for the next task', async () => {
     const lease = await acquireLease(dir, { taskId: 'T-002', actor: 'executor:worker-2', domains: ['src'] });
     assert.equal(lease.taskId, 'T-002');
 
-    const ledger = JSON.parse(await read(dir, '.trellis/leases.json'));
-    const released = ledger.items.find((item) => item.taskId === 'T-001');
+    const active = JSON.parse(await read(dir, '.trellis/leases.json'));
+    assert.equal(active.items.some((item) => item.taskId === 'T-001'), false);
+    const archive = (await read(dir, '.trellis/leases.archive.jsonl'))
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    const released = archive.find((item) => item.taskId === 'T-001');
     assert.equal(released.state, 'released');
     assert.equal(released.releasedBy, 'coordinator:lead');
 

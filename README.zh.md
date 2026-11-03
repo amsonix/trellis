@@ -22,8 +22,8 @@
 <project>/.trellis/
 ```
 
-其中的 Markdown 产物是事实来源；`state.json`、`evidence.json` 和
-`leases.json` 是账本。`init` 可以跑在已有项目上：它创建 `.trellis/`，并一次性写入
+其中的 Markdown 产物是事实来源；`state.json`、`evidence.jsonl`（仅追加的事件日志）、`leases.json`（仅活跃租约）
+和 `leases.archive.jsonl`（已释放租约）是账本。`init` 可以跑在已有项目上：它创建 `.trellis/`，并一次性写入
 agent skill 到 `.agents/skills/trellis/SKILL.md`。它从不覆盖已存在的文件。
 
 ```text
@@ -83,8 +83,9 @@ trellis --help
   docs/INVARIANTS.md           绝不能破坏的东西
   docs/adr/0001-....md         第一个架构决策
   state.json                   gate 账本与审计
-  evidence.json                证据账本
-  leases.json                  写租约（执行时的约束）
+  evidence.jsonl               证据事件日志（仅追加）
+  leases.json                  活跃写租约（执行时的约束）
+  leases.archive.jsonl         已释放租约（仅追加）
 ```
 
 profile 决定哪些产物是必需的。它**可选**，默认是 `generic`。
@@ -247,7 +248,7 @@ trellis profile list [--json]
 不是扩大自己的 scope。
 
 失败证据可以由 human、reviewer 或 verifier 带理由撤回：`evidence retract <EV-id>
---reason "..."`。记录仍留在 `evidence.json` 里并标为 `retracted`，但不再阻塞
+--reason "..."`。记录仍留在 `evidence.jsonl` 里并标为 `retracted`，但不再阻塞
 `done`，所以 bug 流程是真实的：先记录失败的复现，修好后撤回失败证据，再补一条
 通过证据。产出者角色不能撤回自己的失败。
 

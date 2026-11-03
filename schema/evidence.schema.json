@@ -13,6 +13,13 @@
     "producedAt"
   ],
   "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "add",
+        "retract"
+      ]
+    },
     "id": {
       "type": "string",
       "minLength": 1
@@ -97,5 +104,6 @@
       ]
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "One line of .trellis/evidence.jsonl. An \"add\" event carries the record; a \"retract\" event carries id, by, at and reason."
 }
