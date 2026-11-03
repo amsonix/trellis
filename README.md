@@ -176,6 +176,12 @@ current directory.
 A gate can be **waived** only by a human, with a reason, and the waiver is
 recorded in the audit log.
 
+An approval records a digest of the artifacts it depends on. If they change —
+`PROJECT.md`, `ROADMAP.md`, the task structure — the gate becomes **stale**:
+`check` fails with `GATE_STALE`, later gates are refused, and `status` marks it
+`STALE` until it is re-approved. Task status changes do not make the plan gates
+stale; adding or reshaping a task does.
+
 ---
 
 ## Commands

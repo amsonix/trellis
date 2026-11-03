@@ -61,6 +61,9 @@ when the scope or the acceptance is genuinely unknown.
    question, not a status essay.
 6. **Do not edit the ledger by hand.** Use `evidence add`, `task report`,
    `gate` and `reindex`. The JSON files are an index and an audit trail.
+7. **A stale gate is re-approved, not skipped.** If `check` reports
+   `GATE_STALE`, re-approve that gate first; do not edit the ledger and do not
+   approve later gates around it.
 
 ## Commands
 

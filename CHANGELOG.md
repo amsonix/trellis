@@ -38,7 +38,10 @@ All notable changes to this project are recorded here. The format follows
   leases older than 24 hours — with the next command.
 - `task add`: validate and append a task row from a requirement or a bug report,
   including the write-scope overlap check, and record `task.added` with the actor.
-- 60 `node:test` cases, including negative controls for every blocking rule.
+- Gate digests: a passed gate goes stale when the artifacts it approved change;
+  `check` reports `GATE_STALE`, later approvals are refused, and re-approval is
+  the only way to clear it.
+- 65 `node:test` cases, including negative controls for every blocking rule.
 
 ### Fixed
 

@@ -14,7 +14,8 @@ import {
   gateSummary,
   gateSatisfied,
   taskGateSatisfied,
-  firstUnsatisfiedProjectGate
+  firstUnsatisfiedProjectGate,
+  staleGates
 } from './gates.mjs';
 import { addEvidence, verifyTaskEvidence, requirePassingEvidence, listEvidence } from './evidence.mjs';
 import { acquireLease, releaseLease, leaseStatus } from './lease.mjs';
@@ -152,6 +153,18 @@ export async function runChecks(root, stage = null) {
     }
   }
 
+  const stale = await staleGates(root, state);
+  for (const item of stale) {
+    checks.push(
+      makeCheck(
+        'GATE_STALE',
+        'fail',
+        `${item.gate} was approved before ${item.changed.join(', ')} changed; re-approve it`,
+        { stage: GATE_DEFS[item.gate]?.stage, gate: item.gate, changed: item.changed }
+      )
+    );
+  }
+
   const filtered = stage ? checks.filter((check) => check.stage === stage) : checks;
   const summary = summarize(filtered);
   return {
@@ -222,6 +235,17 @@ async function buildAttention(root, state, tasks, checks) {
 
 async function nextFrom(root, state, tasks, checks, role = null) {
   const stage = computeStage(state, tasks);
+  const stale = await staleGates(root, state);
+  if (stale.length > 0) {
+    const item = stale[0];
+    return {
+      kind: 'gate',
+      gate: { id: item.gate, title: GATE_DEFS[item.gate].title },
+      checks: [],
+      summary: { pass: 0, warn: 0, fail: 0, unavailable: 0, total: 0 },
+      command: `trellis gate ${item.gate} --approve --by ${GATE_DEFS[item.gate].approvers[0]}:<name>`
+    };
+  }
 
   // While G4 is satisfied and G6 is not, execution is the work. A reviewer can
   // ask for --role reviewer to see the per-task review gate instead.
@@ -292,6 +316,10 @@ export async function projectStatus(root) {
   const next = await nextFrom(root, state, tasks, checksResult.checks);
   const leases = await leaseStatus(root);
   const gates = gateSummary(state);
+  const stale = await staleGates(root, state);
+  for (const item of stale) {
+    if (gates[item.gate]) gates[item.gate].stale = true;
+  }
   if (tasks.length > 0) {
     const taskGateStates = tasks.map((task) => state.taskGates?.[task.id]?.status ?? 'pending');
     const g5Passed = taskGateStates.every((status) => status === 'passed' || status === 'waived');
@@ -305,6 +333,7 @@ export async function projectStatus(root) {
     project: { name: state.project.name, profile: state.project.profile },
     stage: computeStage(state, tasks),
     gates,
+    staleGates: stale,
     taskGates: state.taskGates,
     tasks: taskCounts(tasks),
     checks: { summary: checksResult.summary, blocking: checksResult.checks.filter((check) => hasBlocking([check])) },
@@ -331,7 +360,7 @@ export async function projectReport(root) {
   const { tasks = [] } = await parseTasks(root);
   const gaps = [];
 
-  for (const check of status.checks.blocking) {
+  for (const check of status.checks.blocking.filter((check) => check.code !== 'GATE_STALE')) {
     gaps.push({
       kind: 'check',
       severity: check.severity === 'fail' ? 'high' : 'medium',
@@ -350,6 +379,16 @@ export async function projectReport(root) {
       code: 'GATE_PENDING',
       message: `${pendingGate} ${gate.title} is pending (approvers: ${gate.approvers.join(', ')})`,
       action: `trellis brief --role ${gate.approvers[0]}`
+    });
+  }
+
+  for (const item of status.staleGates) {
+    gaps.push({
+      kind: 'gate',
+      severity: 'high',
+      code: 'GATE_STALE',
+      message: `${item.gate} was approved before ${item.changed.join(', ')} changed`,
+      action: `trellis gate ${item.gate} --approve --by ${GATE_DEFS[item.gate].approvers[0]}:<name>`
     });
   }
 

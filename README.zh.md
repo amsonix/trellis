@@ -168,6 +168,11 @@ DSH 配置：
 
 gate 只能由 **人类豁免（waive）**，且必须给出理由，豁免会记入审计日志。
 
+批准时会记录该 gate 所依赖产物的摘要。之后如果这些产物变了——`PROJECT.md`、
+`ROADMAP.md`、任务结构——gate 就变成 **stale**：`check` 报 `GATE_STALE`，后续 gate
+被拒绝，`status` 标记为 `STALE`，直到重新批准。任务状态变化不会让规划 gate 失效；
+新增或改动任务会。
+
 ---
 
 ## 命令

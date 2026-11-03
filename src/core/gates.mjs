@@ -1,12 +1,81 @@
-import { GATE_DEFS, PROJECT_GATES } from './constants.mjs';
+import crypto from 'node:crypto';
+import path from 'node:path';
+import { GATE_DEFS, PROJECT_GATES, META_DIR } from './constants.mjs';
 import { makeCheck, summarize } from './checks.mjs';
-import { checkArtifact } from './artifacts.mjs';
+import { checkArtifact, ARTIFACTS } from './artifacts.mjs';
 import { validateTasks, milestonesFromRoadmap, taskById, parseTasks } from './tasks.mjs';
 import { verifyTaskEvidence } from './evidence.mjs';
 import { loadState, saveState, appendAudit } from './store.mjs';
 import { getProfile } from './profiles.mjs';
 import { RefusedError, UsageError } from './errors.mjs';
-import { nowIso, parseActor } from './util.mjs';
+import { nowIso, parseActor, readText } from './util.mjs';
+
+export const GATE_DEPENDENCIES = {
+  G0: ['PROJECT'],
+  G1: ['RESEARCH'],
+  G2: ['ARCHITECTURE'],
+  G3: ['ROADMAP', 'TASKS', 'VERIFICATION'],
+  G4: ['ROADMAP', 'TASKS'],
+  G5: [],
+  G6: ['TASKS', 'VERIFICATION'],
+  G7: ['OPERATIONS']
+};
+
+export async function gateDigest(root, gateId) {
+  const dependencies = GATE_DEPENDENCIES[gateId] ?? GATE_DEFS[gateId]?.artifacts ?? [];
+  const files = {};
+  const hash = crypto.createHash('sha256');
+  for (const artifactId of dependencies) {
+    const definition = ARTIFACTS[artifactId];
+    if (!definition) continue;
+    let text = 'MISSING';
+    if (artifactId === 'TASKS') {
+      // The task *structure* is what the plan gates approve: id, milestone,
+      // scope, dependencies, acceptance and verification. Status churn belongs
+      // to execution and must not make G3/G4 stale on every claim.
+      const parsed = await parseTasks(root);
+      if (!parsed.error) {
+        text = JSON.stringify(
+          parsed.tasks.map((task) => ({
+            id: task.id,
+            milestone: task.milestone,
+            title: task.title,
+            role: task.role,
+            scope: task.scope,
+            dependsOn: task.dependsOn,
+            acceptance: task.acceptance,
+            verification: task.verification
+          }))
+        );
+      }
+    } else {
+      const file = path.join(root, META_DIR, definition.path);
+      try {
+        text = await readText(file);
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+    }
+    const fileHash = crypto.createHash('sha256').update(text).digest('hex');
+    files[artifactId] = fileHash;
+    hash.update(`${artifactId}:${fileHash}\n`);
+  }
+  return { hash: hash.digest('hex'), files };
+}
+
+export async function staleGates(root, state) {
+  const stale = [];
+  for (const gateId of PROJECT_GATES) {
+    const gate = state.gates?.[gateId];
+    if (!gate || gate.status !== 'passed' || !gate.digest?.files) continue;
+    const current = await gateDigest(root, gateId);
+    const changed = Object.keys({ ...gate.digest.files, ...current.files }).filter(
+      (artifactId) => gate.digest.files[artifactId] !== current.files[artifactId]
+    );
+    if (changed.length > 0) stale.push({ gate: gateId, changed });
+  }
+  return stale;
+}
 
 export function gateSatisfied(state, gateId) {
   const gate = state.gates?.[gateId];
@@ -144,6 +213,7 @@ export async function approveGate(root, gateId, { by, note = null, taskId = null
 
   const state = await loadState(root);
   const profile = getProfile(state.project.profile);
+  const stale = await staleGates(root, state);
 
   if (gateId === 'G5') {
     if (!taskId) throw new UsageError('G5 is a per-task gate; pass --task <T-NNN>');
@@ -153,16 +223,28 @@ export async function approveGate(root, gateId, { by, note = null, taskId = null
     }
   } else {
     const gate = state.gates[gateId];
-    if (gate.status === 'passed' || gate.status === 'waived') {
+    const isStale = stale.some((item) => item.gate === gateId);
+    if ((gate.status === 'passed' || gate.status === 'waived') && !isStale) {
       throw new RefusedError('GATE_ALREADY_SATISFIED', `${gateId} is already ${gate.status}`, { gate: gateId });
     }
-    const previous = previousGatePending(state, gateId);
-    if (previous) {
-      throw new RefusedError('GATE_OUT_OF_ORDER', `${gateId} cannot be approved before ${previous}`, {
-        gate: gateId,
-        previous
-      });
+    if (!isStale) {
+      const previous = previousGatePending(state, gateId);
+      if (previous) {
+        throw new RefusedError('GATE_OUT_OF_ORDER', `${gateId} cannot be approved before ${previous}`, {
+          gate: gateId,
+          previous
+        });
+      }
     }
+  }
+
+  const blockingStale = stale.filter((item) => item.gate !== gateId);
+  if (blockingStale.length > 0) {
+    throw new RefusedError(
+      'GATE_STALE',
+      `${gateId} cannot be approved while ${blockingStale.map((item) => item.gate).join(', ')} is stale; re-approve it first`,
+      { gate: gateId, stale: blockingStale }
+    );
   }
 
   const { tasks } = await parseTasks(root);
@@ -191,7 +273,8 @@ export async function approveGate(root, gateId, { by, note = null, taskId = null
       status: 'passed',
       approvedBy: actor.raw,
       at: nowIso(),
-      note
+      note,
+      digest: await gateDigest(root, gateId)
     };
   }
   appendAudit(state, `gate.${gateId}.passed`, actor, { note, taskId });

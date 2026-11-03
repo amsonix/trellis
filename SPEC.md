@@ -92,6 +92,18 @@ Rules:
 4. Only a human may **waive** a gate, with a written reason. A waiver is
    recorded and is visible in `status`.
 5. A gate cannot be approved twice.
+6. An approval records a digest of the artifacts the gate depends on: `PROJECT`
+   for G0, `RESEARCH` for G1, `ARCHITECTURE` for G2, `ROADMAP`, `TASKS` and
+   `VERIFICATION` for G3, `ROADMAP` and `TASKS` for G4, `TASKS` and
+   `VERIFICATION` for G6, `OPERATIONS` for G7.
+7. If those artifacts change after approval, the gate is **stale**: `check`
+   reports `GATE_STALE`, and any later gate is refused until the stale gate is
+   re-approved. Re-approval is the only way to clear it; a waiver does not go
+   stale because it is an explicit human decision.
+8. The `TASKS` digest covers the task *structure* — id, milestone, title, role,
+   scope, dependencies, acceptance, verification — not the status column.
+   Claiming or finishing a task does not make the plan gates stale; adding or
+   reshaping a task does.
 
 ## 6. Artifacts
 
@@ -321,7 +333,8 @@ Implemented in `0.1.0`:
 - artifact existence, front-matter, required-section and special checks;
 - task table parsing, graph validation, scope-overlap check, status transitions,
   and `task add` with the same validation;
-- gates `G0`–`G7`, approver roles, order, waivers, per-task `G5`;
+- gates `G0`–`G7`, approver roles, order, waivers, per-task `G5`, and digests
+  that make a passed gate stale when its artifacts change;
 - evidence ledger, passing/failing/inconclusive verification;
 - leases on task claim, release, conflict detection, `guard commit --staged`
   with `--observe`;
@@ -329,7 +342,7 @@ Implemented in `0.1.0`:
   codes;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools
   behind `TRELLIS_MCP_WRITE=1`, and never gate approval;
-- 60 `node:test` cases.
+- 65 `node:test` cases.
 
 Not in `0.1.0`:
 

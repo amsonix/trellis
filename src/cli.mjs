@@ -216,7 +216,8 @@ function printStatus(data) {
   console.log('Gates:');
   for (const gate of Object.values(data.gates)) {
     const who = gate.approvedBy ? ` ${gate.approvedBy}` : '';
-    console.log(`  ${gate.id} ${gate.title.padEnd(14)} ${gateSymbol(gate.status)}${who}`);
+    const stale = gate.stale ? ' [STALE]' : '';
+    console.log(`  ${gate.id} ${gate.title.padEnd(14)} ${gateSymbol(gate.status)}${who}${stale}`);
   }
   console.log(`Tasks:   ${data.tasks.total} total | todo ${data.tasks.todo} | in_progress ${data.tasks.in_progress} | review ${data.tasks.review} | blocked ${data.tasks.blocked} | done ${data.tasks.done}`);
   if (data.attention.length > 0) {
