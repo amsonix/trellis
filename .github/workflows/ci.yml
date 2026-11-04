@@ -55,6 +55,7 @@ jobs:
             echo "::error::$line"
           done
       - name: Coverage gate
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 22
         run: node scripts/coverage-gate.mjs
       - name: CLI smoke test
         run: node bin/trellis.mjs --version

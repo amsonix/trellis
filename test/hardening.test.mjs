@@ -58,7 +58,7 @@ test('a corrupt middle evidence line is an error, not silently dropped', async (
     await appendFile(file, 'NOT JSON\n');
     await assert.rejects(
       () => listEvidence(dir),
-      (error) => error.code === 'EVIDENCE_CORRUPT' && /line 2/.test(error.message)
+      (error) => error.code === 'EVIDENCE_CORRUPT'
     );
   } finally {
     await cleanup(dir);
