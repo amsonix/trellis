@@ -53,6 +53,9 @@ jobs:
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           tail -n 80 test-output.log >> "$GITHUB_STEP_SUMMARY" || true
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -E '^not ok|✖' test-output.log | head -20 | while IFS= read -r line; do
+            echo "::error::$line"
+          done
       - name: Coverage gate
         run: node scripts/coverage-gate.mjs
       - name: CLI smoke test
