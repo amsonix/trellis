@@ -28,7 +28,7 @@ async function appendEvent(file, event) {
   await fs.appendFile(file, `${JSON.stringify(event)}\n`, 'utf8');
 }
 
-export async function readEvidenceEvents(root) {
+export async function readEvidenceEvents(root, { taskId = null } = {}) {
   const file = evidencePath(root);
   let text;
   try {
@@ -43,6 +43,13 @@ export async function readEvidenceEvents(root) {
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     if (!line.trim()) continue;
+    // Fast path for one task: parse retract events and add events for that
+    // task only. Retracts of other tasks are no-ops once their adds are gone.
+    if (taskId) {
+      const isRetract = line.includes('"type":"retract"');
+      const isThisTask = line.includes('"type":"add"') && line.includes(`"taskId":"${taskId}"`);
+      if (!isRetract && !isThisTask) continue;
+    }
     try {
       events.push(JSON.parse(line));
     } catch {
@@ -85,13 +92,13 @@ export async function migrateLegacyEvidence(root) {
   return true;
 }
 
-export async function loadEvidence(root) {
+export async function loadEvidence(root, options = {}) {
   await migrateLegacyEvidence(root);
-  return { schemaVersion: 2, items: foldEvidence(await readEvidenceEvents(root)) };
+  return { schemaVersion: 2, items: foldEvidence(await readEvidenceEvents(root, options)) };
 }
 
 export async function listEvidence(root, taskId = null) {
-  const { items } = await loadEvidence(root);
+  const { items } = await loadEvidence(root, taskId ? { taskId } : {});
   return taskId ? items.filter((item) => item.taskId === taskId) : items;
 }
 

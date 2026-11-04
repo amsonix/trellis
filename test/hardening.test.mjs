@@ -65,6 +65,21 @@ test('a corrupt middle evidence line is an error, not silently dropped', async (
   }
 });
 
+test('the per-task evidence read returns the same records as the full read', async () => {
+  const dir = await makeProject('generic');
+  try {
+    const { addEvidence } = await import('../src/core/evidence.mjs');
+    await addEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'a', verdict: 'pass', by: 'executor:w1' });
+    await addEvidence(dir, { taskId: 'T-002', kind: 'test', uri: 'b', verdict: 'fail', by: 'executor:w1' });
+    const all = await listEvidence(dir);
+    const only = await listEvidence(dir, 'T-001');
+    assert.equal(all.length, 2);
+    assert.deepEqual(only.map((record) => record.id), all.filter((record) => record.taskId === 'T-001').map((record) => record.id));
+  } finally {
+    await cleanup(dir);
+  }
+});
+
 test('a torn final evidence line is ignored', async () => {
   const dir = await makeProject('generic');
   try {

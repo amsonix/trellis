@@ -203,6 +203,7 @@ DSH 配置：
 
 Spec Kit 用户可以用 [`examples/spec-kit/`](examples/spec-kit/) 把 `tasks.md`
 清单接进任务板：Spec Kit 管规格与计划，Trellis 记谁在做、凭什么算完成。
+映射与 hook 示例见 [`docs/integrations/spec-kit.md`](docs/integrations/spec-kit.md)。
 
 ---
 

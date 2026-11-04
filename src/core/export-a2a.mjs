@@ -7,6 +7,7 @@
  */
 import { loadState } from './store.mjs';
 import { parseTasks } from './tasks.mjs';
+import { listEvidence } from './evidence.mjs';
 import { nowIso } from './util.mjs';
 
 export const A2A_STATES = {
@@ -25,6 +26,11 @@ export function mapTaskState(status) {
 export async function exportA2A(root) {
   const state = await loadState(root);
   const { tasks } = await parseTasks(root);
+  const byTask = new Map();
+  for (const record of await listEvidence(root)) {
+    if (!byTask.has(record.taskId)) byTask.set(record.taskId, []);
+    byTask.get(record.taskId).push(record);
+  }
   return {
     kind: 'a2a.tasks',
     version: 1,
@@ -34,6 +40,16 @@ export async function exportA2A(root) {
       id: task.id,
       contextId: state.project.name,
       status: { state: mapTaskState(task.status) },
+      artifacts: (byTask.get(task.id) ?? []).map((record) => ({
+        artifactId: record.id,
+        name: record.uri,
+        parts: [
+          {
+            kind: 'text',
+            text: `${record.kind}: ${record.verdict}${record.retracted ? ' (retracted)' : ''}${record.note ? ` — ${record.note}` : ''}`
+          }
+        ]
+      })),
       metadata: {
         trellis: {
           status: task.status,

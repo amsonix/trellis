@@ -321,7 +321,8 @@ log, lease file, lock and write permission without throwing on a broken project.
 `help <command> [subcommand]` prints per-command usage.
 
 `export --a2a` is a read-only projection of the task board onto the A2A task
-lifecycle; the Trellis status and fields stay under `metadata.trellis`.
+lifecycle; the Trellis status and fields stay under `metadata.trellis`, and each
+task's evidence is projected as A2A `artifacts`.
 
 `next` is the loop contract: it returns `kind: "tasks"` with `needsUser: false`
 when a batch is ready to run, or `needsUser: true` with a `reason` when a gate,
