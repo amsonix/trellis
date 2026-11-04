@@ -155,7 +155,8 @@ exposes the read side: `trellis_status`, `trellis_check`, `trellis_next`,
 With `TRELLIS_MCP_WRITE=1` it also exposes `trellis_init`, `trellis_task_add`,
 `trellis_task_ask`, `trellis_task_answer`, `trellis_task_claim`,
 `trellis_task_report`, `trellis_evidence_add`, `trellis_evidence_retract`,
-`trellis_lease_release`, `trellis_reindex` and `trellis_compact`.
+`trellis_lease_release`, `trellis_task_recover`, `trellis_reindex` and
+`trellis_compact`.
 
 Gate approval is deliberately **not** exposed: a gate approver must not be the
 role that produced the work, so that decision stays in the CLI.

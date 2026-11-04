@@ -8,6 +8,24 @@ All notable changes to this project are recorded here. The format follows
 
 ### Fixed
 
+- `scope suggest` matches the task id as an exact token instead of a
+  `git log --grep` substring, so `T-001` no longer picks up `T-0010`; the
+  matched commits are shown before `--apply`.
+
+### Added
+
+- MCP now exposes `trellis_task_recover`, `proves` on `trellis_evidence_add`,
+  and `archiveRetractedDays` on `trellis_compact`.
+
+### Changed
+
+- The agent skill names `evidence.jsonl` and `leases.archive.jsonl`, and lists
+  `--proves`, `--paths` and `task recover`.
+
+
+
+### Fixed
+
 - `task claim` checks the actor's role before returning an idempotent lease or
   taking over an orphaned claim; a wrong role is refused instead of receiving
   the existing lease.
@@ -26,7 +44,7 @@ All notable changes to this project are recorded here. The format follows
   rename, matching the JSON ledgers.
 - The ledger lock refreshes its timestamp while held, so a slow operation is not
   mistaken for a dead holder.
-- 137 `node:test` cases.
+- 138 `node:test` cases.
 
 ## [0.6.0] - 2026-11-04
 

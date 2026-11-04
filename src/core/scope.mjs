@@ -25,3 +25,17 @@ export function suggestScopeForTask(taskId, currentScope, files) {
     narrows: inside.length > 0
   };
 }
+
+
+/**
+ * Keep only commits whose message contains the task id as an exact token.
+ *
+ * `git log --grep=T-001` is a substring match, so it also matches T-0010 and
+ * unrelated text. The caller supplies parsed commits; this keeps the matching
+ * rule testable without git.
+ */
+export function selectTaskCommits(commits, taskId) {
+  const escaped = String(taskId).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const exact = new RegExp(`(^|[^0-9A-Za-z])${escaped}([^0-9A-Za-z]|$)`);
+  return (commits ?? []).filter((commit) => exact.test(commit.body ?? ''));
+}

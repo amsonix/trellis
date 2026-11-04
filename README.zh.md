@@ -147,8 +147,8 @@ cp -R skills/trellis ~/.agents/skills/trellis
 设置 `TRELLIS_MCP_WRITE=1` 后额外暴露写工具：`trellis_init`、
 `trellis_task_add`、`trellis_task_ask`、`trellis_task_answer`、
 `trellis_task_claim`、`trellis_task_report`、`trellis_evidence_add`、
-`trellis_evidence_retract`、`trellis_lease_release`、`trellis_reindex`、
-`trellis_compact`。
+`trellis_evidence_retract`、`trellis_lease_release`、`trellis_task_recover`、
+`trellis_reindex`、`trellis_compact`。
 
 gate 批准**故意不暴露**：批准者不能是产出这项工作的角色，这个决定留在 CLI 里。
 

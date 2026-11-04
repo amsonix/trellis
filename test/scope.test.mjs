@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { suggestScopeForTask } from '../src/core/scope.mjs';
+import { selectTaskCommits, suggestScopeForTask } from '../src/core/scope.mjs';
 import { applyTaskScope } from '../src/core/mutations.mjs';
 import { parseTasks } from '../src/core/tasks.mjs';
 import { cleanup, makeProject } from './helpers.mjs';
@@ -53,4 +53,15 @@ test('scope apply refuses to widen the scope', async () => {
   } finally {
     await cleanup(dir);
   }
+});
+
+
+test('commit selection matches the exact task token, not a prefix', () => {
+  const commits = [
+    { hash: 'a', body: 'fix T-001 parser' },
+    { hash: 'b', body: 'T-0010 is a different task' },
+    { hash: 'c', body: 'T-001' },
+    { hash: 'd', body: 'see T-001.' }
+  ];
+  assert.deepEqual(selectTaskCommits(commits, 'T-001').map((commit) => commit.hash), ['a', 'c', 'd']);
 });

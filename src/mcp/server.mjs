@@ -31,7 +31,8 @@ import {
   reindex,
   retractEvidence,
   releaseLease,
-  compact
+  compact,
+  recoverTask
 } from '../core/mutations.mjs';
 import { parseTasks } from '../core/tasks.mjs';
 import { leaseStatus } from '../core/lease.mjs';
@@ -234,7 +235,8 @@ const writeTools = [
         uri: text('File path, URL or commit.'),
         verdict: text('pass, fail or inconclusive.'),
         by: text('Producer as role:name.'),
-        note: text('Optional note.')
+        note: text('Optional note.'),
+        proves: text('Optional: which acceptance clause this evidence proves.')
       },
       ['task', 'kind', 'uri', 'verdict', 'by']
     ),
@@ -245,7 +247,8 @@ const writeTools = [
         uri: args.uri,
         verdict: args.verdict,
         by: args.by,
-        note: args.note ?? null
+        note: args.note ?? null,
+        proves: args.proves ?? null
       })
   },
   {
@@ -274,6 +277,27 @@ const writeTools = [
     }
   },
   {
+    name: 'trellis_task_recover',
+    description:
+      'Return an in_progress task with no lease to ready or todo. Only human or coordinator; refuses while a lease is held; records task.recovered.',
+    inputSchema: object(
+      {
+        dir: dirProp,
+        task: text('Task id.'),
+        by: text('Actor as human:<name> or coordinator:<name>.'),
+        reason: text('Why the task is being recovered.'),
+        to: { type: 'string', enum: ['ready', 'todo'], description: 'Target status; defaults to ready.' }
+      },
+      ['task', 'by', 'reason']
+    ),
+    run: (args) =>
+      recoverTask(dirOf(args), args.task, {
+        to: args.to ?? 'ready',
+        by: args.by,
+        reason: args.reason
+      })
+  },
+  {
     name: 'trellis_reindex',
     description: 'Rebuild the state ledger from the artifacts.',
     inputSchema: object({ dir: dirProp }),
@@ -283,8 +307,16 @@ const writeTools = [
     name: 'trellis_compact',
     description:
       'Fold the evidence event log into one record per id and rotate the audit stream when it exceeds 5 MB. Observable state is unchanged.',
-    inputSchema: object({ dir: dirProp, dryRun: { type: 'boolean', description: 'Report sizes without writing.' } }),
-    run: (args) => compact(dirOf(args), { dryRun: args.dryRun === true })
+    inputSchema: object({
+      dir: dirProp,
+      dryRun: { type: 'boolean', description: 'Report sizes without writing.' },
+      archiveRetractedDays: { type: 'integer', minimum: 0, description: 'Archive retracted evidence older than this many days.' }
+    }),
+    run: (args) =>
+      compact(dirOf(args), {
+        dryRun: args.dryRun === true,
+        archiveRetractedDays: args.archiveRetractedDays ?? 0
+      })
   }
 ];
 

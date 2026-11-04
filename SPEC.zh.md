@@ -107,7 +107,8 @@ version、created），正文用二级标题组织。必需章节见英文版表
     `task.followUp`。
 15. 问题（`task ask`）：任务置 blocked 并记录原状态；只有 human 能
     `task answer`；回答后恢复原状态；未答问题出现在 `next` 与 `report`。
-16. `scope suggest` 读取提到某任务的提交，在其当前写域内给出文件级建议；
+16. `scope suggest` 读取消息中出现该任务 id（完整 token，不是子串）的提交，
+    在其当前写域内给出文件级建议；
     只有 `--apply --by <role>:<name>` 才会写回，且只允许收窄。
 
 状态转移：

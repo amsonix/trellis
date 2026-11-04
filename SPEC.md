@@ -199,8 +199,8 @@ Rules:
     is recorded in the ledger and the task returns to its previous status. An
     open question appears in `next` as `needsUser: true` and in `report` as
     `pendingQuestions`; a task with an open question cannot be claimed.
-16. `scope suggest` reads commits mentioning a task and proposes file-level
-    paths inside its current scope. It only edits the board with `--apply --by
+16. `scope suggest` reads commits whose message contains the task id as an
+    exact token and proposes file-level paths inside its current scope. It only edits the board with `--apply --by
     <role>:<name>`, and only to narrow.
 
 Allowed status transitions:

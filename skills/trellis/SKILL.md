@@ -8,7 +8,8 @@ whenToUse: "Any change to a project that has .trellis/, or any request to plan, 
 # Trellis
 
 Trellis is a file-based protocol for building a project. `.trellis/` is the
-source of truth; `state.json`, `evidence.json` and `leases.json` are the ledger.
+source of truth; `state.json`, `evidence.jsonl`, `leases.json` and
+`leases.archive.jsonl` are the ledger.
 The CLI is the interface; prefer `--json` and read the envelope.
 
 If `trellis` is not on `PATH` but the repository is checked out, use
@@ -102,14 +103,14 @@ trellis task answer <Q-NNN> --decision <text> --by human:<name>
 trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
 trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> --by <role>:<name>
 
-trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> --by <role>:<name>
+trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] --by <role>:<name>
 trellis evidence list [--task <T-NNN>] [--json]
 trellis evidence retract <EV-id> --by <role>:<name> --reason <text>
 trellis verify <T-NNN> [--json]
 
 trellis lease status [--json]
 trellis lease release <T-NNN> --by <role>:<name>
-trellis guard commit --task <T-NNN> --staged [--observe]
+trellis guard commit --task <T-NNN> (--staged | --paths <a,b>) [--observe]
 
 trellis gate <G0..G7> --approve --by <role>:<name> [--task <T-NNN>] [--note <text>]
 trellis gate <G0..G7> --waive --by human:<name> --reason <text> [--task <T-NNN>]

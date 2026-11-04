@@ -32,7 +32,7 @@ import {
 import { parseTasks } from './core/tasks.mjs';
 import { leaseStatus, guardCommit } from './core/lease.mjs';
 import { exportA2A } from './core/export-a2a.mjs';
-import { suggestScopeForTask } from './core/scope.mjs';
+import { selectTaskCommits, suggestScopeForTask } from './core/scope.mjs';
 import { applyTaskScope, recoverTask } from './core/mutations.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -600,12 +600,31 @@ async function dispatch(args) {
     if (error) throw new UnavailableError(error.message, error);
     const task = tasks.find((item) => item.id === options.task);
     if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${options.task} is not on the task board`, { task: options.task });
-    const { stdout } = await execFileAsync('git', ['log', '--all', '--name-only', '--format=', `--grep=${options.task}`], {
-      cwd: dir,
-      maxBuffer: 16 * 1024 * 1024
-    });
-    const files = stdout.split('\n').map((line) => line.trim()).filter(Boolean);
+    const { stdout: logOut } = await execFileAsync(
+      'git',
+      ['log', '--all', '--format=%H%x1e%B%x00'],
+      { cwd: dir, maxBuffer: 16 * 1024 * 1024 }
+    );
+    const commits = logOut
+      .split('\x00')
+      .map((record) => record.trim())
+      .filter(Boolean)
+      .map((record) => {
+        const [hash, ...body] = record.split('\x1e');
+        return { hash: hash.trim(), body: body.join('\x1e') };
+      });
+    const matched = selectTaskCommits(commits, task.id);
+    let files = [];
+    if (matched.length > 0) {
+      const { stdout } = await execFileAsync(
+        'git',
+        ['show', '--name-only', '--format=', '--no-renames', ...matched.map((commit) => commit.hash)],
+        { cwd: dir, maxBuffer: 16 * 1024 * 1024 }
+      );
+      files = stdout.split('\n').map((line) => line.trim()).filter(Boolean);
+    }
     const data = suggestScopeForTask(task.id, task.scope, files);
+    data.commits = matched.map((commit) => ({ hash: commit.hash.slice(0, 7), subject: commit.body.split('\n')[0] }));
     if (options.apply) {
       if (data.suggested.length === 0) throw new UsageError('scope suggest: nothing to apply');
       if (!options.by) throw new UsageError('scope suggest --apply needs --by <role>:<name>');
@@ -619,6 +638,7 @@ async function dispatch(args) {
         console.log(`current:   ${data.current.join(', ')}`);
         console.log(`suggested: ${data.suggested.length > 0 ? data.suggested.join(', ') : '(no touched file inside the scope)'}`);
         if (data.outside.length > 0) console.log(`outside:   ${data.outside.join(', ')}`);
+        console.log(`commits:   ${data.commits.length} matched (exact ${options.task} token)`);
       }
     };
   }
