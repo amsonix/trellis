@@ -1,6 +1,6 @@
 # Evidence sharding: design and migration
 
-Status: proposal, not implemented. Target release: 0.9.0 (storage change).
+Status: implemented in 0.9.0 (schema 3).
 
 ## Why
 

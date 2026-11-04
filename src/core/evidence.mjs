@@ -8,65 +8,48 @@ import { exists, fileSha256, nowIso, parseActor, readText, renameWithRetry, asse
 import { STATE_DIR } from './store.mjs';
 import { currentAgent } from './identity.mjs';
 
+export const EVIDENCE_DIR = `${STATE_DIR}/evidence`;
+export const EVIDENCE_ARCHIVE_DIR = `${STATE_DIR}/evidence/archive`;
 export const EVIDENCE_FILE = `${STATE_DIR}/evidence.jsonl`;
-export const EVIDENCE_ARCHIVE = `${STATE_DIR}/evidence.archive.jsonl`;
 export const LEGACY_EVIDENCE_FILE = `${STATE_DIR}/evidence.json`;
 
-export function evidencePath(root) {
-  return path.join(root, EVIDENCE_FILE);
+export function evidenceDirPath(root) {
+  return path.join(root, EVIDENCE_DIR);
+}
+
+export function shardPath(root, taskId) {
+  return path.join(root, EVIDENCE_DIR, `${taskId}.jsonl`);
 }
 
 export function evidenceArchivePath(root) {
-  return path.join(root, EVIDENCE_ARCHIVE);
+  return path.join(root, EVIDENCE_ARCHIVE_DIR);
 }
 
-function legacyPath(root) {
+function legacyLogPath(root) {
+  return path.join(root, EVIDENCE_FILE);
+}
+
+function legacyJsonPath(root) {
   return path.join(root, LEGACY_EVIDENCE_FILE);
 }
+
+const shardCache = new Map();
 
 async function appendEvent(file, event) {
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.appendFile(file, `${JSON.stringify(event)}\n`, 'utf8');
 }
 
-const eventCache = new Map();
-
-export async function readEvidenceEvents(root, { taskId = null } = {}) {
-  const file = evidencePath(root);
-  let text;
-  try {
-    text = await readText(file);
-  } catch (error) {
-    if (error.code === 'ENOENT') return [];
-    throw error;
-  }
-  const digest = crypto.createHash('sha256').update(text).digest('hex');
-  const cache = eventCache.get(root);
-  if (cache?.digest === digest) {
-    return taskId
-      ? cache.events.filter(
-          (event) => event.type === 'retract' || (event.type === 'add' && event.taskId === taskId)
-        )
-      : cache.events;
-  }
-
+function parseLines(text, file) {
   const lines = text.split('\n');
   const events = [];
   const tornFinalLine = !text.endsWith('\n');
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     if (!line.trim()) continue;
-    // Fast path for one task: parse retract events and add events for that
-    // task only. Retracts of other tasks are no-ops once their adds are gone.
-    if (taskId) {
-      const isRetract = line.includes('"type":"retract"');
-      const isThisTask = line.includes('"type":"add"') && line.includes(`"taskId":"${taskId}"`);
-      if (!isRetract && !isThisTask) continue;
-    }
     try {
       events.push(JSON.parse(line));
     } catch {
-      // Only a final line without a trailing newline may be a torn write.
       if (tornFinalLine && index === lines.length - 1) continue;
       throw new ProtocolError(
         'EVIDENCE_CORRUPT',
@@ -76,7 +59,22 @@ export async function readEvidenceEvents(root, { taskId = null } = {}) {
       );
     }
   }
-  eventCache.set(root, { digest, events });
+  return events;
+}
+
+async function readFileEvents(file) {
+  let text;
+  try {
+    text = await readText(file);
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+  const digest = crypto.createHash('sha256').update(text).digest('hex');
+  const cached = shardCache.get(file);
+  if (cached?.digest === digest) return cached.events;
+  const events = parseLines(text, file);
+  shardCache.set(file, { digest, events });
   return events;
 }
 
@@ -94,21 +92,83 @@ export function foldEvidence(events) {
   return [...records.values()];
 }
 
-export async function migrateLegacyEvidence(root) {
-  const legacy = legacyPath(root);
-  if (!(await exists(legacy))) return false;
-  const data = JSON.parse(await readText(legacy));
-  const items = Array.isArray(data.items) ? data.items : [];
-  if (items.length > 0) {
-    for (const item of items) await appendEvent(evidencePath(root), { type: 'add', ...item });
+async function listShardFiles(root) {
+  try {
+    const entries = await fs.readdir(evidenceDirPath(root), { withFileTypes: true });
+    return entries
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.jsonl'))
+      .map((entry) => path.join(evidenceDirPath(root), entry.name))
+      .sort();
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
   }
-  await renameWithRetry(legacy, `${legacy}.migrated`);
+}
+
+async function writeShard(file, records) {
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  const text = records.length > 0 ? `${records.map((record) => JSON.stringify({ type: 'add', ...record })).join('\n')}\n` : '';
+  const tmp = `${file}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+  await fs.writeFile(tmp, text, 'utf8');
+  await renameWithRetry(tmp, file);
+}
+
+async function collectLegacy(root) {
+  const groups = new Map();
+  const addRecord = (record) => {
+    if (!record?.taskId || !record?.id) return;
+    if (!groups.has(record.taskId)) groups.set(record.taskId, new Map());
+    groups.get(record.taskId).set(record.id, record);
+  };
+
+  if (await exists(legacyJsonPath(root))) {
+    const data = JSON.parse(await readText(legacyJsonPath(root)));
+    for (const item of Array.isArray(data.items) ? data.items : []) addRecord(item);
+  }
+  if (await exists(legacyLogPath(root))) {
+    for (const record of foldEvidence(parseLines(await readText(legacyLogPath(root)), legacyLogPath(root)))) {
+      addRecord(record);
+    }
+  }
+  return groups;
+}
+
+export async function migrateLegacyEvidence(root) {
+  const hasLegacy = (await exists(legacyJsonPath(root))) || (await exists(legacyLogPath(root)));
+  if (!hasLegacy) return false;
+
+  const groups = await collectLegacy(root);
+  for (const [taskId, records] of groups) {
+    const file = shardPath(root, taskId);
+    for (const record of foldEvidence(await readFileEvents(file))) {
+      if (!records.has(record.id)) records.set(record.id, record);
+    }
+    await writeShard(file, [...records.values()]);
+  }
+
+  for (const legacy of [legacyJsonPath(root), legacyLogPath(root)]) {
+    if (await exists(legacy)) {
+      try {
+        await renameWithRetry(legacy, `${legacy}.migrated`);
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+    }
+  }
   return true;
+}
+
+export async function readEvidenceEvents(root, { taskId = null } = {}) {
+  await migrateLegacyEvidence(root);
+  if (taskId) return readFileEvents(shardPath(root, taskId));
+  const events = [];
+  for (const file of await listShardFiles(root)) events.push(...(await readFileEvents(file)));
+  return events;
 }
 
 export async function loadEvidence(root, options = {}) {
   await migrateLegacyEvidence(root);
-  return { schemaVersion: 2, items: foldEvidence(await readEvidenceEvents(root, options)) };
+  return { schemaVersion: 3, items: foldEvidence(await readEvidenceEvents(root, options)) };
 }
 
 export async function listEvidence(root, taskId = null) {
@@ -118,6 +178,7 @@ export async function listEvidence(root, taskId = null) {
 
 export async function addEvidence(root, { taskId, kind, uri, verdict, by, note = null, proves = null }) {
   if (!taskId) throw new UsageError('evidence add needs --task <T-NNN>');
+  if (!/^T-\d+$/.test(taskId)) throw new UsageError(`task id '${taskId}' does not look like T-001`);
   if (!EVIDENCE_KINDS.includes(kind)) {
     throw new UsageError(`--kind must be one of: ${EVIDENCE_KINDS.join(', ')}`);
   }
@@ -158,7 +219,7 @@ export async function addEvidence(root, { taskId, kind, uri, verdict, by, note =
     note,
     proves: proves === null ? null : String(proves).trim()
   };
-  await appendEvent(evidencePath(root), record);
+  await appendEvent(shardPath(root, taskId), record);
   const { type, ...rest } = record;
   return rest;
 }
@@ -181,20 +242,20 @@ export async function retractEvidence(root, evidenceId, { by, reason }) {
     );
   }
 
-  const { items } = await loadEvidence(root);
-  const record = items.find((item) => item.id === evidenceId);
-  if (!record) {
-    throw new RefusedError('EVIDENCE_UNKNOWN', `no evidence record '${evidenceId}'`, { evidence: evidenceId });
+  await migrateLegacyEvidence(root);
+  for (const file of await listShardFiles(root)) {
+    const record = foldEvidence(await readFileEvents(file)).find((item) => item.id === evidenceId);
+    if (!record) continue;
+    if (record.retracted) {
+      throw new RefusedError('EVIDENCE_ALREADY_RETRACTED', `evidence ${evidenceId} is already retracted`, {
+        evidence: evidenceId
+      });
+    }
+    const event = { type: 'retract', id: evidenceId, by: actor.raw, at: nowIso(), reason: String(reason).trim() };
+    await appendEvent(file, event);
+    return { ...record, retracted: { by: event.by, at: event.at, reason: event.reason } };
   }
-  if (record.retracted) {
-    throw new RefusedError('EVIDENCE_ALREADY_RETRACTED', `evidence ${evidenceId} is already retracted`, {
-      evidence: evidenceId
-    });
-  }
-
-  const event = { type: 'retract', id: evidenceId, by: actor.raw, at: nowIso(), reason: String(reason).trim() };
-  await appendEvent(evidencePath(root), event);
-  return { ...record, retracted: { by: event.by, at: event.at, reason: event.reason } };
+  throw new RefusedError('EVIDENCE_UNKNOWN', `no evidence record '${evidenceId}'`, { evidence: evidenceId });
 }
 
 export async function verifyTaskEvidence(root, taskId) {

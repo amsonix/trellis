@@ -54,7 +54,7 @@ test('a corrupt middle evidence line is an error, not silently dropped', async (
     await import('../src/core/evidence.mjs').then(({ addEvidence }) =>
       addEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'one', verdict: 'pass', by: 'executor:w1' })
     );
-    const file = path.join(dir, '.trellis/evidence.jsonl');
+    const file = path.join(dir, '.trellis/evidence/T-001.jsonl');
     await appendFile(file, 'NOT JSON\n');
     await assert.rejects(
       () => listEvidence(dir),
@@ -87,7 +87,7 @@ test('a torn final evidence line is ignored', async () => {
     await import('../src/core/evidence.mjs').then(({ addEvidence }) =>
       addEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'one', verdict: 'pass', by: 'executor:w1' })
     );
-    await appendFile(path.join(dir, '.trellis/evidence.jsonl'), '{"type":"add"');
+    await appendFile(path.join(dir, '.trellis/evidence/T-001.jsonl'), '{"type":"add"');
     assert.equal((await listEvidence(dir)).length, 1);
   } finally {
     await cleanup(dir);
@@ -106,7 +106,7 @@ test('compact dry-run does not migrate a legacy evidence file', async () => {
   }
 });
 
-test('schema 1 state upgrades to 2 on the next write', async () => {
+test('schema 1 state upgrades to 3 on the next write', async () => {
   const dir = await makeProject('generic');
   try {
     const file = path.join(dir, '.trellis/state.json');
@@ -115,7 +115,7 @@ test('schema 1 state upgrades to 2 on the next write', async () => {
     await writeFile(file, JSON.stringify(state));
 
     await claimTask(dir, 'T-001', { by: 'executor:w1' });
-    assert.equal((await readJson(file)).schemaVersion, 2);
+    assert.equal((await readJson(file)).schemaVersion, 3);
   } finally {
     await cleanup(dir);
   }

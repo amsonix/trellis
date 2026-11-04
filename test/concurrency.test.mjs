@@ -37,7 +37,7 @@ test('parallel evidence writes are not lost', async () => {
     }
     await Promise.all(runs);
 
-    const lines = (await readFile(path.join(dir, '.trellis/evidence.jsonl'), 'utf8'))
+    const lines = (await readFile(path.join(dir, '.trellis/evidence/T-001.jsonl'), 'utf8'))
       .trim()
       .split('\n')
       .map((line) => JSON.parse(line));

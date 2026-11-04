@@ -37,7 +37,7 @@ test('legacy evidence.json is migrated into the jsonl log', async () => {
     assert.equal(items[0].retracted, null);
 
     await assert.rejects(() => access(path.join(dir, '.trellis/evidence.json')));
-    const log = (await readFile(path.join(dir, '.trellis/evidence.jsonl'), 'utf8')).trim().split('\n');
+    const log = (await readFile(path.join(dir, '.trellis/evidence/T-001.jsonl'), 'utf8')).trim().split('\n');
     assert.equal(JSON.parse(log[0]).type, 'add');
   } finally {
     await cleanup(dir);
@@ -69,6 +69,33 @@ test('released leases in a legacy file move to the archive', async () => {
       .split('\n')
       .map((line) => JSON.parse(line));
     assert.deepEqual(archive.map((lease) => lease.id), ['L-2']);
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+
+test('a legacy jsonl log migrates into per-task shards', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await writeFile(
+      path.join(dir, '.trellis/evidence.jsonl'),
+      [
+        JSON.stringify({ type: 'add', id: 'EV-a', taskId: 'T-001', kind: 'test', uri: 'a', verdict: 'pass', producedBy: 'executor:w1', producedAt: '2026-01-01T00:00:00.000Z' }),
+        JSON.stringify({ type: 'add', id: 'EV-b', taskId: 'T-002', kind: 'test', uri: 'b', verdict: 'pass', producedBy: 'executor:w1', producedAt: '2026-01-01T00:00:00.000Z' }),
+        JSON.stringify({ type: 'retract', id: 'EV-a', by: 'reviewer:rita', at: '2026-01-02T00:00:00.000Z', reason: 'wrong' })
+      ].join('\n') + '\n'
+    );
+
+    const items = await listEvidence(dir);
+    assert.equal(items.length, 2);
+    assert.ok(items.find((item) => item.id === 'EV-a').retracted);
+    assert.equal(items.find((item) => item.id === 'EV-b').retracted, null);
+
+    await assert.rejects(() => access(path.join(dir, '.trellis/evidence.jsonl')));
+    await access(path.join(dir, '.trellis/evidence.jsonl.migrated'));
+    await access(path.join(dir, '.trellis/evidence/T-001.jsonl'));
+    await access(path.join(dir, '.trellis/evidence/T-002.jsonl'));
   } finally {
     await cleanup(dir);
   }

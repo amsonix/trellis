@@ -1,5 +1,5 @@
 export const PROTOCOL_VERSION = '0.8.0';
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 export const META_DIR = '.trellis';
 
 export const STAGES = [

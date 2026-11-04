@@ -1,13 +1,21 @@
 /**
- * Fold the evidence event log and rotate the audit stream.
+ * Fold evidence shards and rotate the audit stream.
  *
- * Evidence is append-only, so `add` is O(1) but readers replay every event.
- * Compaction rewrites one `add` line per live record (retraction state folded
- * into the record) and leaves the observable state unchanged.
+ * v3 stores one append-only shard per task. Compaction folds each shard to one
+ * `add` line per record (retraction state included) and can move old retracted
+ * records to evidence/archive.
  */
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { EVIDENCE_ARCHIVE, EVIDENCE_FILE, evidenceArchivePath, evidencePath, foldEvidence, loadEvidence, readEvidenceEvents } from './evidence.mjs';
+import {
+  EVIDENCE_ARCHIVE_DIR,
+  EVIDENCE_DIR,
+  evidenceArchivePath,
+  evidenceDirPath,
+  foldEvidence,
+  migrateLegacyEvidence,
+  readEvidenceEvents
+} from './evidence.mjs';
 import { AUDIT_FILE, STATE_DIR } from './store.mjs';
 import { readText, renameWithRetry } from './util.mjs';
 
@@ -23,40 +31,73 @@ async function readSize(file) {
   }
 }
 
+async function shardFiles(root) {
+  try {
+    const entries = await fs.readdir(evidenceDirPath(root), { withFileTypes: true });
+    return entries
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.jsonl'))
+      .map((entry) => path.join(evidenceDirPath(root), entry.name))
+      .sort();
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+}
+
+async function writeShardFile(file, records) {
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  const text = records.length > 0 ? `${records.map((record) => JSON.stringify({ type: 'add', ...record })).join('\n')}\n` : '';
+  const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2, 8)}.tmp`;
+  await fs.writeFile(tmp, text, 'utf8');
+  await renameWithRetry(tmp, file);
+}
+
 async function compactEvidence(root, { dryRun = false, archiveRetractedDays = 0 } = {}) {
-  const file = evidencePath(root);
-  const before = await readSize(file);
-  const items = dryRun
-    ? foldEvidence(await readEvidenceEvents(root))
-    : (await loadEvidence(root)).items;
+  if (!dryRun) await migrateLegacyEvidence(root);
+
+  const files = await shardFiles(root);
+  let beforeLines = 0;
+  let beforeBytes = 0;
+  const groups = new Map();
+  for (const file of files) {
+    const text = await readText(file);
+    beforeLines += text.split('\n').filter(Boolean).length;
+    beforeBytes += Buffer.byteLength(text);
+    const taskId = path.basename(file, '.jsonl');
+    groups.set(taskId, foldEvidence(await readEvidenceEvents(root, { taskId })));
+  }
 
   const cutoff = archiveRetractedDays > 0 ? Date.now() - archiveRetractedDays * 86_400_000 : null;
-  const archived = cutoff
-    ? items.filter((item) => item.retracted && Date.parse(item.producedAt) < cutoff)
-    : [];
-  const kept = cutoff ? items.filter((item) => !archived.includes(item)) : items;
+  const archived = [];
+  const kept = [];
+  for (const [taskId, records] of groups) {
+    const old = cutoff ? records.filter((record) => record.retracted && Date.parse(record.producedAt) < cutoff) : [];
+    const active = cutoff ? records.filter((record) => !old.includes(record)) : records;
+    archived.push(...old.map((record) => ({ taskId, record })));
+    kept.push({ taskId, records: active });
+  }
 
-  const line = (item) => JSON.stringify({ type: 'add', ...item });
-  const text = kept.length > 0 ? `${kept.map(line).join('\n')}\n` : '';
-  const after = { lines: kept.length, bytes: Buffer.byteLength(text) };
+  const afterLines = kept.reduce((sum, item) => sum + item.records.length, 0);
+  const textLines = kept.map((item) => `${item.records.map((record) => JSON.stringify({ type: 'add', ...record })).join('\n')}${item.records.length ? '\n' : ''}`).join('');
+  const after = { lines: afterLines, bytes: Buffer.byteLength(textLines) };
 
   if (!dryRun) {
-    if (archived.length > 0) {
-      const archive = evidenceArchivePath(root);
-      await fs.mkdir(path.dirname(archive), { recursive: true });
-      await fs.appendFile(archive, `${archived.map(line).join('\n')}\n`, 'utf8');
+    for (const { taskId, record } of archived) {
+      const file = path.join(evidenceArchivePath(root), `${taskId}.jsonl`);
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.appendFile(file, `${JSON.stringify({ type: 'add', ...record })}\n`, 'utf8');
     }
-    await fs.mkdir(path.dirname(file), { recursive: true });
-    const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2, 8)}.tmp`;
-    await fs.writeFile(tmp, text, 'utf8');
-    await renameWithRetry(tmp, file);
+    for (const { taskId, records } of kept) {
+      await writeShardFile(path.join(evidenceDirPath(root), `${taskId}.jsonl`), records);
+    }
   }
+
   return {
-    file: EVIDENCE_FILE,
-    before,
+    file: EVIDENCE_DIR,
+    before: { lines: beforeLines, bytes: beforeBytes },
     after,
     archived: archived.length,
-    archive: archived.length > 0 ? EVIDENCE_ARCHIVE : null,
+    archive: archived.length > 0 ? EVIDENCE_ARCHIVE_DIR : null,
     dryRun
   };
 }

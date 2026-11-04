@@ -22,7 +22,7 @@
 <project>/.trellis/
 ```
 
-其中的 Markdown 产物是事实来源；`state.json`、`evidence.jsonl`（仅追加的事件日志）、`leases.json`（仅活跃租约）
+其中的 Markdown 产物是事实来源；`state.json`、`evidence/T-*.jsonl`（每任务一个仅追加分片）、`leases.json`（仅活跃租约）
 和 `leases.archive.jsonl`（已释放租约）是账本。`init` 可以跑在已有项目上：它创建 `.trellis/`，并一次性写入
 agent skill 到 `.agents/skills/trellis/SKILL.md`。它从不覆盖已存在的文件。
 
@@ -97,7 +97,8 @@ npm install -g https://github.com/amsonix/trellis/releases/download/vX.Y.Z/amson
   docs/INVARIANTS.md           绝不能破坏的东西
   docs/adr/0001-....md         第一个架构决策
   state.json                   gate 账本与审计
-  evidence.jsonl               证据事件日志（仅追加）
+  evidence/T-*.jsonl            按任务的证据分片（仅追加）
+  evidence/archive/T-*.jsonl    压缩归档的已撤回记录
   leases.json                  活跃写租约（执行时的约束）
   leases.archive.jsonl         已释放租约（仅追加）
 ```
@@ -198,7 +199,7 @@ DSH 配置：
 
 `trellis compact` 会把证据事件日志折叠成每条记录一行，并在 `audit.jsonl` 超过
 5 MB 时轮转；`--dry-run` 只报告大小。`--archive-retracted <天数>` 会把超过该
-天数的已撤回证据移到 `evidence.archive.jsonl`；通过或失败的证据不会被归档，
+天数的已撤回证据移到 `evidence/archive/T-*.jsonl`；通过或失败的证据不会被归档，
 因为验证还需要它们。
 
 Spec Kit 用户可以用 [`examples/spec-kit/`](examples/spec-kit/) 把 `tasks.md`
@@ -299,7 +300,7 @@ trellis help [command] [subcommand]
 不是扩大自己的 scope。
 
 失败证据可以由 human、reviewer 或 verifier 带理由撤回：`evidence retract <EV-id>
---reason "..."`。记录仍留在 `evidence.jsonl` 里并标为 `retracted`，但不再阻塞
+--reason "..."`。记录仍留在该任务的 shard 里并标为 `retracted`，但不再阻塞
 `done`，所以 bug 流程是真实的：先记录失败的复现，修好后撤回失败证据，再补一条
 通过证据。产出者角色不能撤回自己的失败。
 

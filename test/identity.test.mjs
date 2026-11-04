@@ -30,7 +30,7 @@ test('the agent id is stamped on leases, evidence and audit entries', async () =
     const leases = await readJson(path.join(dir, '.trellis/leases.json'));
     assert.equal(leases.items[0].agent, 'worker-7');
 
-    const evidence = (await readFile(path.join(dir, '.trellis/evidence.jsonl'), 'utf8'))
+    const evidence = (await readFile(path.join(dir, '.trellis/evidence/T-001.jsonl'), 'utf8'))
       .trim()
       .split('\n')
       .map((line) => JSON.parse(line))

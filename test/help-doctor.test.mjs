@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
-import { appendFile } from 'node:fs/promises';
+import { appendFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { cleanup, makeProject } from './helpers.mjs';
 
@@ -57,7 +57,8 @@ test('doctor fails on a missing project and a corrupt evidence log', async () =>
 
   const dir = await makeProject('generic');
   try {
-    await appendFile(path.join(dir, '.trellis/evidence.jsonl'), 'NOT JSON\n');
+    await mkdir(path.join(dir, '.trellis/evidence'), { recursive: true });
+    await appendFile(path.join(dir, '.trellis/evidence/T-001.jsonl'), 'NOT JSON\n');
     const corrupt = await run(['doctor', '--dir', dir, '--json']);
     assert.equal(corrupt.code, 3);
     assert.ok(JSON.parse(corrupt.stdout).data.checks.some((check) => check.code === 'EVIDENCE_BROKEN'));

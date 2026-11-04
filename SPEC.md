@@ -43,7 +43,7 @@ It answers five questions at every moment:
 1. **The fixed management directory `<project>/.trellis/` holds the
    artifacts.** `PROJECT.md`, `docs/*.md` and `docs/adr/*.md` inside it are the
    source of truth and are committed with the project.
-2. **The same directory holds the ledger.** `state.json`, `evidence.jsonl`, `leases.json`, `leases.archive.jsonl` and
+2. **The same directory holds the ledger.** `state.json`, `evidence/T-*.jsonl`, `leases.json`, `leases.archive.jsonl` and
    `audit.jsonl` record gates, evidence, active leases, released leases and
    history. The ledger can be
    rebuilt with `reindex` when the artifacts are intact.
@@ -247,7 +247,8 @@ over (`task.taken_over`) without rewriting the status, and
 
 Rules:
 
-- Evidence is stored in `.trellis/evidence.jsonl` as an append-only event log:
+- Evidence is stored in `.trellis/evidence/T-*.jsonl`, one append-only shard per
+  task. The legacy single `evidence.jsonl` is migrated on first read:
   `add` and `retract` events are folded by evidence id when read. A corrupt
   line in the middle of the log is an error; only a final line without a
   trailing newline may be ignored as a torn write. An optional
@@ -420,7 +421,7 @@ Implemented through `0.2.x`:
 - a warning (`TASK_BEFORE_PLAN`) when work is already in progress before `G4`;
 - gates `G0`–`G7`, approver roles, order, waivers, per-task `G5`, and digests
   that make a passed gate stale when its artifacts change;
-- evidence ledger as an append-only `evidence.jsonl` event log, with
+- evidence ledger as per-task append-only shards (`evidence/T-*.jsonl`), with
   passing/failing/inconclusive verification, retraction, and `compact` to fold it;
 - leases on task claim, release, conflict detection, `guard commit --staged`
   with `--observe`, and released leases archived to `leases.archive.jsonl`;

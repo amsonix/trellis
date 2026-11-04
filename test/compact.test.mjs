@@ -8,7 +8,7 @@ import { addTaskEvidence, claimTask } from '../src/core/mutations.mjs';
 import { cleanup, makeProject } from './helpers.mjs';
 
 const evidenceLines = async (dir) =>
-  (await readFile(path.join(dir, '.trellis/evidence.jsonl'), 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+  (await readFile(path.join(dir, '.trellis/evidence/T-001.jsonl'), 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
 
 async function seedTrace(dir) {
   await claimTask(dir, 'T-001', { by: 'executor:w1' });
@@ -48,10 +48,10 @@ test('dry run reports sizes without touching the log', async () => {
   const dir = await makeProject('generic');
   try {
     await seedTrace(dir);
-    const before = await readFile(path.join(dir, '.trellis/evidence.jsonl'), 'utf8');
+    const before = await readFile(path.join(dir, '.trellis/evidence/T-001.jsonl'), 'utf8');
     const result = await compact(dir, { dryRun: true });
     assert.equal(result.evidence.dryRun, true);
-    assert.equal(await readFile(path.join(dir, '.trellis/evidence.jsonl'), 'utf8'), before);
+    assert.equal(await readFile(path.join(dir, '.trellis/evidence/T-001.jsonl'), 'utf8'), before);
   } finally {
     await cleanup(dir);
   }
@@ -61,7 +61,7 @@ test('retracted evidence older than the cutoff is archived', async () => {
   const dir = await makeProject('generic');
   try {
     const retractedId = await seedTrace(dir);
-    const file = path.join(dir, '.trellis/evidence.jsonl');
+    const file = path.join(dir, '.trellis/evidence/T-001.jsonl');
     const lines = (await readFile(file, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
     for (const line of lines) {
       if (line.type === 'add' && line.id === retractedId) line.producedAt = '2020-01-01T00:00:00.000Z';
@@ -75,7 +75,7 @@ test('retracted evidence older than the cutoff is archived', async () => {
     assert.equal(active.length, 1);
     assert.equal(active[0].verdict, 'pass');
 
-    const archive = (await readFile(path.join(dir, '.trellis/evidence.archive.jsonl'), 'utf8'))
+    const archive = (await readFile(path.join(dir, '.trellis/evidence/archive/T-001.jsonl'), 'utf8'))
       .trim()
       .split('\n')
       .map((line) => JSON.parse(line));
@@ -92,7 +92,7 @@ test('dry run does not archive retracted evidence', async () => {
   const dir = await makeProject('generic');
   try {
     const retractedId = await seedTrace(dir);
-    const file = path.join(dir, '.trellis/evidence.jsonl');
+    const file = path.join(dir, '.trellis/evidence/T-001.jsonl');
     const lines = (await readFile(file, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
     for (const line of lines) {
       if (line.type === 'add' && line.id === retractedId) line.producedAt = '2020-01-01T00:00:00.000Z';
@@ -100,7 +100,7 @@ test('dry run does not archive retracted evidence', async () => {
     await writeFile(file, `${lines.map((line) => JSON.stringify(line)).join('\n')}\n`);
 
     await compact(dir, { archiveRetractedDays: 30, dryRun: true });
-    await assert.rejects(() => access(path.join(dir, '.trellis/evidence.archive.jsonl')));
+    await assert.rejects(() => access(path.join(dir, '.trellis/evidence/archive/T-001.jsonl')));
   } finally {
     await cleanup(dir);
   }

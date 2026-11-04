@@ -35,7 +35,7 @@ agent 会写代码；难的是知道**建什么、按什么顺序、拿什么证
 ## 3. 事实来源
 
 1. 固定的 `<project>/.trellis/` 保存产物；其中的 Markdown 是事实来源。
-2. 同一目录保存账本：`state.json`、`evidence.jsonl`、`leases.json`、
+2. 同一目录保存账本：`state.json`、`evidence/T-*.jsonl`、`leases.json`、
    `leases.archive.jsonl`、`audit.jsonl`。`reindex` 可从产物重建 state。
 3. 任务是 `.trellis/docs/TASKS.md` 中的一行；租约是独立记录。
 4. gate 是审批事件，记在 state 里，不是文件。
@@ -141,7 +141,8 @@ G6 将其列为 warning 而不是要求证据。
   "producedBy": "verifier:ci", "producedAt": "...", "note": "...", "agent": "..." }
 ```
 
-- 存在 `.trellis/evidence.jsonl`，是 append-only 事件日志（add / retract）；
+- 存在 `.trellis/evidence/T-*.jsonl`，每个任务一个 append-only shard（add / retract）；
+  旧的单文件 `evidence.jsonl` 在首次读取时迁移；
   可选 `proves` 字段写明这条证据要证明验收条件里的哪一句。日志中间行损坏
   视为错误；只有末尾没有换行符的半行可以按崩溃写入忽略。
 - 本地文件在写入时计算 sha256；文件变化需要新证据。

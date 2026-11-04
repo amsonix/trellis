@@ -64,7 +64,7 @@ export async function loadState(root) {
   if (!state || typeof state !== 'object') {
     throw new UnavailableError(`${file} is not a JSON object`, { path: file });
   }
-  if (![1, SCHEMA_VERSION].includes(state.schemaVersion)) {
+  if (![1, 2, SCHEMA_VERSION].includes(state.schemaVersion)) {
     throw new UnavailableError(`unsupported state schema ${state.schemaVersion}; this build understands ${SCHEMA_VERSION}`, {
       path: file,
       found: state.schemaVersion

@@ -8,7 +8,7 @@ whenToUse: "Any change to a project that has .trellis/, or any request to plan, 
 # Trellis
 
 Trellis is a file-based protocol for building a project. `.trellis/` is the
-source of truth; `state.json`, `evidence.jsonl`, `leases.json` and
+source of truth; `state.json`, `evidence/T-*.jsonl`, `leases.json` and
 `leases.archive.jsonl` are the ledger.
 The CLI is the interface; prefer `--json` and read the envelope.
 
