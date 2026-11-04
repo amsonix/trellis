@@ -316,6 +316,10 @@ one record per id, can archive retracted records older than a cutoff, and
 rotates the audit stream past 5 MB. `TRELLIS_STRICT=1` makes `task claim`
 refuse before `G4` instead of only warning.
 
+`doctor` reports the node version, git availability, state, task table, evidence
+log, lease file, lock and write permission without throwing on a broken project.
+`help <command> [subcommand]` prints per-command usage.
+
 `export --a2a` is a read-only projection of the task board onto the A2A task
 lifecycle; the Trellis status and fields stay under `metadata.trellis`.
 

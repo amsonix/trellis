@@ -281,6 +281,8 @@ trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
 trellis export --a2a [dir] [--json]
 trellis scope suggest --task <T-NNN> [dir] [--apply --by <role>:<name>] [--json]
 trellis profile list [--json]
+trellis doctor [dir] [--json]
+trellis help [command] [subcommand]
 ```
 
 `trellis report` 回答「项目到哪一步了、卡在哪」：gate 与任务计数、按里程碑从任务板

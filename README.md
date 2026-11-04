@@ -300,6 +300,8 @@ trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
 trellis export --a2a [dir] [--json]
 trellis scope suggest --task <T-NNN> [dir] [--apply --by <role>:<name>] [--json]
 trellis profile list [--json]
+trellis doctor [dir] [--json]
+trellis help [command] [subcommand]
 ```
 
 `trellis report` answers "where is this project and what is blocking it": gate

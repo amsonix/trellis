@@ -33,6 +33,7 @@ import { parseTasks } from './core/tasks.mjs';
 import { leaseStatus, guardCommit } from './core/lease.mjs';
 import { exportA2A } from './core/export-a2a.mjs';
 import { selectTaskCommits, suggestScopeForTask } from './core/scope.mjs';
+import { doctor } from './core/doctor.mjs';
 import { applyTaskScope, recoverTask } from './core/mutations.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -153,6 +154,8 @@ Usage:
   trellis export --a2a [dir] [--json]
   trellis scope suggest --task <T-NNN> [dir] [--json]
   trellis profile list [--json]
+  trellis doctor [dir] [--json]
+  trellis help [command] [subcommand]
   trellis --version
   trellis --help
 
@@ -162,6 +165,57 @@ Exit codes:
   3 refused / checks fail
   4 unavailable (missing state, unreadable artifact, git failure)
 `;
+}
+
+
+const HELP = {
+  init: ['Create .trellis/ in a new or existing project.', 'trellis init [project-dir] [--profile <p>] [--name <n>]'],
+  status: ['Where the project is: stage, gates, task counts, attention.', 'trellis status [dir] [--json]'],
+  check: ['Run the structural checks, optionally for one stage.', 'trellis check [dir] [--stage <stage>] [--json]'],
+  next: ['The one action allowed now (tasks batch, gate, or stop reason).', 'trellis next [dir] [--role <role>] [--json]'],
+  brief: ['The gate brief: read set, write set, prohibitions, next commands.', 'trellis brief [dir] [--role <role>] [--json]'],
+  report: ['Progress and gaps: gates, tasks, stale gates, questions, leases.', 'trellis report [dir] [--json]'],
+  gate: ['Approve or waive a gate.', 'trellis gate <G0..G7> --approve --by <role>:<name> [--task T-NNN] [--note <t>]'],
+  task: ['Task board operations.', 'trellis task <list|add|claim|ask|answer|report|recover> ...'],
+  'task:list': ['List the task board.', 'trellis task list [dir] [--json]'],
+  'task:add': ['Validate and append a task row.', 'trellis task add --title <t> --scope <paths> --acceptance <a> --verification <v> --by <role>:<name> [--priority high|medium|low]'],
+  'task:claim': ['Claim a task (creates the lease) or take over an orphaned claim.', 'trellis task claim <T-NNN> --by <role>:<name>'],
+  'task:ask': ['Ask one blocking question; only a human answers it.', 'trellis task ask <T-NNN> --question <text> --by <role>:<name>'],
+  'task:answer': ['Answer an open question as a human.', 'trellis task answer <Q-NNN> --decision <text> --by human:<name>'],
+  'task:report': ['Report a task state; done requires passing evidence.', 'trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>]'],
+  'task:recover': ['Return an in_progress task with no lease to ready or todo.', 'trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]'],
+  evidence: ['Evidence log operations.', 'trellis evidence <add|list|retract> ...'],
+  'evidence:add': ['Record evidence for a task.', 'trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] --by <role>:<name>'],
+  'evidence:list': ['List evidence, optionally for one task.', 'trellis evidence list [--task <T-NNN>] [--json]'],
+  'evidence:retract': ['Retract evidence with a reason (human, reviewer, verifier).', 'trellis evidence retract <EV-id> --by <role>:<name> --reason <text>'],
+  verify: ['Check whether a task has enough passing evidence.', 'trellis verify <T-NNN> [--json]'],
+  lease: ['Write leases.', 'trellis lease <status|release> ...'],
+  'lease:status': ['List held leases.', 'trellis lease status [--json]'],
+  'lease:release': ['Release a held lease.', 'trellis lease release <T-NNN> --by <role>:<name>'],
+  guard: ['Check a set of paths against the task scope and held leases.', 'trellis guard commit --task <T-NNN> (--staged | --paths <a,b>) [--observe]'],
+  reindex: ['Rebuild state.json from the artifacts.', 'trellis reindex [dir] [--json]'],
+  compact: ['Fold the evidence log and rotate audit.jsonl.', 'trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]'],
+  scope: ['Write-scope helpers.', 'trellis scope suggest --task <T-NNN> [--apply --by <role>:<name>]'],
+  'scope:suggest': ['Suggest a file-level scope from commits for the task.', 'trellis scope suggest --task <T-NNN> [dir] [--apply --by <role>:<name>] [--json]'],
+  export: ['Read-only projections.', 'trellis export --a2a [dir] [--json]'],
+  profile: ['Profiles.', 'trellis profile list [--json]'],
+  'profile:list': ['List the available profiles.', 'trellis profile list [--json]'],
+  doctor: ['Check the environment and the project ledgers.', 'trellis doctor [dir] [--json]'],
+  help: ['Per-command help.', 'trellis help <command> [subcommand]']
+};
+
+function helpFor(subject = null, sub = null) {
+  if (!subject) return usage();
+  const key = sub ? `${subject}:${sub}` : subject;
+  const entry = HELP[key] ?? HELP[subject];
+  if (!entry) return `no help for '${key}'; run trellis --help`;
+  const subs = Object.keys(HELP)
+    .filter((name) => name.startsWith(`${subject}:`))
+    .map((name) => name.split(':')[1]);
+  const extra = subs.length
+    ? `\n\nSubcommands: ${subs.join(', ')}\n  try: trellis help ${subject} ${subs[0]}`
+    : '';
+  return `${entry[0]}\n\nUsage:\n  ${entry[1]}${extra}`;
 }
 
 function printInit(data) {
@@ -351,7 +405,20 @@ async function dispatch(args) {
   if (options.version || command === 'version') {
     return { data: { version: PROTOCOL_VERSION }, exitCode: 0, print: () => console.log(PROTOCOL_VERSION) };
   }
-  if (options.help || !command) {
+  if (command === 'help') {
+    const text = helpFor(args.positionals[0] ?? null, args.positionals[1] ?? null);
+    const known = !args.positionals[0] || Boolean(HELP[args.positionals[0]] ?? HELP[`${args.positionals[0]}:${args.positionals[1]}`]);
+    return {
+      data: { usage: text },
+      exitCode: known ? 0 : 2,
+      print: () => console.log(text)
+    };
+  }
+  if (options.help) {
+    const text = command ? helpFor(command, subcommand) : usage();
+    return { data: { usage: text }, exitCode: 0, print: () => console.log(text) };
+  }
+  if (!command) {
     return { data: { usage: usage() }, exitCode: 0, print: () => console.log(usage()) };
   }
 
@@ -583,6 +650,40 @@ async function dispatch(args) {
         const prefix = result.observed ? 'WOULD-BLOCK' : 'BLOCK';
         for (const violation of result.violations) console.log(`${prefix} [${violation.code}] ${violation.message}`);
         if (result.observed) console.log('observe mode: exit 0, no commit was blocked');
+      }
+    };
+  }
+
+  if (command === 'doctor') {
+    const dir = dirOf(args);
+    const data = await doctor(dir);
+    data.checks.unshift({
+      code: 'NODE_VERSION',
+      severity: Number(process.versions.node.split('.')[0]) >= 20 ? 'pass' : 'fail',
+      message: `node ${process.versions.node}`
+    });
+    try {
+      await execFileAsync('git', ['-C', dir, 'rev-parse', '--is-inside-work-tree'], { maxBuffer: 1024 * 1024 });
+      data.checks.push({ code: 'GIT_OK', severity: 'pass', message: 'git repository found' });
+    } catch {
+      data.checks.push({ code: 'GIT_MISSING', severity: 'warn', message: 'not a git repository; scope suggest is unavailable' });
+    }
+    data.summary = {
+      pass: data.checks.filter((check) => check.severity === 'pass').length,
+      warn: data.checks.filter((check) => check.severity === 'warn').length,
+      fail: data.checks.filter((check) => check.severity === 'fail').length,
+      unavailable: data.checks.filter((check) => check.severity === 'unavailable').length,
+      total: data.checks.length
+    };
+    const exitCode = data.summary.fail > 0 ? 3 : 0;
+    return {
+      data,
+      exitCode,
+      print: () => {
+        for (const check of data.checks) {
+          console.log(`${check.severity.toUpperCase().padEnd(11)} ${check.code}  ${check.message}`);
+        }
+        console.log(`summary: ${data.summary.pass} pass, ${data.summary.warn} warn, ${data.summary.fail} fail`);
       }
     };
   }

@@ -119,6 +119,8 @@ trellis reindex [dir] [--json]
 trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
 trellis scope suggest --task <T-NNN> [dir] [--apply --by <role>:<name>] [--json]
 trellis profile list [--json]
+trellis doctor [dir] [--json]
+trellis help [command] [subcommand]
 ```
 
 Exit codes: `0` success · `2` usage · `3` refused, checks fail or gate blocked ·
