@@ -32,7 +32,8 @@ import {
   retractEvidence,
   releaseLease,
   compact,
-  recoverTask
+  recoverTask,
+  cancelTask
 } from '../core/mutations.mjs';
 import { parseTasks } from '../core/tasks.mjs';
 import { leaseStatus } from '../core/lease.mjs';
@@ -279,6 +280,21 @@ const writeTools = [
       if (!released) throw new RefusedError('LEASE_NOT_HELD', `no held lease for ${args.task}`, { task: args.task });
       return { taskId: args.task, released: true };
     }
+  },
+  {
+    name: 'trellis_task_cancel',
+    description:
+      'Cancel work that is no longer needed. Terminal; only human or coordinator; releases the lease; canceled tasks do not satisfy dependencies.',
+    inputSchema: object(
+      {
+        dir: dirProp,
+        task: text('Task id.'),
+        by: text('Actor as human:<name> or coordinator:<name>.'),
+        reason: text('Why the task is canceled.')
+      },
+      ['task', 'by', 'reason']
+    ),
+    run: (args) => cancelTask(dirOf(args), args.task, { by: args.by, reason: args.reason })
   },
   {
     name: 'trellis_task_recover',

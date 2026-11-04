@@ -121,6 +121,11 @@ in_progress → review | blocked | done
 review → done | blocked
 blocked → in_progress | review | done
 done → 终态
+canceled → 终态（由 task cancel 进入）
+
+`task cancel <T-NNN> --by human|coordinator --reason ...` 关闭不再需要的任务：
+释放租约、记录 `task.canceled`，进入终态 `canceled`；它不满足依赖、不可再 claim，
+G6 将其列为 warning 而不是要求证据。
 
 `in_progress` 但没有租约的任务可以被接管：`task claim` 会接管，记录
 `task.taken_over`，不改状态；`task recover --by human|coordinator --reason ...`

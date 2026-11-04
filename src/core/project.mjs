@@ -190,7 +190,7 @@ export async function runChecks(root, stage = null) {
 }
 
 function taskCounts(tasks) {
-  const counts = { total: tasks.length, todo: 0, ready: 0, in_progress: 0, review: 0, blocked: 0, done: 0 };
+  const counts = { total: tasks.length, todo: 0, ready: 0, in_progress: 0, review: 0, blocked: 0, done: 0, canceled: 0 };
   for (const task of tasks) counts[task.status] = (counts[task.status] ?? 0) + 1;
   return counts;
 }
@@ -808,6 +808,38 @@ export async function addTask(
   }
   await saveState(root, state);
   return { task, followUpOf: parent?.id ?? null, depth };
+}
+
+export async function cancelTask(root, taskId, { by, reason }) {
+  if (!taskId) throw new UsageError('task cancel needs a task id');
+  if (!by) throw new UsageError('task cancel needs --by <role>:<name>');
+  if (!reason || String(reason).trim() === '') throw new UsageError('task cancel needs --reason "<why>"');
+  assertMaxLength(reason, 'reason', 1000);
+  const actor = parseActor(by);
+  if (!['human', 'coordinator'].includes(actor.role)) {
+    throw new RefusedError('TASK_CANCEL_ROLE', `${actor.raw} cannot cancel a task; allowed: human, coordinator`, {
+      actor: actor.raw
+    });
+  }
+
+  const { tasks } = await parseTasks(root);
+  const task = taskById(tasks, taskId);
+  if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
+  if (['done', 'canceled'].includes(task.status)) {
+    throw new RefusedError('TASK_CANCEL_STATE', `task ${taskId} is '${task.status}' and cannot be canceled`, {
+      task: taskId,
+      status: task.status
+    });
+  }
+
+  const state = await loadState(root);
+  await releaseLease(root, taskId, actor.raw);
+  await updateTaskStatus(root, taskId, 'canceled');
+  state.taskNotes = state.taskNotes ?? {};
+  state.taskNotes[taskId] = { note: String(reason).trim(), at: nowIso(), by: actor.raw, state: 'canceled' };
+  appendAudit(state, 'task.canceled', actor, { task: taskId, from: task.status, reason: String(reason).trim() });
+  await saveState(root, state);
+  return { task: { ...task, status: 'canceled' } };
 }
 
 export async function recoverTask(root, taskId, { to = 'ready', by, reason }) {

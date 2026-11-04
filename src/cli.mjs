@@ -34,7 +34,7 @@ import { leaseStatus, guardCommit } from './core/lease.mjs';
 import { exportA2A } from './core/export-a2a.mjs';
 import { selectTaskCommits, suggestScopeForTask } from './core/scope.mjs';
 import { doctor } from './core/doctor.mjs';
-import { applyTaskScope, recoverTask } from './core/mutations.mjs';
+import { applyTaskScope, recoverTask, cancelTask } from './core/mutations.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -140,7 +140,8 @@ Usage:
   trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
   trellis task ask <T-NNN> --question <text> --by <role>:<name> [--dir <dir>]
   trellis task answer <Q-NNN> --decision <text> --by human:<name>
-  trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo] [--dir <dir>]
+  trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
+  trellis task cancel <T-NNN> --by human:<name> --reason <text> [--dir <dir>]
   trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dir <dir>]
   trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit>
                               --verdict <pass|fail|inconclusive> --by <role>:<name> [--dir <dir>]
@@ -177,7 +178,7 @@ const HELP = {
   brief: ['The gate brief: read set, write set, prohibitions, next commands.', 'trellis brief [dir] [--role <role>] [--json]'],
   report: ['Progress and gaps: gates, tasks, stale gates, questions, leases.', 'trellis report [dir] [--json]'],
   gate: ['Approve or waive a gate.', 'trellis gate <G0..G7> --approve --by <role>:<name> [--task T-NNN] [--note <t>]'],
-  task: ['Task board operations.', 'trellis task <list|add|claim|ask|answer|report|recover> ...'],
+  task: ['Task board operations.', 'trellis task <list|add|claim|ask|answer|report|recover|cancel> ...'],
   'task:list': ['List the task board.', 'trellis task list [dir] [--json]'],
   'task:add': ['Validate and append a task row.', 'trellis task add --title <t> --scope <paths> --acceptance <a> --verification <v> --by <role>:<name> [--priority high|medium|low]'],
   'task:claim': ['Claim a task (creates the lease) or take over an orphaned claim.', 'trellis task claim <T-NNN> --by <role>:<name>'],
@@ -185,6 +186,7 @@ const HELP = {
   'task:answer': ['Answer an open question as a human.', 'trellis task answer <Q-NNN> --decision <text> --by human:<name>'],
   'task:report': ['Report a task state; done requires passing evidence.', 'trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>]'],
   'task:recover': ['Return an in_progress task with no lease to ready or todo.', 'trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]'],
+  'task:cancel': ['Cancel work that is no longer needed; canceled tasks do not satisfy dependencies.', 'trellis task cancel <T-NNN> --by human:<name> --reason <text>'],
   evidence: ['Evidence log operations.', 'trellis evidence <add|list|retract> ...'],
   'evidence:add': ['Record evidence for a task.', 'trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] --by <role>:<name>'],
   'evidence:list': ['List evidence, optionally for one task.', 'trellis evidence list [--task <T-NNN>] [--json]'],
@@ -541,6 +543,13 @@ async function dispatch(args) {
         exitCode: 0,
         print: () => console.log(`answered ${data.question.id}; ${data.task.id} is ${data.task.status}`)
       };
+    }
+    if (subcommand === 'cancel') {
+      if (!options.reason) throw new UsageError('task cancel needs --reason "<why>"');
+      const taskId = args.positionals[0];
+      if (!taskId) throw new UsageError('task cancel needs a task id');
+      const data = await cancelTask(dir, taskId, { by: options.by ?? '', reason: options.reason });
+      return { data, exitCode: 0, print: () => console.log(`canceled ${taskId}`) };
     }
     if (subcommand === 'recover') {
       if (!options.reason) throw new UsageError('task recover needs --reason "<why>"');

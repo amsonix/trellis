@@ -218,6 +218,12 @@ done        → (terminal)
 `task claim` sets `in_progress` and acquires a lease over the task's scope.
 `task report --state done` verifies evidence and releases the lease.
 
+`task cancel <T-NNN> --by human|coordinator --reason ...` closes work that is no
+longer needed: it releases the lease, records `task.canceled` and moves the task
+to the terminal `canceled` state. A canceled task does not satisfy dependencies,
+is never claimable again, and G6 lists it as a warning instead of requiring
+evidence.
+
 An `in_progress` task without a lease is reclaimable: `task claim` takes it
 over (`task.taken_over`) without rewriting the status, and
 `task recover --by human|coordinator --reason ...` returns it to `ready` or
@@ -414,8 +420,8 @@ Implemented through `0.2.x`:
   passing/failing/inconclusive verification, retraction, and `compact` to fold it;
 - leases on task claim, release, conflict detection, `guard commit --staged`
   with `--observe`, and released leases archived to `leases.archive.jsonl`;
-- `status`, `check`, `next`, `brief`, `report`, `compact`, `reindex`, an A2A
-  export, JSON envelope and exit codes;
+- `status`, `check`, `next`, `brief`, `report`, `compact`, `reindex`, `doctor`,
+  `help`, an A2A export, JSON envelope and exit codes;
 - a per-project write lock and atomic JSON writes;
 - `TRELLIS_AGENT` attribution and `TRELLIS_STRICT=1`;
 - an MCP server (`bin/trellis-mcp.mjs`): read tools by default, write tools

@@ -194,6 +194,15 @@ export async function gateChecks(root, gateId, { profile, state, tasks, taskId =
       checks.push(makeCheck('TASKS_EMPTY', 'fail', 'no tasks to integrate', { stage: 'integrating' }));
     }
     for (const task of tasks) {
+      if (task.status === 'canceled') {
+        checks.push(
+          makeCheck('TASK_CANCELED', 'warn', `task ${task.id} was canceled and is excluded from integration`, {
+            stage: 'integrating',
+            task: task.id
+          })
+        );
+        continue;
+      }
       if (task.status !== 'done') {
         checks.push(
           makeCheck('TASK_NOT_DONE', 'fail', `task ${task.id} is '${task.status}', not 'done'`, {

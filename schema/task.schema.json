@@ -70,7 +70,8 @@
         "in_progress",
         "review",
         "blocked",
-        "done"
+        "done",
+        "canceled"
       ]
     },
     "priority": {

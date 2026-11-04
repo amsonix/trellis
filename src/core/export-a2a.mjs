@@ -16,7 +16,8 @@ export const A2A_STATES = {
   in_progress: 'working',
   review: 'working',
   blocked: 'input-required',
-  done: 'completed'
+  done: 'completed',
+  canceled: 'canceled'
 };
 
 export function mapTaskState(status) {

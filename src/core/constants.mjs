@@ -104,7 +104,8 @@ export const TASK_STATUSES = [
   'in_progress',
   'review',
   'blocked',
-  'done'
+  'done',
+  'canceled'
 ];
 
 export const TASK_TRANSITIONS = {
