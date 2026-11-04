@@ -119,6 +119,9 @@ in_progress → review | blocked | done
 review → done | blocked
 blocked → in_progress | review | done
 done → 终态
+
+`in_progress` 但没有租约的任务可以被接管：`task claim` 会接管，记录
+`task.taken_over`，不改状态；`TRELLIS_NO_TAKEOVER=1` 关闭接管。
 ```
 
 ## 8. 证据

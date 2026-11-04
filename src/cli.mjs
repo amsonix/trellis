@@ -434,7 +434,20 @@ async function dispatch(args) {
       if (!taskId) throw new UsageError('task claim needs a task id');
       if (!options.by) throw new UsageError('task claim needs --by <role>:<name>');
       const data = await claimTask(dir, taskId, { by: options.by });
-      return { data, exitCode: 0, print: () => console.log(`claimed ${taskId}; lease ${data.lease.id} on ${data.lease.domains.join(', ')}`) };
+      return {
+        data,
+        exitCode: 0,
+        print: () => {
+          if (data.takenOver) {
+            console.log(
+              `claimed ${taskId} by taking over a claim with no lease; lease ${data.lease.id} on ${data.lease.domains.join(', ')}`
+            );
+            console.log('  (audit: task.taken_over -- the previous claim was never released)');
+          } else {
+            console.log(`claimed ${taskId}; lease ${data.lease.id} on ${data.lease.domains.join(', ')}`);
+          }
+        }
+      };
     }
     if (subcommand === 'ask') {
       const taskId = args.positionals[0];

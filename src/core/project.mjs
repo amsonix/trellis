@@ -632,10 +632,20 @@ export async function claimTask(root, taskId, { by }) {
   const task = taskById(tasks, taskId);
   if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
   if (task.status === 'in_progress') {
-    const lease = (await leaseStatus(root)).find((item) => item.taskId === taskId);
-    if (lease) return { task, lease, idempotent: true };
-  }
-  if (!['todo', 'ready'].includes(task.status)) {
+    const held = (await leaseStatus(root)).find((item) => item.taskId === taskId);
+    if (held) return { task, lease: held, idempotent: true };
+    // No lease: the claim that put this row in `in_progress` is dead. The
+    // transition table has no in_progress -> todo/ready, so without this branch
+    // the task can be neither claimed nor released -- a dead end whose only exit
+    // is a hand edit of the board. Take it over, but keep the fact.
+    if (process.env.TRELLIS_NO_TAKEOVER === '1') {
+      throw new RefusedError(
+        'TASK_STALE_TAKEOVER_REFUSED',
+        `${taskId} is in_progress with no lease; takeover is disabled by TRELLIS_NO_TAKEOVER=1`,
+        { task: taskId }
+      );
+    }
+  } else if (!['todo', 'ready'].includes(task.status)) {
     throw new RefusedError('TASK_NOT_CLAIMABLE', `task ${taskId} is '${task.status}', not todo/ready`, { task: taskId });
   }
   if (actor.role !== task.role && !['coordinator', 'human'].includes(actor.role)) {
@@ -654,10 +664,19 @@ export async function claimTask(root, taskId, { by }) {
   }
 
   const lease = await acquireLease(root, { taskId, actor: actor.raw, domains: task.scope });
-  await updateTaskStatus(root, taskId, 'in_progress');
-  appendAudit(state, 'task.claimed', actor, { task: taskId, lease: lease.id });
+  const takenOver = task.status === 'in_progress';
+  if (takenOver) {
+    appendAudit(state, 'task.taken_over', actor, {
+      task: taskId,
+      lease: lease.id,
+      reason: 'in_progress with no lease'
+    });
+  } else {
+    await updateTaskStatus(root, taskId, 'in_progress');
+    appendAudit(state, 'task.claimed', actor, { task: taskId, lease: lease.id });
+  }
   await saveState(root, state);
-  return { task: { ...task, status: 'in_progress' }, lease };
+  return { task: { ...task, status: 'in_progress' }, lease, takenOver };
 }
 
 export async function addTask(

@@ -4,6 +4,15 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `task claim` takes over an `in_progress` task whose lease no longer exists.
+  The takeover keeps the status, passes the usual role and dependency checks,
+  and records `task.taken_over`; `TRELLIS_NO_TAKEOVER=1` disables it.
+- 127 `node:test` cases.
+
 ## [0.5.1] - 2026-11-04
 
 ### Added
