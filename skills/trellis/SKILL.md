@@ -111,7 +111,7 @@ trellis gate <G0..G7> --waive --by human:<name> --reason <text> [--task <T-NNN>]
 
 trellis reindex [dir] [--json]
 trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
-trellis scope suggest --task <T-NNN> [dir] [--json]
+trellis scope suggest --task <T-NNN> [dir] [--apply --by <role>:<name>] [--json]
 trellis profile list [--json]
 ```
 

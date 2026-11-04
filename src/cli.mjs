@@ -33,6 +33,7 @@ import { parseTasks } from './core/tasks.mjs';
 import { leaseStatus, guardCommit } from './core/lease.mjs';
 import { exportA2A } from './core/export-a2a.mjs';
 import { suggestScopeForTask } from './core/scope.mjs';
+import { applyTaskScope } from './core/mutations.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -66,7 +67,7 @@ const VALUE_OPTIONS = new Set([
   'id'
 ]);
 
-const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a']);
+const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply']);
 
 function parseArgv(argv) {
   const positionals = [];
@@ -580,6 +581,12 @@ async function dispatch(args) {
     });
     const files = stdout.split('\n').map((line) => line.trim()).filter(Boolean);
     const data = suggestScopeForTask(task.id, task.scope, files);
+    if (options.apply) {
+      if (data.suggested.length === 0) throw new UsageError('scope suggest: nothing to apply');
+      if (!options.by) throw new UsageError('scope suggest --apply needs --by <role>:<name>');
+      const applied = await applyTaskScope(dir, task.id, data.suggested, { by: options.by });
+      data.applied = { from: applied.task.scope, by: options.by };
+    }
     return {
       data,
       exitCode: 0,

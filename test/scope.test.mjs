@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { suggestScopeForTask } from '../src/core/scope.mjs';
+import { applyTaskScope } from '../src/core/mutations.mjs';
+import { parseTasks } from '../src/core/tasks.mjs';
+import { cleanup, makeProject } from './helpers.mjs';
 
 test('scope suggestion narrows to touched files inside the scope', () => {
   const result = suggestScopeForTask('T-001', ['src', 'test'], [
@@ -21,4 +26,31 @@ test('nothing inside the scope means no suggestion', () => {
   assert.deepEqual(result.suggested, []);
   assert.deepEqual(result.outside, ['docs/readme.md']);
   assert.equal(result.narrows, false);
+});
+
+
+test('scope apply narrows the board and audits it', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await applyTaskScope(dir, 'T-001', ['src/feature.mjs'], { by: 'coordinator:kim' });
+    const { tasks } = await parseTasks(dir);
+    assert.deepEqual(tasks[0].scope, ['src/feature.mjs']);
+
+    const state = JSON.parse(await readFile(path.join(dir, '.trellis/state.json'), 'utf8'));
+    assert.equal(state.audit.at(-1).action, 'task.scope.narrowed');
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('scope apply refuses to widen the scope', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await assert.rejects(
+      () => applyTaskScope(dir, 'T-001', ['docs/readme.md'], { by: 'coordinator:kim' }),
+      (error) => error.code === 'SCOPE_APPLY_WIDENS'
+    );
+  } finally {
+    await cleanup(dir);
+  }
 });

@@ -316,6 +316,36 @@ export async function appendTask(root, task) {
   await writeText(file, lines.join('\n'));
 }
 
+export async function updateTaskScope(root, id, scope) {
+  const file = path.join(root, META_DIR, TASKS_FILE);
+  const text = await readText(file);
+  const lines = text.split(/\r?\n/);
+  let scopeIndex = -1;
+  for (const line of lines) {
+    if (!/^\s*\|/.test(line)) continue;
+    const header = splitRow(line);
+    const found = header.findIndex((cell) => HEADER_ALIASES[normalizeHeader(cell)] === 'scope');
+    if (found !== -1) {
+      scopeIndex = found;
+      break;
+    }
+  }
+  if (scopeIndex === -1) throw new UsageError(`${TASKS_FILE} has no Scope column`);
+  let changed = false;
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/^\s*\|/.test(lines[i])) continue;
+    const cells = splitRow(lines[i]);
+    if (cells[0] !== id) continue;
+    if (cells.length <= scopeIndex) continue;
+    cells[scopeIndex] = scope.join(', ');
+    lines[i] = `| ${cells.join(' | ')} |`;
+    changed = true;
+    break;
+  }
+  if (!changed) throw new UsageError(`task ${id} is not on the task board`);
+  await writeText(file, lines.join('\n'));
+}
+
 export async function updateTaskStatus(root, id, status) {
   const file = path.join(root, META_DIR, TASKS_FILE);
   const text = await readText(file);

@@ -205,7 +205,8 @@ instead of only warning. Set `TRELLIS_AGENT` to stamp leases, evidence and audit
 entries with a worker id (attribution, not authentication).
 
 `trellis scope suggest` reads commits mentioning a task (`git log --grep`) and
-proposes a file-level write scope; it only reads, it never edits the board.
+proposes a file-level write scope. By default it only reads; `--apply --by
+<role>:<name>` writes the suggestion back, and only narrowing is allowed.
 
 `trellis compact` folds the evidence event log into one record per id and
 rotates `audit.jsonl` when it exceeds 5 MB; `--dry-run` reports the sizes.
@@ -296,7 +297,7 @@ trellis guard commit --task <T-NNN> (--staged | --paths <a,b>) [--observe] [--di
 trellis reindex [dir] [--json]
 trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
 trellis export --a2a [dir] [--json]
-trellis scope suggest --task <T-NNN> [dir] [--json]
+trellis scope suggest --task <T-NNN> [dir] [--apply --by <role>:<name>] [--json]
 trellis profile list [--json]
 ```
 

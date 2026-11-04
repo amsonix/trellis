@@ -192,7 +192,7 @@ DSH 配置：
 `TRELLIS_AGENT` 会给租约、证据和审计打上 worker 标识（用于归因，不是认证）。
 
 `trellis scope suggest` 读取提到该任务的提交（`git log --grep`），给出文件级
-写域建议；只读，不改任务板。
+写域建议。默认只读；`--apply --by <role>:<name>` 会写回任务板，且只允许收窄。
 
 `trellis compact` 会把证据事件日志折叠成每条记录一行，并在 `audit.jsonl` 超过
 5 MB 时轮转；`--dry-run` 只报告大小。`--archive-retracted <天数>` 会把超过该
@@ -278,7 +278,7 @@ trellis guard commit --task <T-NNN> (--staged | --paths <a,b>) [--observe] [--di
 trellis reindex [dir] [--json]
 trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
 trellis export --a2a [dir] [--json]
-trellis scope suggest --task <T-NNN> [dir] [--json]
+trellis scope suggest --task <T-NNN> [dir] [--apply --by <role>:<name>] [--json]
 trellis profile list [--json]
 ```
 

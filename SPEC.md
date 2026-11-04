@@ -198,7 +198,8 @@ Rules:
     open question appears in `next` as `needsUser: true` and in `report` as
     `pendingQuestions`; a task with an open question cannot be claimed.
 16. `scope suggest` reads commits mentioning a task and proposes file-level
-    paths inside its current scope; it never edits the board.
+    paths inside its current scope. It only edits the board with `--apply --by
+    <role>:<name>`, and only to narrow.
 
 Allowed status transitions:
 

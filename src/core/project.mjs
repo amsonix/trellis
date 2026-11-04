@@ -5,7 +5,7 @@ import { TASK_TRANSITIONS, GATE_DEFS, ROLES, PROJECT_GATES, META_DIR, TASK_PRIOR
 import { makeCheck, summarize, hasBlocking, exitCodeFor } from './checks.mjs';
 import { getProfile, listProfiles } from './profiles.mjs';
 import { checkAllArtifacts, readArtifact, ARTIFACTS } from './artifacts.mjs';
-import { parseTasks, validateTasks, milestonesFromRoadmap, taskById, readyTasks, updateTaskStatus, appendTask, nextTaskId } from './tasks.mjs';
+import { parseTasks, validateTasks, milestonesFromRoadmap, taskById, readyTasks, updateTaskStatus, updateTaskScope, appendTask, nextTaskId } from './tasks.mjs';
 import {
   approveGate,
   waiveGate,
@@ -777,6 +777,33 @@ export async function addTask(
   }
   await saveState(root, state);
   return { task, followUpOf: parent?.id ?? null, depth };
+}
+
+export async function applyTaskScope(root, taskId, scope, { by }) {
+  if (!taskId) throw new UsageError('applyTaskScope needs a task id');
+  if (!by) throw new UsageError('scope apply needs --by <role>:<name>');
+  const actor = parseActor(by);
+  const next = [...new Set((scope ?? []).map((item) => String(item).trim()).filter(Boolean))];
+  if (next.length === 0) throw new UsageError('scope apply needs at least one path');
+
+  const { tasks } = await parseTasks(root);
+  const task = taskById(tasks, taskId);
+  if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
+  for (const domain of next) {
+    if (!task.scope.some((prefix) => covers(prefix, domain))) {
+      throw new RefusedError('SCOPE_APPLY_WIDENS', `${domain} is outside the current scope of ${taskId}; only narrowing is allowed`, {
+        task: taskId,
+        domain,
+        scope: task.scope
+      });
+    }
+  }
+
+  const state = await loadState(root);
+  await updateTaskScope(root, taskId, next);
+  appendAudit(state, 'task.scope.narrowed', actor, { task: taskId, from: task.scope, to: next });
+  await saveState(root, state);
+  return { task: { ...task, scope: next } };
 }
 
 export async function askTask(root, taskId, { question, by }) {
