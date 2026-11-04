@@ -600,11 +600,19 @@ async function dispatch(args) {
     if (error) throw new UnavailableError(error.message, error);
     const task = tasks.find((item) => item.id === options.task);
     if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${options.task} is not on the task board`, { task: options.task });
-    const { stdout: logOut } = await execFileAsync(
-      'git',
-      ['log', '--all', '--format=%H%x1e%B%x00'],
-      { cwd: dir, maxBuffer: 16 * 1024 * 1024 }
-    );
+    let logOut;
+    try {
+      ({ stdout: logOut } = await execFileAsync(
+        'git',
+        ['log', '--all', '--format=%H%x1e%B%x00'],
+        { cwd: dir, maxBuffer: 16 * 1024 * 1024 }
+      ));
+    } catch (error) {
+      throw new UnavailableError(
+        `scope suggest needs a git repository at ${dir} (git log failed: ${error.message.split('\n')[0]})`,
+        { dir }
+      );
+    }
     const commits = logOut
       .split('\x00')
       .map((record) => record.trim())

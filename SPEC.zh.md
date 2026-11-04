@@ -93,7 +93,8 @@ version、created），正文用二级标题组织。必需章节见英文版表
 2. Milestone 必须匹配 ROADMAP 中的 `## M...`。
 3. Role 属于 human/coordinator/architect/executor/reviewer/verifier/operator。
 4. Status 属于 todo/ready/in_progress/review/blocked/done。
-5. Scope 是逗号分隔的路径前缀；`-` 不允许。
+5. Scope 是逗号分隔的路径前缀；`-` 不允许；前缀必须是相对路径，`..`、`*`、
+   以 `/` 开头和反斜杠都会被拒绝。
 6. Depends on 是任务 id 列表或 `-`。
 7. Acceptance 说明什么必须为真；Verification 说明怎么检查。
 8. 依赖图必须无环。

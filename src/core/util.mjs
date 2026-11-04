@@ -185,6 +185,24 @@ export function covers(prefix, target) {
   return b === a || b.startsWith(`${a}/`);
 }
 
+export function isSafeDomain(value) {
+  const domain = normalizeDomain(value);
+  if (!domain || domain === '.' || domain === '*') return false;
+  if (domain.startsWith('/') || domain.includes('\\')) return false;
+  if (domain.split('/').some((segment) => segment === '..')) return false;
+  if (/[|\n\r]/.test(domain)) return false;
+  if (domain.length > 200) return false;
+  return true;
+}
+
+export function assertMaxLength(value, field, max) {
+  const text = String(value ?? '');
+  if (text.length > max) {
+    throw new UsageError(`--${field} is ${text.length} characters; the limit is ${max}`);
+  }
+  return text;
+}
+
 export function overlaps(a, b) {
   return covers(a, b) || covers(b, a);
 }

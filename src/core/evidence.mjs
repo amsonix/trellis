@@ -3,7 +3,7 @@ import path from 'node:path';
 import { EVIDENCE_KINDS, EVIDENCE_VERDICTS } from './constants.mjs';
 import { makeCheck } from './checks.mjs';
 import { ProtocolError, RefusedError, UsageError } from './errors.mjs';
-import { exists, fileSha256, nowIso, parseActor, readText, renameWithRetry } from './util.mjs';
+import { exists, fileSha256, nowIso, parseActor, readText, renameWithRetry, assertMaxLength } from './util.mjs';
 import { STATE_DIR } from './store.mjs';
 import { currentAgent } from './identity.mjs';
 
@@ -104,15 +104,23 @@ export async function addEvidence(root, { taskId, kind, uri, verdict, by, note =
     throw new UsageError(`--verdict must be one of: ${EVIDENCE_VERDICTS.join(', ')}`);
   }
   if (!uri) throw new UsageError('evidence add needs --uri <file|url|commit>');
+  assertMaxLength(uri, 'uri', 500);
+  if (note !== null) assertMaxLength(note, 'note', 2000);
   const actor = parseActor(by);
-  if (proves !== null && String(proves).trim() === '') {
-    throw new UsageError('--proves must name what the evidence proves');
+  if (proves !== null) {
+    if (String(proves).trim() === '') throw new UsageError('--proves must name what the evidence proves');
+    assertMaxLength(proves, 'proves', 500);
   }
 
   let digest = null;
+  const remote = /^https?:\/\//.test(uri) || /^[0-9a-f]{7,40}$/i.test(uri);
   const local = path.resolve(root, uri);
-  if (!/^https?:\/\//.test(uri) && !/^[0-9a-f]{7,40}$/i.test(uri) && (await exists(local))) {
-    digest = await fileSha256(local);
+  if (!remote) {
+    const relative = path.relative(root, local);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+      throw new UsageError('--uri must stay inside the project; use a URL or a commit for external evidence');
+    }
+    if (await exists(local)) digest = await fileSha256(local);
   }
 
   const record = {
@@ -142,6 +150,7 @@ export async function retractEvidence(root, evidenceId, { by, reason }) {
   if (!reason || String(reason).trim() === '') {
     throw new UsageError('evidence retract needs --reason "<why>"');
   }
+  assertMaxLength(reason, 'reason', 1000);
   const actor = parseActor(by);
   if (!RETRACTOR_ROLES.includes(actor.role)) {
     throw new RefusedError(

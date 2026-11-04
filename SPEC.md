@@ -168,7 +168,8 @@ Rules:
 4. `Status` is one of `todo`, `ready`, `in_progress`, `review`, `blocked`,
    `done`.
 5. `Scope` is a comma-separated list of path prefixes. A path is in scope when
-   it equals a prefix or starts with `prefix/`. `-` is not allowed.
+   it equals a prefix or starts with `prefix/`. `-` is not allowed. A prefix
+   must be relative: `..`, `*`, a leading `/` and backslashes are rejected.
 6. `Depends on` is a comma-separated list of task IDs, or `-`.
 7. `Acceptance` says what must be true. `Verification` says how it is checked.
 8. The dependency graph must be acyclic.
@@ -245,6 +246,8 @@ Rules:
   line in the middle of the log is an error; only a final line without a
   trailing newline may be ignored as a torn write. An optional
   `proves` field names the acceptance clause the evidence is meant to prove.
+  A `uri` that names a local file must stay inside the project; use a URL or a
+  commit for external evidence.
 - A local file URI gets a sha256 at add time; a changed file needs new evidence.
 - A task cannot be `done` without a `pass` and with any `fail`.
 - A gate cannot be approved on a task whose evidence does not verify.

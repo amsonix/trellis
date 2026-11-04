@@ -308,7 +308,8 @@ checks, blocked tasks, tasks marked done without passing evidence, and leases
 older than 24 hours.
 
 New requirements and bug reports go in through `trellis task add`: it validates
-the milestone, role, acceptance, verification and write-scope overlap before
+the milestone, role, acceptance, verification and write scope (relative paths
+only: no `..`, `*` or absolute prefixes) before
 appending the row to `.trellis/docs/TASKS.md`, and records `task.added` in the
 audit. If the work overlaps an open task, pass `--depends-on` instead of widening
 its scope.

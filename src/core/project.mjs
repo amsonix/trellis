@@ -22,7 +22,7 @@ import { addEvidence, verifyTaskEvidence, requirePassingEvidence, listEvidence }
 import { acquireLease, releaseLease, leaseStatus } from './lease.mjs';
 import { defaultState, loadState, saveState, appendAudit } from './store.mjs';
 import { RefusedError, UnavailableError, UsageError } from './errors.mjs';
-import { nowIso, parseActor, parseScope, writeText, covers } from './util.mjs';
+import { nowIso, parseActor, parseScope, isSafeDomain, assertMaxLength, writeText, covers } from './util.mjs';
 import { currentAgent } from './identity.mjs';
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -705,6 +705,7 @@ export async function addTask(
     const text = String(value ?? '').trim();
     if (text === '') throw new UsageError(`task add needs --${field}`);
     if (/[|\n\r]/.test(text)) throw new UsageError(`--${field} must not contain '|' or a newline`);
+    assertMaxLength(text, field, field === 'title' ? 200 : 2000);
   }
 
   const state = await loadState(root);
@@ -717,6 +718,14 @@ export async function addTask(
   }
 
   const domains = parseScope(scope);
+  if (domains.length === 0) throw new UsageError('task add needs --scope with at least one relative path');
+  for (const domain of domains) {
+    if (!isSafeDomain(domain)) {
+      throw new UsageError(
+        `--scope '${domain}' is unsafe: use a relative path without '..', '*' or an absolute path`
+      );
+    }
+  }
   let dependencies = (Array.isArray(dependsOn) ? dependsOn : [dependsOn])
     .flatMap((value) => String(value ?? '').split(','))
     .map((value) => value.trim())
@@ -802,6 +811,7 @@ export async function recoverTask(root, taskId, { to = 'ready', by, reason }) {
   if (!taskId) throw new UsageError('task recover needs a task id');
   if (!by) throw new UsageError('task recover needs --by <role>:<name>');
   if (!reason || String(reason).trim() === '') throw new UsageError('task recover needs --reason "<why>"');
+  assertMaxLength(reason, 'reason', 1000);
   const actor = parseActor(by);
   if (!['human', 'coordinator'].includes(actor.role)) {
     throw new RefusedError('TASK_RECOVER_ROLE', `${actor.raw} cannot recover a task; allowed: human, coordinator`, {
@@ -871,6 +881,7 @@ export async function askTask(root, taskId, { question, by }) {
   if (!question || String(question).trim() === '') {
     throw new UsageError('task ask needs --question "<one question>"');
   }
+  assertMaxLength(question, 'question', 1000);
   if (!by) throw new UsageError('task ask needs --by <role>:<name>');
   const actor = parseActor(by);
   const state = await loadState(root);

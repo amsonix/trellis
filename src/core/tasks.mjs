@@ -7,6 +7,7 @@ import {
   readText,
   parseMarkdownTable,
   parseScope,
+  isSafeDomain,
   splitSections,
   normalizeHeading,
   writeText
@@ -186,6 +187,16 @@ export function validateTasks(tasks, { milestones = [] } = {}) {
     }
     if (task.scope.length === 0) {
       add('TASK_SCOPE_EMPTY', 'fail', `task ${task.id} has no write scope`, { task: task.id });
+    }
+    for (const domain of task.scope) {
+      if (!isSafeDomain(domain)) {
+        add(
+          'TASK_SCOPE_INVALID',
+          'fail',
+          `task ${task.id} has an unsafe write scope '${domain}'; use a relative path without '..', '*' or an absolute path`,
+          { task: task.id, domain }
+        );
+      }
     }
     if (!task.acceptance) {
       add('TASK_ACCEPTANCE_EMPTY', 'fail', `task ${task.id} has no acceptance criterion`, { task: task.id });
