@@ -1086,10 +1086,27 @@ export async function finishTask(root, taskId, { run, by, timeoutMs = 30 * 60 * 
     });
   }
 
+  const logDir = path.join(root, META_DIR, 'logs');
+  const logName = `${taskId}-${nowIso().replace(/[:.]/g, '-')}.log`;
+  const logFile = path.join(logDir, logName);
+  await fs.mkdir(logDir, { recursive: true });
+
   let output = '';
   let exitCode = 0;
-  const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh';
-  const args = process.platform === 'win32' ? ['/d', '/s', '/c', run] : ['-c', run];
+  let batch = null;
+  let shell;
+  let args;
+  if (process.platform === 'win32') {
+    // cmd.exe strips quotes around a quoted executable in /c; running a batch
+    // file avoids that parsing entirely.
+    batch = path.join(logDir, `.finish-${process.pid}-${Date.now()}.cmd`);
+    await fs.writeFile(batch, `@echo off\r\n${run}\r\n`, 'utf8');
+    shell = process.env.ComSpec || 'cmd.exe';
+    args = ['/d', '/c', batch];
+  } else {
+    shell = '/bin/sh';
+    args = ['-c', run];
+  }
   await new Promise((resolve) => {
     const child = spawn(shell, args, { cwd: root });
     const timer = setTimeout(() => child.kill('SIGKILL'), timeoutMs);
@@ -1099,10 +1116,7 @@ export async function finishTask(root, taskId, { run, by, timeoutMs = 30 * 60 * 
     child.on('close', (code) => { clearTimeout(timer); exitCode = code ?? 1; resolve(); });
   });
 
-  const logDir = path.join(root, META_DIR, 'logs');
-  const logName = `${taskId}-${nowIso().replace(/[:.]/g, '-')}.log`;
-  const logFile = path.join(logDir, logName);
-  await fs.mkdir(logDir, { recursive: true });
+  if (batch) await fs.rm(batch, { force: true }).catch(() => {});
   await writeText(logFile, output);
   const log = path.relative(root, logFile).split(path.sep).join('/');
   const evidence = await addEvidence(root, {
