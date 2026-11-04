@@ -15,6 +15,7 @@ import {
   applyTaskScope as applyTaskScopeUnlocked,
   recoverTask as recoverTaskUnlocked,
   cancelTask as cancelTaskUnlocked,
+  finishTask as finishTaskUnlocked,
   addTaskEvidence as addTaskEvidenceUnlocked,
   reindex as reindexUnlocked,
   approveGate as approveGateUnlocked,
@@ -34,6 +35,7 @@ export const answerTask = locked(answerTaskUnlocked);
 export const applyTaskScope = locked(applyTaskScopeUnlocked);
 export const recoverTask = locked(recoverTaskUnlocked);
 export const cancelTask = locked(cancelTaskUnlocked);
+export const finishTask = locked(finishTaskUnlocked);
 export const addTaskEvidence = locked(addTaskEvidenceUnlocked);
 export const reindex = locked(reindexUnlocked);
 export const approveGate = locked(approveGateUnlocked);

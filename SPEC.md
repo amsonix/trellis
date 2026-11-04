@@ -254,7 +254,9 @@ Rules:
   trailing newline may be ignored as a torn write. An optional
   `proves` field names the acceptance clause the evidence is meant to prove.
   A `uri` that names a local file must stay inside the project; use a URL or a
-  commit for external evidence.
+  commit for external evidence. An evidence record also carries `commit`,
+  `dirty` and `worktree` when the project is a git repository; `verify` warns
+  with `EVIDENCE_TREE_DRIFT` when HEAD has moved since the evidence was made.
 - A local file URI gets a sha256 at add time; a changed file needs new evidence.
 - A task cannot be `done` without a `pass` and with any `fail`.
 - A gate cannot be approved on a task whose evidence does not verify.

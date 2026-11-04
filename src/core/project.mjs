@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -1038,6 +1039,59 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
   appendAudit(state, `task.${newStatus}`, actor, { task: taskId, note });
   await saveState(root, state);
   return { task: { ...task, status: newStatus }, evidence };
+}
+
+export async function finishTask(root, taskId, { run, by, timeoutMs = 30 * 60 * 1000 } = {}) {
+  if (!taskId) throw new UsageError('task finish needs a task id');
+  if (!run) throw new UsageError('task finish needs --run "<command>"');
+  if (!by) throw new UsageError('task finish needs --by <role>:<name>');
+  const { tasks } = await parseTasks(root);
+  const task = taskById(tasks, taskId);
+  if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
+  if (task.status !== 'in_progress') {
+    throw new RefusedError('TASK_FINISH_STATE', `task ${taskId} is '${task.status}'; claim it before finishing`, {
+      task: taskId,
+      status: task.status
+    });
+  }
+
+  let output = '';
+  let exitCode = 0;
+  const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh';
+  const args = process.platform === 'win32' ? ['/d', '/s', '/c', run] : ['-c', run];
+  await new Promise((resolve) => {
+    const child = spawn(shell, args, { cwd: root });
+    const timer = setTimeout(() => child.kill('SIGKILL'), timeoutMs);
+    child.stdout.on('data', (chunk) => { output += chunk; });
+    child.stderr.on('data', (chunk) => { output += chunk; });
+    child.on('error', (error) => { output += error.message; exitCode = 127; clearTimeout(timer); resolve(); });
+    child.on('close', (code) => { clearTimeout(timer); exitCode = code ?? 1; resolve(); });
+  });
+
+  const logDir = path.join(root, META_DIR, 'logs');
+  const logName = `${taskId}-${nowIso().replace(/[:.]/g, '-')}.log`;
+  const logFile = path.join(logDir, logName);
+  await fs.mkdir(logDir, { recursive: true });
+  await writeText(logFile, output);
+  const log = path.relative(root, logFile).split(path.sep).join('/');
+  const evidence = await addEvidence(root, {
+    taskId,
+    kind: 'test',
+    uri: log,
+    verdict: exitCode === 0 ? 'pass' : 'fail',
+    by,
+    note: `exit ${exitCode}`
+  });
+  if (exitCode !== 0) {
+    throw new RefusedError('TASK_FINISH_FAILED', `command exited ${exitCode}; log ${log}`, {
+      taskId,
+      exitCode,
+      log,
+      evidence: evidence.id
+    });
+  }
+  const reported = await reportTask(root, taskId, { state: 'done', by });
+  return { taskId, exitCode, log, evidence, task: reported.task };
 }
 
 export async function addTaskEvidence(root, input) {

@@ -7,6 +7,7 @@ import { ProtocolError, RefusedError, UsageError } from './errors.mjs';
 import { exists, fileSha256, nowIso, parseActor, readText, renameWithRetry, assertMaxLength, syncFile, syncDirectory } from './util.mjs';
 import { STATE_DIR } from './store.mjs';
 import { currentAgent } from './identity.mjs';
+import { gitInfo, headCommit } from './git.mjs';
 
 export const EVIDENCE_DIR = `${STATE_DIR}/evidence`;
 export const EVIDENCE_ARCHIVE_DIR = `${STATE_DIR}/evidence/archive`;
@@ -214,6 +215,7 @@ export async function addEvidence(root, { taskId, kind, uri, verdict, by, note =
     if (await exists(local)) digest = await fileSha256(local);
   }
 
+  const git = await gitInfo(root);
   const record = {
     type: 'add',
     id: `EV-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
@@ -226,7 +228,10 @@ export async function addEvidence(root, { taskId, kind, uri, verdict, by, note =
     producedAt: nowIso(),
     agent: currentAgent(),
     note,
-    proves: proves === null ? null : String(proves).trim()
+    proves: proves === null ? null : String(proves).trim(),
+    commit: git.commit,
+    dirty: git.dirty,
+    worktree: git.worktree
   };
   await appendEvent(shardPath(root, taskId), record);
   const { type, ...rest } = record;
@@ -287,6 +292,16 @@ export async function verifyTaskEvidence(root, taskId) {
   }
   if (passes.length === 0) {
     add('EVIDENCE_NO_PASS', 'fail', `task ${taskId} has no passing evidence`);
+  }
+  const head = await headCommit(root);
+  const drifted = items.filter((item) => item.commit && head && item.commit !== head);
+  if (drifted.length > 0) {
+    add(
+      'EVIDENCE_TREE_DRIFT',
+      'warn',
+      `task ${taskId} has ${drifted.length} evidence item(s) from another commit; HEAD is ${head.slice(0, 7)}`,
+      { evidence: drifted.map((item) => item.id), head }
+    );
   }
   if (inconclusive.length > 0) {
     add(

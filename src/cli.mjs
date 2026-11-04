@@ -36,7 +36,7 @@ import { selectTaskCommits, suggestScopeForTask } from './core/scope.mjs';
 import { doctor } from './core/doctor.mjs';
 import { startA2A } from './a2a/server.mjs';
 import { backup, restore } from './core/backup.mjs';
-import { applyTaskScope, recoverTask, cancelTask } from './core/mutations.mjs';
+import { applyTaskScope, recoverTask, cancelTask, finishTask } from './core/mutations.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -71,7 +71,8 @@ const VALUE_OPTIONS = new Set([
   'limit',
   'port',
   'out',
-  'from'
+  'from',
+  'run'
 ]);
 
 const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel']);
@@ -146,7 +147,8 @@ Usage:
   trellis task ask <T-NNN> --question <text> --by <role>:<name> [--dir <dir>]
   trellis task answer <Q-NNN> --decision <text> --by human:<name>
   trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
-  trellis task cancel <T-NNN> --by human:<name> --reason <text> [--dir <dir>]
+  trellis task cancel <T-NNN> --by human:<name> --reason <text>
+  trellis task finish <T-NNN> --run <command> --by <role>:<name> [--dir <dir>]
   trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dir <dir>]
   trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit>
                               --verdict <pass|fail|inconclusive> --by <role>:<name> [--dir <dir>]
@@ -195,6 +197,7 @@ const HELP = {
   'task:report': ['Report a task state; done requires passing evidence.', 'trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>]'],
   'task:recover': ['Return an in_progress task with no lease to ready or todo.', 'trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]'],
   'task:cancel': ['Cancel work that is no longer needed; canceled tasks do not satisfy dependencies.', 'trellis task cancel <T-NNN> --by human:<name> --reason <text>'],
+  'task:finish': ['Run the verification command, record the evidence and mark the task done.', 'trellis task finish <T-NNN> --run <command> --by <role>:<name>'],
   evidence: ['Evidence log operations.', 'trellis evidence <add|list|retract> ...'],
   'evidence:add': ['Record evidence for a task.', 'trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] --by <role>:<name>'],
   'evidence:list': ['List evidence, optionally for one task.', 'trellis evidence list [--task <T-NNN>] [--json]'],
@@ -556,6 +559,14 @@ async function dispatch(args) {
         print: () => console.log(`answered ${data.question.id}; ${data.task.id} is ${data.task.status}`)
       };
     }
+    if (subcommand === 'finish') {
+      if (!options.run) throw new UsageError('task finish needs --run "<command>"');
+      if (!options.by) throw new UsageError('task finish needs --by <role>:<name>');
+      const taskId = args.positionals[0];
+      if (!taskId) throw new UsageError('task finish needs a task id');
+      const data = await finishTask(dir, taskId, { run: options.run, by: options.by });
+      return { data, exitCode: 0, print: () => console.log(`finished ${taskId} (exit 0); evidence ${data.evidence.id}; log ${data.log}`) };
+    }
     if (subcommand === 'cancel') {
       if (!options.reason) throw new UsageError('task cancel needs --reason "<why>"');
       const taskId = args.positionals[0];
@@ -637,7 +648,11 @@ async function dispatch(args) {
         exitCode: 0,
         print: () => {
           if (items.length === 0) console.log('no held leases');
-          for (const lease of items) console.log(`${lease.taskId}  ${lease.actor}  ${lease.domains.join(', ')}`);
+          for (const lease of items) {
+            const age = Math.max(0, Math.round((Date.now() - Date.parse(lease.createdAt)) / 1000));
+            const who = lease.agent ? `${lease.actor} (${lease.agent})` : lease.actor;
+            console.log(`${lease.taskId}  ${who}  ${age}s  ${lease.domains.join(', ')}`);
+          }
         }
       };
     }

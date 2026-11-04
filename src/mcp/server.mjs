@@ -33,7 +33,8 @@ import {
   releaseLease,
   compact,
   recoverTask,
-  cancelTask
+  cancelTask,
+  finishTask
 } from '../core/mutations.mjs';
 import { parseTasks } from '../core/tasks.mjs';
 import { leaseStatus } from '../core/lease.mjs';
@@ -280,6 +281,21 @@ const writeTools = [
       if (!released) throw new RefusedError('LEASE_NOT_HELD', `no held lease for ${args.task}`, { task: args.task });
       return { taskId: args.task, released: true };
     }
+  },
+  {
+    name: 'trellis_task_finish',
+    description:
+      'Run a verification command, record its output as evidence and mark the task done when it exits 0. A non-zero exit records failing evidence and refuses done.',
+    inputSchema: object(
+      {
+        dir: dirProp,
+        task: text('Task id.'),
+        run: text('Command to run in the project root.'),
+        by: text('Producer as role:name.')
+      },
+      ['task', 'run', 'by']
+    ),
+    run: (args) => finishTask(dirOf(args), args.task, { run: args.run, by: args.by })
   },
   {
     name: 'trellis_task_cancel',
