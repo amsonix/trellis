@@ -1,6 +1,6 @@
 {
   "name": "@amsonix/trellis",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Trellis: an agent-facing protocol for building projects: stages, artifacts, gates, roles, tasks and evidence.",
   "type": "module",
   "repository": {
