@@ -36,19 +36,27 @@ export function evaluateCoverage(totals, thresholds = THRESHOLDS) {
 
 async function main() {
   let stdout = '';
+  let stderr = '';
   let code = 0;
+  // Windows runners fail the suite under full file-level parallelism; use the
+  // same cap as the CI test step so this gate measures coverage, not flakes.
+  const concurrency = process.platform === 'win32' ? '2' : '4';
   try {
-    ({ stdout } = await execFileAsync(process.execPath, ['--test', '--experimental-test-coverage'], {
-      cwd: root,
-      maxBuffer: 64 * 1024 * 1024
-    }));
+    ({ stdout, stderr } = await execFileAsync(
+      process.execPath,
+      ['--test', '--experimental-test-coverage', `--test-concurrency=${concurrency}`],
+      { cwd: root, maxBuffer: 64 * 1024 * 1024 }
+    ));
   } catch (error) {
     code = error.code ?? 1;
     stdout = error.stdout ?? '';
+    stderr = error.stderr ?? '';
   }
 
   if (code !== 0) {
-    console.error('coverage-gate: the test suite failed');
+    const tail = `${stdout}\n${stderr}`.trim().split('\n').slice(-20).join('\n');
+    console.error(`coverage-gate: the test suite failed (exit ${code})`);
+    if (tail) console.error(tail);
     process.exit(1);
   }
 
