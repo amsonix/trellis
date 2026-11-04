@@ -328,6 +328,38 @@ export async function appendTask(root, task) {
   await writeText(file, lines.join('\n'));
 }
 
+export async function updateTaskFields(root, id, fields) {
+  const file = path.join(root, META_DIR, TASKS_FILE);
+  const text = await readText(file);
+  const lines = text.split(/\r?\n/);
+  const mapping = {};
+  for (const line of lines) {
+    if (!/^\s*\|/.test(line)) continue;
+    const header = splitRow(line);
+    header.forEach((cell, index) => {
+      const key = HEADER_ALIASES[normalizeHeader(cell)];
+      if (key) mapping[key] = index;
+    });
+    break;
+  }
+  let changed = false;
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/^\s*\|/.test(lines[i])) continue;
+    const cells = splitRow(lines[i]);
+    if (cells[0] !== id) continue;
+    for (const [key, value] of Object.entries(fields)) {
+      const index = mapping[key];
+      if (index === undefined || index >= cells.length) continue;
+      cells[index] = value;
+    }
+    lines[i] = `| ${cells.join(' | ')} |`;
+    changed = true;
+    break;
+  }
+  if (!changed) throw new UsageError(`task ${id} is not on the task board`);
+  await writeText(file, lines.join('\n'));
+}
+
 export async function updateTaskScope(root, id, scope) {
   const file = path.join(root, META_DIR, TASKS_FILE);
   const text = await readText(file);

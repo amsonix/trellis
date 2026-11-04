@@ -36,7 +36,7 @@ import { selectTaskCommits, suggestScopeForTask } from './core/scope.mjs';
 import { doctor } from './core/doctor.mjs';
 import { startA2A } from './a2a/server.mjs';
 import { backup, restore } from './core/backup.mjs';
-import { applyTaskScope, recoverTask, cancelTask, finishTask } from './core/mutations.mjs';
+import { applyTaskScope, recoverTask, cancelTask, finishTask, editTask } from './core/mutations.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -54,6 +54,7 @@ const VALUE_OPTIONS = new Set([
   'uri',
   'verdict',
   'state',
+  'status',
   'title',
   'scope',
   'milestone',
@@ -72,10 +73,11 @@ const VALUE_OPTIONS = new Set([
   'port',
   'out',
   'from',
-  'run'
+  'run',
+  'logs-keep'
 ]);
 
-const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel']);
+const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready']);
 
 function parseArgv(argv) {
   const positionals = [];
@@ -148,7 +150,9 @@ Usage:
   trellis task answer <Q-NNN> --decision <text> --by human:<name>
   trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
   trellis task cancel <T-NNN> --by human:<name> --reason <text>
-  trellis task finish <T-NNN> --run <command> --by <role>:<name> [--dir <dir>]
+  trellis task finish <T-NNN> --run <command> --by <role>:<name>
+  trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--priority <p>] --by <role>:<name>
+  trellis task list [dir] [--status <s>] [--role <r>] [--ready] [--limit <n>] [--dir <dir>]
   trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dir <dir>]
   trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit>
                               --verdict <pass|fail|inconclusive> --by <role>:<name> [--dir <dir>]
@@ -198,6 +202,7 @@ const HELP = {
   'task:recover': ['Return an in_progress task with no lease to ready or todo.', 'trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]'],
   'task:cancel': ['Cancel work that is no longer needed; canceled tasks do not satisfy dependencies.', 'trellis task cancel <T-NNN> --by human:<name> --reason <text>'],
   'task:finish': ['Run the verification command, record the evidence and mark the task done.', 'trellis task finish <T-NNN> --run <command> --by <role>:<name>'],
+  'task:edit': ['Edit a task field through the board validator (adds an audit record).', 'trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--priority <p>] --by <role>:<name>'],
   evidence: ['Evidence log operations.', 'trellis evidence <add|list|retract> ...'],
   'evidence:add': ['Record evidence for a task.', 'trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] --by <role>:<name>'],
   'evidence:list': ['List evidence, optionally for one task.', 'trellis evidence list [--task <T-NNN>] [--json]'],
@@ -517,7 +522,34 @@ async function dispatch(args) {
     if (subcommand === 'list') {
       const { tasks, error } = await parseTasks(dir);
       if (error) throw new UnavailableError(error.message, error);
-      return { data: { tasks }, exitCode: 0, print: () => printTaskList(tasks) };
+      let filtered = tasks;
+      if (options.status) {
+        const status = String(options.status).toLowerCase();
+        filtered = filtered.filter((task) => task.status === status);
+      }
+      if (options.role) filtered = filtered.filter((task) => task.role === String(options.role).toLowerCase());
+      if (options.ready) {
+        filtered = filtered.filter((task) => {
+          if (task.status !== 'todo' && task.status !== 'ready') return false;
+          return task.dependsOn.every((id) => tasks.find((item) => item.id === id)?.status === 'done');
+        });
+      }
+      const limit = Number.parseInt(options.limit ?? '0', 10);
+      if (Number.isFinite(limit) && limit > 0) filtered = filtered.slice(0, limit);
+      return { data: { tasks: filtered }, exitCode: 0, print: () => printTaskList(filtered) };
+    }
+    if (subcommand === 'edit') {
+      const taskId = args.positionals[0];
+      if (!taskId) throw new UsageError('task edit needs a task id');
+      const data = await editTask(dir, taskId, {
+        title: options.title,
+        acceptance: options.acceptance,
+        verification: options.verification,
+        dependsOn: options['depends-on'],
+        priority: options.priority,
+        by: options.by
+      });
+      return { data, exitCode: 0, print: () => console.log(`edited ${taskId}: ${data.changed.join(', ')}`) };
     }
     if (subcommand === 'claim') {
       const taskId = args.positionals[0];
@@ -835,9 +867,17 @@ async function dispatch(args) {
     if (!Number.isFinite(archiveRetractedDays) || archiveRetractedDays < 0) {
       throw new UsageError('--archive-retracted needs a positive number of days');
     }
+    let logsKeepDays = 0;
+    if (options['logs-keep'] !== undefined) {
+      logsKeepDays = Number.parseInt(options['logs-keep'], 10);
+      if (!Number.isFinite(logsKeepDays) || logsKeepDays < 1) {
+        throw new UsageError('--logs-keep needs a positive number of days');
+      }
+    }
     const data = await compact(dirOf(args), {
       dryRun: Boolean(options['dry-run']),
-      archiveRetractedDays
+      archiveRetractedDays,
+      logsKeepDays
     });
     return { data, exitCode: 0, print: () => printCompact(data) };
   }

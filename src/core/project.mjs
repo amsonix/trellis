@@ -6,7 +6,7 @@ import { TASK_TRANSITIONS, GATE_DEFS, ROLES, PROJECT_GATES, META_DIR, TASK_PRIOR
 import { makeCheck, summarize, hasBlocking, exitCodeFor } from './checks.mjs';
 import { getProfile, listProfiles } from './profiles.mjs';
 import { checkAllArtifacts, readArtifact, ARTIFACTS } from './artifacts.mjs';
-import { parseTasks, validateTasks, milestonesFromRoadmap, taskById, readyTasks, updateTaskStatus, updateTaskScope, appendTask, nextTaskId } from './tasks.mjs';
+import { parseTasks, validateTasks, milestonesFromRoadmap, taskById, readyTasks, updateTaskStatus, updateTaskScope, updateTaskFields, appendTask, nextTaskId } from './tasks.mjs';
 import {
   approveGate,
   waiveGate,
@@ -840,6 +840,61 @@ export async function addTask(
   }
   await saveState(root, state);
   return { task, followUpOf: parent?.id ?? null, depth };
+}
+
+export async function editTask(root, taskId, { title, acceptance, verification, dependsOn, priority, by } = {}) {
+  if (!taskId) throw new UsageError('task edit needs a task id');
+  if (!by) throw new UsageError('task edit needs --by <role>:<name>');
+  const actor = parseActor(by);
+  const { tasks } = await parseTasks(root);
+  const task = taskById(tasks, taskId);
+  if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
+
+  const fields = {};
+  for (const [field, value] of Object.entries({ title, acceptance, verification })) {
+    if (value === undefined) continue;
+    const text = String(value).trim();
+    if (text === '') throw new UsageError(`--${field} cannot be empty`);
+    if (/[|\n\r]/.test(text)) throw new UsageError(`--${field} must not contain '|' or a newline`);
+    assertMaxLength(text, field, field === 'title' ? 200 : 2000);
+    fields[field] = text;
+  }
+  if (priority !== undefined) {
+    const normalized = String(priority).trim().toLowerCase();
+    if (!TASK_PRIORITIES.includes(normalized)) throw new UsageError(`--priority must be one of: ${TASK_PRIORITIES.join(', ')}`);
+    fields.priority = normalized;
+  }
+  let dependencies = null;
+  if (dependsOn !== undefined) {
+    dependencies = (Array.isArray(dependsOn) ? dependsOn : [dependsOn])
+      .flatMap((value) => String(value ?? '').split(','))
+      .map((value) => value.trim())
+      .filter(Boolean);
+    fields.dependsOn = dependencies.length > 0 ? dependencies.join(', ') : '-';
+  }
+  if (Object.keys(fields).length === 0) throw new UsageError('task edit needs at least one field');
+
+  const updated = {
+    ...task,
+    ...(fields.title ? { title: fields.title } : {}),
+    ...(fields.acceptance ? { acceptance: fields.acceptance } : {}),
+    ...(fields.verification ? { verification: fields.verification } : {}),
+    ...(fields.priority ? { priority: fields.priority } : {}),
+    ...(dependencies ? { dependsOn: dependencies } : {})
+  };
+  const checks = validateTasks(tasks.map((item) => (item.id === taskId ? updated : item)), {
+    milestones: await milestonesFromRoadmap(root)
+  });
+  const blocking = checks.filter((check) => check.severity === 'fail');
+  if (blocking.length > 0) {
+    throw new RefusedError('TASK_INVALID', blocking.map((check) => check.message).join('; '), { checks: blocking });
+  }
+
+  const state = await loadState(root);
+  await updateTaskFields(root, taskId, fields);
+  appendAudit(state, 'task.edited', actor, { task: taskId, fields: Object.keys(fields) });
+  await saveState(root, state);
+  return { task: updated, changed: Object.keys(fields) };
 }
 
 export async function cancelTask(root, taskId, { by, reason }) {

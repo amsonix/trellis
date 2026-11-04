@@ -34,7 +34,8 @@ import {
   compact,
   recoverTask,
   cancelTask,
-  finishTask
+  finishTask,
+  editTask
 } from '../core/mutations.mjs';
 import { parseTasks } from '../core/tasks.mjs';
 import { leaseStatus } from '../core/lease.mjs';
@@ -281,6 +282,33 @@ const writeTools = [
       if (!released) throw new RefusedError('LEASE_NOT_HELD', `no held lease for ${args.task}`, { task: args.task });
       return { taskId: args.task, released: true };
     }
+  },
+  {
+    name: 'trellis_task_edit',
+    description:
+      'Edit task fields through the board validator. Structural edits (dependencies) can stale plan gates; prose edits surface as content drift.',
+    inputSchema: object(
+      {
+        dir: dirProp,
+        task: text('Task id.'),
+        title: text('New title.'),
+        acceptance: text('New acceptance criteria.'),
+        verification: text('New verification method.'),
+        dependsOn: text('Comma-separated dependency ids.'),
+        priority: text('high, medium or low.'),
+        by: text('Actor as role:name.')
+      },
+      ['task', 'by']
+    ),
+    run: (args) =>
+      editTask(dirOf(args), args.task, {
+        title: args.title,
+        acceptance: args.acceptance,
+        verification: args.verification,
+        dependsOn: args.dependsOn,
+        priority: args.priority,
+        by: args.by
+      })
   },
   {
     name: 'trellis_task_finish',

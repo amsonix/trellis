@@ -118,8 +118,36 @@ async function rotateAudit(root, { maxBytes = DEFAULT_AUDIT_BYTES, dryRun = fals
   return { from: `${STATE_DIR}/${AUDIT_FILE}`, to: `${STATE_DIR}/${name}`, bytes: stat.size, dryRun };
 }
 
+export async function compactLogs(root, { days = 30, dryRun = false } = {}) {
+  const dir = path.join(root, STATE_DIR, 'logs');
+  let names = [];
+  try {
+    names = (await fs.readdir(dir)).filter((name) => name.endsWith('.log'));
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    return { removed: [], kept: 0, days };
+  }
+  const events = await readEvidenceEvents(root);
+  const referenced = new Set(events.filter((event) => event.type === 'add').map((event) => event.uri));
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const removed = [];
+  let kept = 0;
+  for (const name of names) {
+    const rel = path.posix.join(STATE_DIR, 'logs', name);
+    const stat = await fs.stat(path.join(dir, name));
+    if (referenced.has(rel) || stat.mtimeMs >= cutoff) {
+      kept += 1;
+      continue;
+    }
+    if (!dryRun) await fs.rm(path.join(dir, name), { force: true });
+    removed.push(name);
+  }
+  return { removed, kept, days };
+}
+
 export async function compact(root, options = {}) {
   const evidence = await compactEvidence(root, options);
   const audit = await rotateAudit(root, options);
-  return { evidence, audit };
+  const logs = options.logsKeepDays > 0 ? await compactLogs(root, { days: options.logsKeepDays, dryRun: options.dryRun }) : null;
+  return { evidence, audit, logs };
 }

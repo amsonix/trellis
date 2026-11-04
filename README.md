@@ -215,6 +215,12 @@ proposes a file-level write scope. By default it only reads; `--apply --by
 artifact changed; structural edits still make the gate stale and require
 re-approval.
 
+`task edit` changes a field through the board validator and records
+`task.edited`; a dependency edit makes plan gates stale, a prose edit shows as
+content drift. `task list` filters by status, role, ready work and a limit.
+`trellis compact --logs-keep 30` prunes `task finish` logs older than 30 days
+that no evidence record references.
+
 `trellis compact` folds the evidence event log into one record per id and
 rotates `audit.jsonl` when it exceeds 5 MB; `--dry-run` reports the sizes.
 `--archive-retracted <days>` moves retracted records older than that to
@@ -310,6 +316,8 @@ trellis task answer <Q-NNN> --decision <text> --by human:<name>
 trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
 trellis task cancel <T-NNN> --by human:<name> --reason <text>
 trellis task finish <T-NNN> --run <command> --by <role>:<name>
+trellis task edit <T-NNN> [--acceptance <a>] [--depends-on <list>] --by <role>:<name>
+trellis task list [dir] [--status <s>] [--role <r>] [--ready] [--limit <n>]
 trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> [--note <text>] [--by <role>:<name>]
 
 trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> \
