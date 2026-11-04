@@ -24,7 +24,9 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - name: Test
-        run: node --test
+        # Windows runners are slower and the suites spawn processes; keep the
+        # file-level concurrency low to avoid lock/CPU contention flakes.
+        run: node --test ${{ matrix.os == 'windows-latest' && '--test-concurrency=2' || '--test-concurrency=4' }}
       - name: Coverage gate
         run: node scripts/coverage-gate.mjs
       - name: CLI smoke test
