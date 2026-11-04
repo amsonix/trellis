@@ -40,8 +40,21 @@ async function acquire(root) {
       try {
         const stat = await fs.stat(file);
         if (Date.now() - stat.mtimeMs > STALE_MS) {
-          await fs.rm(file, { force: true });
-          continue;
+          let alive = false;
+          try {
+            const owner = JSON.parse(await fs.readFile(file, 'utf8'));
+            if (Number.isInteger(owner.pid)) {
+              process.kill(owner.pid, 0);
+              alive = true;
+            }
+          } catch (probe) {
+            // EPERM means the process exists but is owned by another user.
+            alive = probe.code === 'EPERM';
+          }
+          if (!alive) {
+            await fs.rm(file, { force: true });
+            continue;
+          }
         }
       } catch {
         // The holder removed it between open and stat; retry immediately.

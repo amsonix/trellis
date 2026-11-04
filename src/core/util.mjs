@@ -34,11 +34,39 @@ export async function renameWithRetry(from, to, attempts = 6) {
   }
 }
 
+export async function syncFile(file) {
+  try {
+    const handle = await fs.open(file, 'r+');
+    try {
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    // Best effort: some filesystems do not support fsync on this handle.
+  }
+}
+
+export async function syncDirectory(dir) {
+  try {
+    const handle = await fs.open(dir, 'r');
+    try {
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    // Windows and some network filesystems cannot fsync a directory.
+  }
+}
+
 export async function writeText(file, text) {
   await ensureDir(path.dirname(file));
   const tmp = `${file}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
   await fs.writeFile(tmp, text, 'utf8');
+  await syncFile(tmp);
   await renameWithRetry(tmp, file);
+  await syncDirectory(path.dirname(file));
 }
 
 export async function readJson(file) {
@@ -49,7 +77,9 @@ export async function writeJson(file, value) {
   await ensureDir(path.dirname(file));
   const tmp = `${file}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
   await fs.writeFile(tmp, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+  await syncFile(tmp);
   await renameWithRetry(tmp, file);
+  await syncDirectory(path.dirname(file));
 }
 
 export async function listDir(dir) {

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { EVIDENCE_KINDS, EVIDENCE_VERDICTS } from './constants.mjs';
 import { makeCheck } from './checks.mjs';
 import { ProtocolError, RefusedError, UsageError } from './errors.mjs';
-import { exists, fileSha256, nowIso, parseActor, readText, renameWithRetry, assertMaxLength } from './util.mjs';
+import { exists, fileSha256, nowIso, parseActor, readText, renameWithRetry, assertMaxLength, syncFile, syncDirectory } from './util.mjs';
 import { STATE_DIR } from './store.mjs';
 import { currentAgent } from './identity.mjs';
 
@@ -37,7 +37,14 @@ const shardCache = new Map();
 
 async function appendEvent(file, event) {
   await fs.mkdir(path.dirname(file), { recursive: true });
-  await fs.appendFile(file, `${JSON.stringify(event)}\n`, 'utf8');
+  const handle = await fs.open(file, 'a');
+  try {
+    await handle.appendFile(`${JSON.stringify(event)}\n`, 'utf8');
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+  await syncDirectory(path.dirname(file));
 }
 
 function parseLines(text, file) {
@@ -110,7 +117,9 @@ async function writeShard(file, records) {
   const text = records.length > 0 ? `${records.map((record) => JSON.stringify({ type: 'add', ...record })).join('\n')}\n` : '';
   const tmp = `${file}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
   await fs.writeFile(tmp, text, 'utf8');
+  await syncFile(tmp);
   await renameWithRetry(tmp, file);
+  await syncDirectory(path.dirname(file));
 }
 
 async function collectLegacy(root) {

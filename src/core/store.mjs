@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { SCHEMA_VERSION, ALL_GATES, META_DIR } from './constants.mjs';
 import { UnavailableError } from './errors.mjs';
-import { nowIso, readJson, renameWithRetry, writeJson } from './util.mjs';
+import { nowIso, readJson, renameWithRetry, writeJson, syncFile, syncDirectory } from './util.mjs';
 import { currentAgent } from './identity.mjs';
 
 export const STATE_DIR = META_DIR;
@@ -100,6 +100,8 @@ async function flushAudit(root, state) {
     const file = path.join(root, STATE_DIR, AUDIT_FILE);
     await fs.mkdir(path.dirname(file), { recursive: true });
     await fs.appendFile(file, `${fresh.map((entry) => JSON.stringify(entry)).join('\n')}\n`, 'utf8');
+    await syncFile(file);
+    await syncDirectory(path.dirname(file));
     state.auditFlushed = items.length;
   }
   if (items.length > AUDIT_KEEP) {
@@ -115,6 +117,7 @@ export async function saveState(root, state) {
   const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2, 8)}.tmp`;
   await writeJson(tmp, state);
   await renameWithRetry(tmp, file);
+  await syncDirectory(path.dirname(file));
 }
 
 export function appendAudit(state, action, actor = null, detail = null) {

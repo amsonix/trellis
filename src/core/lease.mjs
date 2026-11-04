@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { RefusedError, UsageError } from './errors.mjs';
-import { covers, exists, nowIso, overlaps, parseActor, readJson, writeJson } from './util.mjs';
+import { covers, exists, nowIso, overlaps, parseActor, readJson, writeJson, syncFile, syncDirectory } from './util.mjs';
 import { STATE_DIR } from './store.mjs';
 import { currentAgent } from './identity.mjs';
 import { parseTasks, taskById } from './tasks.mjs';
@@ -18,6 +18,8 @@ async function appendArchive(root, leases) {
   const file = path.join(root, LEASE_ARCHIVE);
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.appendFile(file, `${leases.map((lease) => JSON.stringify(lease)).join('\n')}\n`, 'utf8');
+  await syncFile(file);
+  await syncDirectory(path.dirname(file));
 }
 
 export async function loadLeases(root) {

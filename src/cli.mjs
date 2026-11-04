@@ -35,6 +35,7 @@ import { exportA2A } from './core/export-a2a.mjs';
 import { selectTaskCommits, suggestScopeForTask } from './core/scope.mjs';
 import { doctor } from './core/doctor.mjs';
 import { startA2A } from './a2a/server.mjs';
+import { backup, restore } from './core/backup.mjs';
 import { applyTaskScope, recoverTask, cancelTask } from './core/mutations.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -68,7 +69,9 @@ const VALUE_OPTIONS = new Set([
   'decision',
   'id',
   'limit',
-  'port'
+  'port',
+  'out',
+  'from'
 ]);
 
 const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel']);
@@ -157,6 +160,8 @@ Usage:
   trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
   trellis export --a2a [dir] [--json]
   trellis a2a serve [dir] [--port <n>] [--no-cancel]
+  trellis backup [dir] --out <directory>
+  trellis restore [dir] --from <directory> [--force]
   trellis scope suggest --task <T-NNN> [dir] [--json]
   trellis profile list [--json]
   trellis doctor [dir] [--json]
@@ -206,6 +211,8 @@ const HELP = {
   export: ['Read-only projections.', 'trellis export --a2a [dir] [--json]'],
   a2a: ['A2A HTTP endpoint (read tasks, cancel work).', 'trellis a2a serve [dir] [--port <n>] [--no-cancel]'],
   'a2a:serve': ['Serve the A2A endpoint.', 'trellis a2a serve [dir] [--port <n>] [--no-cancel]'],
+  backup: ['Copy .trellis/ into a new directory with a manifest.', 'trellis backup [dir] --out <directory>'],
+  restore: ['Restore .trellis/ from a backup directory.', 'trellis restore [dir] --from <directory> [--force]'],
   profile: ['Profiles.', 'trellis profile list [--json]'],
   'profile:list': ['List the available profiles.', 'trellis profile list [--json]'],
   doctor: ['Check the environment and the project ledgers.', 'trellis doctor [dir] [--json]'],
@@ -769,6 +776,16 @@ async function dispatch(args) {
         console.log(`commits:   ${data.commits.length} matched (exact ${options.task} token)`);
       }
     };
+  }
+
+  if (command === 'backup') {
+    const data = await backup(dirOf(args), { out: options.out });
+    return { data, exitCode: 0, print: () => console.log(`backed up ${data.project} (schema ${data.schemaVersion}) to ${data.out}`) };
+  }
+
+  if (command === 'restore') {
+    const data = await restore(dirOf(args), { from: options.from, force: Boolean(options.force) });
+    return { data, exitCode: 0, print: () => console.log(`restored ${data.project} from ${data.restoredFrom}`) };
   }
 
   if (command === 'a2a') {

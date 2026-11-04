@@ -229,6 +229,11 @@ HTTP endpoint:
 - `message/send` is deliberately unsupported: work is created through the plan
   gates, not by an arbitrary A2A message
 
+Before an upgrade, copy the ledger with `trellis backup --out <dir>`; restore
+it with `trellis restore --from <dir> [--force]`. The trust boundary and the
+threats Trellis does not handle are in
+[`docs/security-model.md`](docs/security-model.md).
+
 Spec Kit users can capture a `tasks.md` checklist through
 [`examples/spec-kit/`](examples/spec-kit/): Spec Kit keeps the spec and the plan,
 Trellis records who is doing the work and what proves it.
