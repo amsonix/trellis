@@ -71,9 +71,9 @@ npx github:amsonix/trellis --help
 npm link
 ```
 
-包还没有发布到 npm；`@amsonix/trellis` 是预留给以后发布的。需要固定版本时，
-把 [`scripts/release-tarball.mjs`](scripts/release-tarball.mjs) 打出的 tarball
-挂到 Release 上，再用它的 URL 安装（见 [`docs/release.md`](docs/release.md)）：
+包还没有发布到 npm；`@amsonix/trellis` 是预留给以后发布的。推送 `v*` tag 会
+自动构建并上传 tarball（见 [`docs/release.md`](docs/release.md)），用它的 URL
+安装：
 
 ```bash
 npm install -g https://github.com/amsonix/trellis/releases/download/vX.Y.Z/amsonix-trellis-X.Y.Z.tgz

@@ -34,8 +34,14 @@ git push origin main
 git push origin vX.Y.Z
 ```
 
-Create the GitHub Release from the tag and attach the tarball from `dist/`.
-Record the sha256 in the release notes.
+Pushing the tag runs `.github/workflows/release.yml`: it tests, builds the
+tarball, creates the Release when missing, and uploads `dist/*.tgz`. The job
+needs the repository's default `GITHUB_TOKEN` with `contents: write`, which the
+workflow requests explicitly.
+
+If the workflow cannot run (tags pushed before it existed, or Actions disabled),
+create the Release by hand and attach the tarball from `dist/`. Record the
+sha256 in the release notes either way.
 
 ## 4. Install without a registry
 

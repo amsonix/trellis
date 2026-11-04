@@ -21,6 +21,8 @@ All notable changes to this project are recorded here. The format follows
 
 - The agent skill names `evidence.jsonl` and `leases.archive.jsonl`, and lists
   `--proves`, `--paths` and `task recover`.
+- Pushing a `v*` tag runs `release.yml`, which tests, builds the tarball,
+  creates the Release when missing and uploads the asset.
 
 
 

@@ -73,9 +73,8 @@ npm link
 ```
 
 The package is not on the npm registry yet; `@amsonix/trellis` is reserved for
-a future publish. For a pinned install, attach the tarball built by
-[`scripts/release-tarball.mjs`](scripts/release-tarball.mjs) to a release and use
-its URL (see [`docs/release.md`](docs/release.md)):
+a future publish. A pushed `v*` tag now builds and attaches the tarball
+automatically (see [`docs/release.md`](docs/release.md)):
 
 ```bash
 npm install -g https://github.com/amsonix/trellis/releases/download/vX.Y.Z/amsonix-trellis-X.Y.Z.tgz
