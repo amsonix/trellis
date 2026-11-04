@@ -56,6 +56,23 @@ not make the task safer; it makes every other task wait.
 - Do not rely on `priority` for concurrency. It orders ready tasks; it does not
   make them disjoint.
 
+## G4 stays a hard gate (decided 2026-11-04)
+
+G4 keeps rejecting plans where two runnable tasks share a scope without a
+dependency. The alternative — downgrading the overlap check to a warning and
+letting leases serialize at claim time — was considered and rejected:
+
+- leases are a **runtime** safety device (they stop a second claim); they do not
+  tell the planner which work can run at the same time
+- with the hard gate, "G4 approved" still means "this plan can execute without
+  agents blocking each other"
+- the complaint that motivated the alternative was real but had a different
+  cause: narrowing two tasks to the **same file** cannot remove a conflict. The
+  remedy is a dependency, and the G4 message now says exactly that.
+
+A project with many tasks and few files therefore needs a serial chain (or
+smaller tasks). That is the cost of keeping the guarantee, and it is deliberate.
+
 ## Consequences
 
 - Parallelism is bounded by how precisely scopes are written. `scope suggest`
