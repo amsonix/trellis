@@ -7,7 +7,7 @@
  */
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { EVIDENCE_ARCHIVE, EVIDENCE_FILE, evidenceArchivePath, evidencePath, loadEvidence } from './evidence.mjs';
+import { EVIDENCE_ARCHIVE, EVIDENCE_FILE, evidenceArchivePath, evidencePath, foldEvidence, loadEvidence, readEvidenceEvents } from './evidence.mjs';
 import { AUDIT_FILE, STATE_DIR } from './store.mjs';
 import { readText, renameWithRetry } from './util.mjs';
 
@@ -26,7 +26,9 @@ async function readSize(file) {
 async function compactEvidence(root, { dryRun = false, archiveRetractedDays = 0 } = {}) {
   const file = evidencePath(root);
   const before = await readSize(file);
-  const { items } = await loadEvidence(root);
+  const items = dryRun
+    ? foldEvidence(await readEvidenceEvents(root))
+    : (await loadEvidence(root)).items;
 
   const cutoff = archiveRetractedDays > 0 ? Date.now() - archiveRetractedDays * 86_400_000 : null;
   const archived = cutoff

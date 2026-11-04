@@ -631,6 +631,12 @@ export async function claimTask(root, taskId, { by }) {
   const { tasks } = await parseTasks(root);
   const task = taskById(tasks, taskId);
   if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
+  if (actor.role !== task.role && !['coordinator', 'human'].includes(actor.role)) {
+    throw new RefusedError('TASK_ROLE', `${actor.raw} cannot claim ${taskId}; it is assigned to ${task.role}`, {
+      task: taskId,
+      role: task.role
+    });
+  }
   if (task.status === 'in_progress') {
     const held = (await leaseStatus(root)).find((item) => item.taskId === taskId);
     if (held) return { task, lease: held, idempotent: true };
@@ -647,12 +653,6 @@ export async function claimTask(root, taskId, { by }) {
     }
   } else if (!['todo', 'ready'].includes(task.status)) {
     throw new RefusedError('TASK_NOT_CLAIMABLE', `task ${taskId} is '${task.status}', not todo/ready`, { task: taskId });
-  }
-  if (actor.role !== task.role && !['coordinator', 'human'].includes(actor.role)) {
-    throw new RefusedError('TASK_ROLE', `${actor.raw} cannot claim ${taskId}; it is assigned to ${task.role}`, {
-      task: taskId,
-      role: task.role
-    });
   }
   const done = new Set(tasks.filter((item) => item.status === 'done').map((item) => item.id));
   const waitingOn = task.dependsOn.filter((dependency) => !done.has(dependency));
@@ -974,6 +974,14 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
 
   let evidence = null;
   if (newStatus === 'done') {
+    const done = new Set(tasks.filter((item) => item.status === 'done' && item.id !== taskId).map((item) => item.id));
+    const waitingOn = task.dependsOn.filter((dependency) => !done.has(dependency));
+    if (waitingOn.length > 0) {
+      throw new RefusedError('TASK_BLOCKED_BY_DEPENDENCY', `task ${taskId} waits on ${waitingOn.join(', ')}`, {
+        task: taskId,
+        waitingOn
+      });
+    }
     evidence = await requirePassingEvidence(root, taskId);
     await releaseLease(root, taskId);
   }

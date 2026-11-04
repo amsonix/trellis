@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { EVIDENCE_KINDS, EVIDENCE_VERDICTS } from './constants.mjs';
 import { makeCheck } from './checks.mjs';
-import { RefusedError, UsageError } from './errors.mjs';
+import { ProtocolError, RefusedError, UsageError } from './errors.mjs';
 import { exists, fileSha256, nowIso, parseActor, readText, renameWithRetry } from './util.mjs';
 import { STATE_DIR } from './store.mjs';
 import { currentAgent } from './identity.mjs';
@@ -28,7 +28,7 @@ async function appendEvent(file, event) {
   await fs.appendFile(file, `${JSON.stringify(event)}\n`, 'utf8');
 }
 
-async function readEvents(root) {
+export async function readEvidenceEvents(root) {
   const file = evidencePath(root);
   let text;
   try {
@@ -37,19 +37,29 @@ async function readEvents(root) {
     if (error.code === 'ENOENT') return [];
     throw error;
   }
+  const lines = text.split('\n');
   const events = [];
-  for (const line of text.split('\n')) {
+  const tornFinalLine = !text.endsWith('\n');
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
     if (!line.trim()) continue;
     try {
       events.push(JSON.parse(line));
     } catch {
-      // A torn final line from a crash is ignored; the rest of the log is valid.
+      // Only a final line without a trailing newline may be a torn write.
+      if (tornFinalLine && index === lines.length - 1) continue;
+      throw new ProtocolError(
+        'EVIDENCE_CORRUPT',
+        `evidence log is corrupt at line ${index + 1}: ${file}`,
+        { file, line: index + 1 },
+        4
+      );
     }
   }
   return events;
 }
 
-function fold(events) {
+export function foldEvidence(events) {
   const records = new Map();
   for (const event of events) {
     if (event.type === 'add') {
@@ -77,7 +87,7 @@ export async function migrateLegacyEvidence(root) {
 
 export async function loadEvidence(root) {
   await migrateLegacyEvidence(root);
-  return { schemaVersion: 2, items: fold(await readEvents(root)) };
+  return { schemaVersion: 2, items: foldEvidence(await readEvidenceEvents(root)) };
 }
 
 export async function listEvidence(root, taskId = null) {

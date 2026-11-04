@@ -26,7 +26,12 @@ async function acquire(root) {
     try {
       const handle = await fs.open(file, 'wx');
       await handle.writeFile(JSON.stringify({ pid: process.pid, at: new Date().toISOString() }));
+      const heartbeat = setInterval(() => {
+        fs.utimes(file, new Date(), new Date()).catch(() => {});
+      }, 5000);
+      heartbeat.unref?.();
       return async () => {
+        clearInterval(heartbeat);
         await handle.close();
         await fs.rm(file, { force: true });
       };

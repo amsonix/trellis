@@ -196,8 +196,8 @@ never waits for a person; decisions do.
 
 Writes are serialized through `.trellis/.lock`: two agents claiming, recording
 evidence or asking questions at the same time queue behind each other instead of
-overwriting one another. A lock older than ten seconds is treated as stale and
-stolen.
+overwriting one another. A lock older than twenty seconds is treated as stale and
+stolen; a held lock refreshes its timestamp every five seconds.
 
 Audit entries are appended to `.trellis/audit.jsonl`; `state.json` keeps only the
 most recent 200. Set `TRELLIS_STRICT=1` to make `task claim` refuse before `G4`

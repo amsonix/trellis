@@ -135,7 +135,8 @@ done → 终态
 ```
 
 - 存在 `.trellis/evidence.jsonl`，是 append-only 事件日志（add / retract）；
-  可选 `proves` 字段写明这条证据要证明验收条件里的哪一句。
+  可选 `proves` 字段写明这条证据要证明验收条件里的哪一句。日志中间行损坏
+  视为错误；只有末尾没有换行符的半行可以按崩溃写入忽略。
 - 本地文件在写入时计算 sha256；文件变化需要新证据。
 - done 需要 pass 且没有 fail；inconclusive 不是 pass。
 - 证据可以由 human/reviewer/verifier 带理由撤回；记录保留、不再计数；

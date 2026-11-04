@@ -4,6 +4,30 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `task claim` checks the actor's role before returning an idempotent lease or
+  taking over an orphaned claim; a wrong role is refused instead of receiving
+  the existing lease.
+- `task report --state done` rechecks dependencies, so a dependency added after
+  the claim can no longer be skipped.
+- A corrupt middle line in `evidence.jsonl` is reported as `EVIDENCE_CORRUPT`
+  instead of being silently dropped; only a torn final line is ignored.
+- `compact --dry-run` no longer migrates a legacy `evidence.json`.
+
+### Changed
+
+- State schema is 2. A schema-1 state is upgraded in memory and persisted on
+  the next write; older builds refuse schema 2 instead of silently missing the
+  JSONL evidence log.
+- Text artifacts (including `TASKS.md`) are written through a temporary file and
+  rename, matching the JSON ledgers.
+- The ledger lock refreshes its timestamp while held, so a slow operation is not
+  mistaken for a dead holder.
+- 137 `node:test` cases.
+
 ## [0.6.0] - 2026-11-04
 
 ### Added

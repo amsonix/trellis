@@ -36,7 +36,9 @@ export async function renameWithRetry(from, to, attempts = 6) {
 
 export async function writeText(file, text) {
   await ensureDir(path.dirname(file));
-  await fs.writeFile(file, text, 'utf8');
+  const tmp = `${file}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+  await fs.writeFile(tmp, text, 'utf8');
+  await renameWithRetry(tmp, file);
 }
 
 export async function readJson(file) {

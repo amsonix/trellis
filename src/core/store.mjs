@@ -64,12 +64,16 @@ export async function loadState(root) {
   if (!state || typeof state !== 'object') {
     throw new UnavailableError(`${file} is not a JSON object`, { path: file });
   }
-  if (state.schemaVersion !== SCHEMA_VERSION) {
+  if (![1, SCHEMA_VERSION].includes(state.schemaVersion)) {
     throw new UnavailableError(`unsupported state schema ${state.schemaVersion}; this build understands ${SCHEMA_VERSION}`, {
       path: file,
       found: state.schemaVersion
     });
   }
+  // Schema 1 predates the JSONL evidence log. Upgrade in memory; the next
+  // write persists schema 2 so an older build refuses instead of silently
+  // missing evidence.
+  if (state.schemaVersion < SCHEMA_VERSION) state.schemaVersion = SCHEMA_VERSION;
   state.gates = state.gates ?? {};
   for (const id of ALL_GATES) {
     state.gates[id] = {

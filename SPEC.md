@@ -241,7 +241,9 @@ over (`task.taken_over`) without rewriting the status, and
 Rules:
 
 - Evidence is stored in `.trellis/evidence.jsonl` as an append-only event log:
-  `add` and `retract` events are folded by evidence id when read. An optional
+  `add` and `retract` events are folded by evidence id when read. A corrupt
+  line in the middle of the log is an error; only a final line without a
+  trailing newline may be ignored as a torn write. An optional
   `proves` field names the acceptance clause the evidence is meant to prove.
 - A local file URI gets a sha256 at add time; a changed file needs new evidence.
 - A task cannot be `done` without a `pass` and with any `fail`.
