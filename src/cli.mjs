@@ -34,6 +34,7 @@ import { leaseStatus, guardCommit } from './core/lease.mjs';
 import { exportA2A } from './core/export-a2a.mjs';
 import { selectTaskCommits, suggestScopeForTask } from './core/scope.mjs';
 import { doctor } from './core/doctor.mjs';
+import { startA2A } from './a2a/server.mjs';
 import { applyTaskScope, recoverTask, cancelTask } from './core/mutations.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -66,10 +67,11 @@ const VALUE_OPTIONS = new Set([
   'question',
   'decision',
   'id',
-  'limit'
+  'limit',
+  'port'
 ]);
 
-const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply']);
+const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel']);
 
 function parseArgv(argv) {
   const positionals = [];
@@ -154,6 +156,7 @@ Usage:
   trellis reindex [dir] [--json]
   trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
   trellis export --a2a [dir] [--json]
+  trellis a2a serve [dir] [--port <n>] [--no-cancel]
   trellis scope suggest --task <T-NNN> [dir] [--json]
   trellis profile list [--json]
   trellis doctor [dir] [--json]
@@ -201,6 +204,8 @@ const HELP = {
   scope: ['Write-scope helpers.', 'trellis scope suggest --task <T-NNN> [--apply --by <role>:<name>]'],
   'scope:suggest': ['Suggest a file-level scope from commits for the task.', 'trellis scope suggest --task <T-NNN> [dir] [--apply --by <role>:<name>] [--json]'],
   export: ['Read-only projections.', 'trellis export --a2a [dir] [--json]'],
+  a2a: ['A2A HTTP endpoint (read tasks, cancel work).', 'trellis a2a serve [dir] [--port <n>] [--no-cancel]'],
+  'a2a:serve': ['Serve the A2A endpoint.', 'trellis a2a serve [dir] [--port <n>] [--no-cancel]'],
   profile: ['Profiles.', 'trellis profile list [--json]'],
   'profile:list': ['List the available profiles.', 'trellis profile list [--json]'],
   doctor: ['Check the environment and the project ledgers.', 'trellis doctor [dir] [--json]'],
@@ -762,6 +767,27 @@ async function dispatch(args) {
         console.log(`suggested: ${data.suggested.length > 0 ? data.suggested.join(', ') : '(no touched file inside the scope)'}`);
         if (data.outside.length > 0) console.log(`outside:   ${data.outside.join(', ')}`);
         console.log(`commits:   ${data.commits.length} matched (exact ${options.task} token)`);
+      }
+    };
+  }
+
+  if (command === 'a2a') {
+    if (subcommand !== 'serve') throw new UsageError('a2a supports: serve');
+    const port = options.port === undefined ? 8787 : Number.parseInt(options.port, 10);
+    if (!Number.isInteger(port) || port < 0) throw new UsageError('--port must be a non-negative integer');
+    const started = await startA2A({
+      root: dirOf(args),
+      port,
+      cancel: !options['no-cancel']
+    });
+    return {
+      data: { url: started.url, project: started.project, tasks: started.tasks, cancel: !options['no-cancel'] },
+      exitCode: 0,
+      print: () => {
+        console.log(`A2A endpoint: ${started.url} (${started.tasks} task(s), project ${started.project})`);
+        console.log(`agent card:   ${started.url}/.well-known/agent-card.json`);
+        console.log(`cancel:       ${options['no-cancel'] ? 'disabled' : 'enabled as coordinator:a2a'}`);
+        console.log('press Ctrl-C to stop');
       }
     };
   }

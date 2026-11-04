@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { EVIDENCE_KINDS, EVIDENCE_VERDICTS } from './constants.mjs';
@@ -28,6 +29,8 @@ async function appendEvent(file, event) {
   await fs.appendFile(file, `${JSON.stringify(event)}\n`, 'utf8');
 }
 
+const eventCache = new Map();
+
 export async function readEvidenceEvents(root, { taskId = null } = {}) {
   const file = evidencePath(root);
   let text;
@@ -37,6 +40,16 @@ export async function readEvidenceEvents(root, { taskId = null } = {}) {
     if (error.code === 'ENOENT') return [];
     throw error;
   }
+  const digest = crypto.createHash('sha256').update(text).digest('hex');
+  const cache = eventCache.get(root);
+  if (cache?.digest === digest) {
+    return taskId
+      ? cache.events.filter(
+          (event) => event.type === 'retract' || (event.type === 'add' && event.taskId === taskId)
+        )
+      : cache.events;
+  }
+
   const lines = text.split('\n');
   const events = [];
   const tornFinalLine = !text.endsWith('\n');
@@ -63,6 +76,7 @@ export async function readEvidenceEvents(root, { taskId = null } = {}) {
       );
     }
   }
+  eventCache.set(root, { digest, events });
   return events;
 }
 

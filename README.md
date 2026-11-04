@@ -216,6 +216,18 @@ rotates `audit.jsonl` when it exceeds 5 MB; `--dry-run` reports the sizes.
 `evidence.archive.jsonl`; passing or failing evidence is never archived, because
 verification still needs it.
 
+### A2A endpoint
+
+`trellis a2a serve [dir] [--port 8787] [--no-cancel]` starts a dependency-free
+HTTP endpoint:
+
+- `GET /.well-known/agent-card.json` — the agent card
+- `POST /` JSON-RPC: `tasks/get`, `tasks/list`, `tasks/cancel`
+- `tasks/cancel` maps to `task cancel` as `coordinator:a2a`; disable it with
+  `--no-cancel`
+- `message/send` is deliberately unsupported: work is created through the plan
+  gates, not by an arbitrary A2A message
+
 Spec Kit users can capture a `tasks.md` checklist through
 [`examples/spec-kit/`](examples/spec-kit/): Spec Kit keeps the spec and the plan,
 Trellis records who is doing the work and what proves it.
