@@ -44,10 +44,12 @@ export function getProfile(id) {
 }
 
 export function listProfiles() {
-  return Object.values(PROFILES).map(({ id, title, description, requiredArtifacts }) => ({
+  return Object.values(PROFILES).map(({ id, title, description, requiredArtifacts, optionalArtifacts, gates }) => ({
     id,
     title,
     description,
-    requiredArtifacts
+    requiredArtifacts,
+    optionalArtifacts,
+    gates
   }));
 }

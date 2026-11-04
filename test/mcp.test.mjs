@@ -71,6 +71,14 @@ test('the MCP server exposes read tools and never a gate approval', async () => 
     assert.ok(!names.includes('trellis_task_claim'));
     assert.ok(names.every((name) => !name.includes('gate')));
 
+    for (const tool of list.result.tools) {
+      assert.equal(tool.inputSchema.type, 'object', `${tool.name} schema type`);
+      assert.equal(tool.inputSchema.additionalProperties, false, `${tool.name} additionalProperties`);
+      for (const key of tool.inputSchema.required ?? []) {
+        assert.ok(key in tool.inputSchema.properties, `${tool.name} requires unknown '${key}'`);
+      }
+    }
+
     const disabled = await call(client, 'trellis_task_claim', { task: 'T-001', by: 'executor:w1' });
     assert.equal(disabled.error.code, -32601);
     assert.match(disabled.error.message, /TRELLIS_MCP_WRITE=1/);
@@ -110,6 +118,14 @@ test('write tools appear only with TRELLIS_MCP_WRITE=1 and claim tasks', async (
       assert.ok(names.includes('trellis_task_ask'));
       assert.ok(names.includes('trellis_evidence_retract'));
       assert.ok(names.every((name) => !name.includes('gate')));
+
+    for (const tool of list.result.tools) {
+      assert.equal(tool.inputSchema.type, 'object', `${tool.name} schema type`);
+      assert.equal(tool.inputSchema.additionalProperties, false, `${tool.name} additionalProperties`);
+      for (const key of tool.inputSchema.required ?? []) {
+        assert.ok(key in tool.inputSchema.properties, `${tool.name} requires unknown '${key}'`);
+      }
+    }
 
       const claim = await call(client, 'trellis_task_claim', { dir, task: 'T-001', by: 'executor:w1' });
       assert.equal(claim.result.isError, undefined);
