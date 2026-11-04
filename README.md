@@ -211,6 +211,10 @@ returns at most N tasks in a batch.
 proposes a file-level write scope. By default it only reads; `--apply --by
 <role>:<name>` writes the suggestion back, and only narrowing is allowed.
 
+`check` reports `GATE_CONTENT_DRIFT` (a warning) when only prose in an approved
+artifact changed; structural edits still make the gate stale and require
+re-approval.
+
 `trellis compact` folds the evidence event log into one record per id and
 rotates `audit.jsonl` when it exceeds 5 MB; `--dry-run` reports the sizes.
 `--archive-retracted <days>` moves retracted records older than that to

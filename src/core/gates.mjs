@@ -51,13 +51,14 @@ async function adrDigest(root) {
 export async function gateDigest(root, gateId) {
   const dependencies = GATE_DEPENDENCIES[gateId] ?? GATE_DEFS[gateId]?.artifacts ?? [];
   const files = {};
+  const structures = {};
   const hash = crypto.createHash('sha256');
   for (const artifactId of dependencies) {
     let text = 'MISSING';
     if (artifactId === 'TASKS') {
-      // The task *structure* is what the plan gates approve: id, milestone,
-      // scope, dependencies, acceptance and verification. Status churn belongs
-      // to execution and must not make G3/G4 stale on every claim.
+      // The content digest covers prose (title, acceptance, verification); the
+      // structure digest covers only what changes the plan: ids, milestones,
+      // roles, scopes and dependencies. Status churn is execution, not plan.
       const parsed = await parseTasks(root);
       if (!parsed.error) {
         text = JSON.stringify(
@@ -72,7 +73,43 @@ export async function gateDigest(root, gateId) {
             verification: task.verification
           }))
         );
+        structures.TASKS = crypto
+          .createHash('sha256')
+          .update(
+            JSON.stringify(
+              parsed.tasks.map((task) => ({
+                id: task.id,
+                milestone: task.milestone,
+                role: task.role,
+                scope: task.scope,
+                dependsOn: task.dependsOn
+              }))
+            )
+          )
+          .digest('hex');
       }
+    } else if (artifactId === 'ROADMAP') {
+      const file = path.join(root, META_DIR, 'docs/ROADMAP.md');
+      try {
+        text = normalizeArtifact(await readText(file));
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+      const milestones = await milestonesFromRoadmap(root);
+      structures.ROADMAP = crypto
+        .createHash('sha256')
+        .update(
+          JSON.stringify(
+            milestones.map((milestone) => ({
+              id: milestone.id,
+              bullets: milestone.content
+                .split('\n')
+                .map((line) => line.trim())
+                .filter((line) => /^[-*]\s+/.test(line))
+            }))
+          )
+        )
+        .digest('hex');
     } else if (artifactId === 'ADR') {
       text = await adrDigest(root);
     } else {
@@ -89,11 +126,12 @@ export async function gateDigest(root, gateId) {
     files[artifactId] = fileHash;
     hash.update(`${artifactId}:${fileHash}\n`);
   }
-  return { hash: hash.digest('hex'), files };
+  return { hash: hash.digest('hex'), files, structures };
 }
 
-export async function staleGates(root, state) {
+export async function gateChanges(root, state) {
   const stale = [];
+  const drift = [];
   for (const gateId of PROJECT_GATES) {
     const gate = state.gates?.[gateId];
     if (!gate || gate.status !== 'passed' || !gate.digest?.files) continue;
@@ -101,9 +139,24 @@ export async function staleGates(root, state) {
     const changed = Object.keys({ ...gate.digest.files, ...current.files }).filter(
       (artifactId) => gate.digest.files[artifactId] !== current.files[artifactId]
     );
-    if (changed.length > 0) stale.push({ gate: gateId, changed });
+    if (changed.length === 0) continue;
+    const structureChanged = changed.some((artifactId) => {
+      const before = gate.digest.structures?.[artifactId];
+      const after = current.structures?.[artifactId];
+      if (before === undefined || after === undefined) return true;
+      return before !== after;
+    });
+    (structureChanged ? stale : drift).push({ gate: gateId, changed });
   }
-  return stale;
+  return { stale, drift };
+}
+
+export async function staleGates(root, state) {
+  return (await gateChanges(root, state)).stale;
+}
+
+export async function driftedGates(root, state) {
+  return (await gateChanges(root, state)).drift;
 }
 
 export function gateSatisfied(state, gateId) {

@@ -109,6 +109,7 @@ export async function parseTasks(root) {
       acceptance: row[mapping.acceptance]?.trim() ?? '',
       verification: row[mapping.verification]?.trim() ?? '',
       status: (row[mapping.status]?.trim().toLowerCase() || 'todo'),
+      statusValid: TASK_STATUSES.includes((row[mapping.status]?.trim().toLowerCase() || 'todo')),
       priority: (row[mapping.priority]?.trim().toLowerCase() || 'medium'),
       row: table.start + 2 + index
     });

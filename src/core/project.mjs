@@ -17,6 +17,7 @@ import {
   taskGateSatisfied,
   firstUnsatisfiedProjectGate,
   staleGates,
+  driftedGates,
   gateDigest
 } from './gates.mjs';
 import { addEvidence, verifyTaskEvidence, requirePassingEvidence, listEvidence } from './evidence.mjs';
@@ -167,6 +168,17 @@ export async function runChecks(root, stage = null) {
     }
   }
 
+  const drift = await driftedGates(root, state);
+  for (const item of drift) {
+    checks.push(
+      makeCheck(
+        'GATE_CONTENT_DRIFT',
+        'warn',
+        `${item.gate} content changed after approval (structure unchanged): ${item.changed.join(', ')}`,
+        { stage: GATE_DEFS[item.gate]?.stage, gate: item.gate, changed: item.changed }
+      )
+    );
+  }
   const stale = await staleGates(root, state);
   for (const item of stale) {
     checks.push(
@@ -286,6 +298,17 @@ async function nextFrom(root, state, tasks, checks, role = null, { limit = null 
 }
 
 async function computeNext(root, state, tasks, checks, role = null) {
+  const invalid = tasks.filter((task) => task.statusValid === false);
+  if (invalid.length > 0) {
+    return {
+      kind: 'waiting',
+      attention: invalid.map((task) => ({
+        kind: 'task',
+        code: 'TASK_STATUS_INVALID',
+        message: `task ${task.id} has unknown status '${task.status}'; fix the task board`
+      }))
+    };
+  }
   const stage = computeStage(state, tasks);
   const stale = await staleGates(root, state);
   if (stale.length > 0) {
@@ -369,6 +392,7 @@ export async function projectStatus(root) {
   const leases = await leaseStatus(root);
   const gates = gateSummary(state);
   const stale = await staleGates(root, state);
+  const drift = await driftedGates(root, state);
   for (const item of stale) {
     if (gates[item.gate]) gates[item.gate].stale = true;
   }
@@ -386,6 +410,7 @@ export async function projectStatus(root) {
     stage: computeStage(state, tasks),
     gates,
     staleGates: stale,
+    driftedGates: drift,
     taskGates: state.taskGates,
     tasks: taskCounts(tasks),
     checks: { summary: checksResult.summary, blocking: checksResult.checks.filter((check) => hasBlocking([check])) },
@@ -635,6 +660,12 @@ export async function claimTask(root, taskId, { by }) {
   const { tasks } = await parseTasks(root);
   const task = taskById(tasks, taskId);
   if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
+  if (task.statusValid === false) {
+    throw new RefusedError('TASK_STATUS_INVALID', `task ${taskId} has unknown status '${task.status}'`, {
+      task: taskId,
+      status: task.status
+    });
+  }
   if (actor.role !== task.role && !['coordinator', 'human'].includes(actor.role)) {
     throw new RefusedError('TASK_ROLE', `${actor.raw} cannot claim ${taskId}; it is assigned to ${task.role}`, {
       task: taskId,
