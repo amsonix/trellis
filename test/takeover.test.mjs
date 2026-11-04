@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { claimTask, releaseLease } from '../src/core/mutations.mjs';
 import { leaseStatus } from '../src/core/lease.mjs';
 import { parseTasks, updateTaskStatus } from '../src/core/tasks.mjs';
-import { addTask, reportTask } from '../src/core/project.mjs';
+import { addTask, recoverTask, reportTask } from '../src/core/project.mjs';
 import { cleanup, makeProject } from './helpers.mjs';
 
 async function orphanClaim(dir) {
@@ -96,6 +96,61 @@ test('reporting an orphaned claim back to ready is still refused', async () => {
     await assert.rejects(
       () => reportTask(dir, 'T-001', { state: 'ready', by: 'coordinator:kim' }),
       (error) => error.code === 'TASK_TRANSITION'
+    );
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+
+test('recover returns an orphaned in_progress task to ready', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await orphanClaim(dir);
+    const data = await recoverTask(dir, 'T-001', { to: 'ready', by: 'human:alice', reason: 'agent crashed' });
+    assert.equal(data.task.status, 'ready');
+    const { tasks } = await parseTasks(dir);
+    assert.equal(tasks[0].status, 'ready');
+
+    const state = JSON.parse(await import('node:fs/promises').then((fs) => fs.readFile(`${dir}/.trellis/state.json`, 'utf8')));
+    assert.equal(state.audit.at(-1).action, 'task.recovered');
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('recover refuses while a lease is held', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await claimTask(dir, 'T-001', { by: 'executor:w1' });
+    await assert.rejects(
+      () => recoverTask(dir, 'T-001', { to: 'ready', by: 'human:alice', reason: 'x' }),
+      (error) => error.code === 'TASK_RECOVER_LEASE'
+    );
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('recover needs a human or coordinator', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await orphanClaim(dir);
+    await assert.rejects(
+      () => recoverTask(dir, 'T-001', { to: 'ready', by: 'executor:w2', reason: 'x' }),
+      (error) => error.code === 'TASK_RECOVER_ROLE'
+    );
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('recover only applies to in_progress', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await assert.rejects(
+      () => recoverTask(dir, 'T-001', { to: 'ready', by: 'human:alice', reason: 'x' }),
+      (error) => error.code === 'TASK_RECOVER_STATE'
     );
   } finally {
     await cleanup(dir);

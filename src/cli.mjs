@@ -33,7 +33,7 @@ import { parseTasks } from './core/tasks.mjs';
 import { leaseStatus, guardCommit } from './core/lease.mjs';
 import { exportA2A } from './core/export-a2a.mjs';
 import { suggestScopeForTask } from './core/scope.mjs';
-import { applyTaskScope } from './core/mutations.mjs';
+import { applyTaskScope, recoverTask } from './core/mutations.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -137,7 +137,8 @@ Usage:
                    --by <role>:<name> [--dir <dir>]
   trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
   trellis task ask <T-NNN> --question <text> --by <role>:<name> [--dir <dir>]
-  trellis task answer <Q-NNN> --decision <text> --by human:<name> [--dir <dir>]
+  trellis task answer <Q-NNN> --decision <text> --by human:<name>
+  trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo] [--dir <dir>]
   trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dir <dir>]
   trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit>
                               --verdict <pass|fail|inconclusive> --by <role>:<name> [--dir <dir>]
@@ -468,6 +469,17 @@ async function dispatch(args) {
         exitCode: 0,
         print: () => console.log(`answered ${data.question.id}; ${data.task.id} is ${data.task.status}`)
       };
+    }
+    if (subcommand === 'recover') {
+      if (!options.reason) throw new UsageError('task recover needs --reason "<why>"');
+      const taskId = args.positionals[0];
+      if (!taskId) throw new UsageError('task recover needs a task id');
+      const data = await recoverTask(dir, taskId, {
+        to: options.to || 'ready',
+        by: options.by ?? '',
+        reason: options.reason
+      });
+      return { data, exitCode: 0, print: () => console.log(`recovered ${taskId} to ${data.task.status}`) };
     }
     if (subcommand === 'report') {
       const taskId = args.positionals[0];

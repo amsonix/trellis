@@ -217,6 +217,11 @@ done        → (terminal)
 `task claim` sets `in_progress` and acquires a lease over the task's scope.
 `task report --state done` verifies evidence and releases the lease.
 
+An `in_progress` task without a lease is reclaimable: `task claim` takes it
+over (`task.taken_over`) without rewriting the status, and
+`task recover --by human|coordinator --reason ...` returns it to `ready` or
+`todo` (`task.recovered`). `TRELLIS_NO_TAKEOVER=1` disables the takeover.
+
 ## 8. Evidence
 
 ```json

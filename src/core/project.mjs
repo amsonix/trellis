@@ -798,6 +798,47 @@ export async function addTask(
   return { task, followUpOf: parent?.id ?? null, depth };
 }
 
+export async function recoverTask(root, taskId, { to = 'ready', by, reason }) {
+  if (!taskId) throw new UsageError('task recover needs a task id');
+  if (!by) throw new UsageError('task recover needs --by <role>:<name>');
+  if (!reason || String(reason).trim() === '') throw new UsageError('task recover needs --reason "<why>"');
+  const actor = parseActor(by);
+  if (!['human', 'coordinator'].includes(actor.role)) {
+    throw new RefusedError('TASK_RECOVER_ROLE', `${actor.raw} cannot recover a task; allowed: human, coordinator`, {
+      actor: actor.raw
+    });
+  }
+  if (!['todo', 'ready'].includes(to)) throw new UsageError('--to must be todo or ready');
+
+  const { tasks } = await parseTasks(root);
+  const task = taskById(tasks, taskId);
+  if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
+  if (task.status !== 'in_progress') {
+    throw new RefusedError('TASK_RECOVER_STATE', `task ${taskId} is '${task.status}', not in_progress`, {
+      task: taskId,
+      status: task.status
+    });
+  }
+  const held = (await leaseStatus(root)).find((item) => item.taskId === taskId);
+  if (held) {
+    throw new RefusedError('TASK_RECOVER_LEASE', `task ${taskId} still holds lease ${held.id}; release it first`, {
+      task: taskId,
+      lease: held.id
+    });
+  }
+
+  const state = await loadState(root);
+  await updateTaskStatus(root, taskId, to);
+  appendAudit(state, 'task.recovered', actor, {
+    task: taskId,
+    from: 'in_progress',
+    to,
+    reason: String(reason).trim()
+  });
+  await saveState(root, state);
+  return { task: { ...task, status: to } };
+}
+
 export async function applyTaskScope(root, taskId, scope, { by }) {
   if (!taskId) throw new UsageError('applyTaskScope needs a task id');
   if (!by) throw new UsageError('scope apply needs --by <role>:<name>');

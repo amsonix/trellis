@@ -11,7 +11,10 @@ All notable changes to this project are recorded here. The format follows
 - `task claim` takes over an `in_progress` task whose lease no longer exists.
   The takeover keeps the status, passes the usual role and dependency checks,
   and records `task.taken_over`; `TRELLIS_NO_TAKEOVER=1` disables it.
-- 127 `node:test` cases.
+- `task recover <T-NNN> --by human|coordinator --reason ...`: return an
+  `in_progress` task with no lease to `ready` or `todo`; refuses while a lease
+  is held and records `task.recovered`.
+- 131 `node:test` cases.
 
 ## [0.5.1] - 2026-11-04
 

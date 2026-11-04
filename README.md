@@ -283,6 +283,7 @@ trellis task add --title <text> --scope <paths> --acceptance <text> --verificati
 trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
 trellis task ask <T-NNN> --question <text> --by <role>:<name>
 trellis task answer <Q-NNN> --decision <text> --by human:<name>
+trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
 trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> [--note <text>] [--by <role>:<name>]
 
 trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> \
