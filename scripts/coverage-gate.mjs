@@ -40,7 +40,7 @@ async function main() {
   let code = 0;
   // Windows runners fail the suite under full file-level parallelism; use the
   // same cap as the CI test step so this gate measures coverage, not flakes.
-  const concurrency = process.platform === 'win32' ? '2' : '4';
+  const concurrency = process.platform === 'win32' ? '1' : '4';
   try {
     ({ stdout, stderr } = await execFileAsync(
       process.execPath,

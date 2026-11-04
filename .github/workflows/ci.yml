@@ -28,7 +28,7 @@ jobs:
         # Windows runners are slower and the suites spawn processes; keep the
         # file-level concurrency low to avoid lock/CPU contention flakes.
         run: |
-          node --test ${{ matrix.os == 'windows-latest' && '--test-concurrency=2' || '--test-concurrency=4' }} 2>&1 | tee test-output.log
+          node --test ${{ matrix.os == 'windows-latest' && '--test-concurrency=1' || '--test-concurrency=4' }} 2>&1 | tee test-output.log
           exit ${PIPESTATUS[0]}
       - name: Surface the failure
         if: failure()
