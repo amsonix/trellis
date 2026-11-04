@@ -264,3 +264,4 @@ All notable changes to this project are recorded here. The format follows
 [0.5.1]: https://github.com/amsonix/trellis/releases/tag/v0.5.1
 [0.6.0]: https://github.com/amsonix/trellis/releases/tag/v0.6.0
 [0.6.1]: https://github.com/amsonix/trellis/releases/tag/v0.6.1
+[0.6.2]: https://github.com/amsonix/trellis/releases/tag/v0.6.2
