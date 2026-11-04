@@ -24,9 +24,20 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - name: Test
+        shell: bash
         # Windows runners are slower and the suites spawn processes; keep the
         # file-level concurrency low to avoid lock/CPU contention flakes.
-        run: node --test ${{ matrix.os == 'windows-latest' && '--test-concurrency=2' || '--test-concurrency=4' }}
+        run: |
+          node --test ${{ matrix.os == 'windows-latest' && '--test-concurrency=2' || '--test-concurrency=4' }} 2>&1 | tee test-output.log
+          exit ${PIPESTATUS[0]}
+      - name: Surface the failure
+        if: failure()
+        shell: bash
+        run: |
+          echo '### Test failure tail' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -n 80 test-output.log >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
       - name: Coverage gate
         run: node scripts/coverage-gate.mjs
       - name: CLI smoke test
