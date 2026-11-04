@@ -347,7 +347,8 @@ A lease is a held claim over write domains. Active leases are recorded in
 `.trellis/leases.json`; released leases move to `.trellis/leases.archive.jsonl`.
 
 - `task claim` acquires a lease over the task's scope; a conflicting lease
-  refuses the claim.
+  refuses the claim. `TRELLIS_MAX_LEASES` caps the number of leases one actor
+  may hold (`LEASE_LIMIT`).
 - `task report --state done` releases the lease.
 - `lease release <T-NNN> --by <role>:<name>` releases a held lease without
   completing the task — the recovery path when a task is abandoned or blocked.

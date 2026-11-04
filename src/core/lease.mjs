@@ -63,6 +63,18 @@ export async function acquireLease(root, { taskId, actor, domains }) {
   const existing = held.find((lease) => lease.taskId === taskId);
   if (existing) return existing;
 
+  const maxLeases = Number.parseInt(process.env.TRELLIS_MAX_LEASES ?? '0', 10);
+  if (Number.isInteger(maxLeases) && maxLeases > 0) {
+    const mine = held.filter((lease) => lease.actor === parsedActor.raw).length;
+    if (mine >= maxLeases) {
+      throw new RefusedError(
+        'LEASE_LIMIT',
+        `${parsedActor.raw} already holds ${mine} lease(s); TRELLIS_MAX_LEASES=${maxLeases}`,
+        { actor: parsedActor.raw, held: mine, limit: maxLeases }
+      );
+    }
+  }
+
   const conflicts = [];
   for (const lease of held) {
     if (lease.taskId === taskId) continue;

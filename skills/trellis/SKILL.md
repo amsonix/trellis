@@ -91,7 +91,7 @@ Do not use it for unrelated work or for anything outside the parent's scope.
 ```text
 trellis status [dir] [--json]
 trellis check [dir] [--stage <stage>] [--json]
-trellis next [dir] [--role <role>] [--json]
+trellis next [dir] [--role <role>] [--limit <n>] [--json]
 trellis brief [dir] [--role <role>] [--json]
 trellis report [dir] [--json]
 

@@ -269,8 +269,11 @@ function stopReason(result) {
   return null;
 }
 
-async function nextFrom(root, state, tasks, checks, role = null) {
+async function nextFrom(root, state, tasks, checks, role = null, { limit = null } = {}) {
   const result = await computeNext(root, state, tasks, checks, role);
+  if (Number.isInteger(limit) && limit > 0 && Array.isArray(result.tasks)) {
+    result.tasks = result.tasks.slice(0, limit);
+  }
   const needsUser = result.kind !== 'tasks';
   if (needsUser && gateSatisfied(state, 'G4') && !gateSatisfied(state, 'G6')) {
     const ready = readyTasks(tasks, role);
@@ -391,12 +394,12 @@ export async function projectStatus(root) {
   };
 }
 
-export async function nextAction(root, role = null) {
+export async function nextAction(root, role = null, { limit = null } = {}) {
   const state = await loadState(root);
   const parsed = await parseTasks(root);
   const tasks = parsed.tasks ?? [];
   const checksResult = await runChecks(root);
-  return nextFrom(root, state, tasks, checksResult.checks, role);
+  return nextFrom(root, state, tasks, checksResult.checks, role, { limit });
 }
 
 const STALE_LEASE_HOURS = 24;

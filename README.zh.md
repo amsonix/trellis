@@ -190,6 +190,8 @@ DSH 配置：
 审计条目追加到 `.trellis/audit.jsonl`；`state.json` 只保留最近 200 条。设置
 `TRELLIS_STRICT=1` 后，`task claim` 在 `G4` 之前会直接拒绝，而不只是警告。设置
 `TRELLIS_AGENT` 会给租约、证据和审计打上 worker 标识（用于归因，不是认证）。
+`TRELLIS_MAX_LEASES=2` 限制单个 actor 能持有的租约数；`next --limit N` 限制
+单批返回的任务数。
 
 `trellis scope suggest` 读取提到该任务的提交（`git log --grep`），给出文件级
 写域建议。默认只读；`--apply --by <role>:<name>` 会写回任务板，且只允许收窄。
@@ -249,7 +251,7 @@ gate 只能由 **人类豁免（waive）**，且必须给出理由，豁免会�
 trellis init [project-dir] [--profile <generic|web-app|library|cli>] [--name <name>]
 trellis status [dir] [--json]
 trellis check [dir] [--stage <stage>] [--json]
-trellis next [dir] [--role <role>] [--json]
+trellis next [dir] [--role <role>] [--limit <n>] [--json]
 trellis brief [dir] [--role <role>] [--json]
 trellis report [dir] [--json]
 

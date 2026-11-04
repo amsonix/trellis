@@ -69,8 +69,12 @@ const readTools = [
   {
     name: 'trellis_next',
     description: 'The one gate or task that is actionable now.',
-    inputSchema: object({ dir: dirProp, role: text('Role to answer as, e.g. architect.') }),
-    run: (args) => nextAction(dirOf(args), args.role ?? null)
+    inputSchema: object({
+      dir: dirProp,
+      role: text('Role to answer as, e.g. architect.'),
+      limit: { type: 'integer', minimum: 1, description: 'Return at most this many tasks.' }
+    }),
+    run: (args) => nextAction(dirOf(args), args.role ?? null, { limit: args.limit ?? null })
   },
   {
     name: 'trellis_brief',

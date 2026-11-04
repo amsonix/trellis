@@ -202,7 +202,9 @@ stolen; a held lock refreshes its timestamp every five seconds.
 Audit entries are appended to `.trellis/audit.jsonl`; `state.json` keeps only the
 most recent 200. Set `TRELLIS_STRICT=1` to make `task claim` refuse before `G4`
 instead of only warning. Set `TRELLIS_AGENT` to stamp leases, evidence and audit
-entries with a worker id (attribution, not authentication).
+entries with a worker id (attribution, not authentication). Set
+`TRELLIS_MAX_LEASES=2` to cap how many leases one actor may hold; `next --limit N`
+returns at most N tasks in a batch.
 
 `trellis scope suggest` reads commits mentioning a task (`git log --grep`) and
 proposes a file-level write scope. By default it only reads; `--apply --by
@@ -268,7 +270,7 @@ writing a new ADR, does.
 trellis init [project-dir] [--profile <generic|web-app|library|cli>] [--name <name>]
 trellis status [dir] [--json]
 trellis check [dir] [--stage <stage>] [--json]
-trellis next [dir] [--role <role>] [--json]
+trellis next [dir] [--role <role>] [--limit <n>] [--json]
 trellis brief [dir] [--role <role>] [--json]
 trellis report [dir] [--json]
 
