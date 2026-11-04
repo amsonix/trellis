@@ -174,7 +174,9 @@ Rules:
 8. The dependency graph must be acyclic.
 9. Two tasks that may run concurrently (`todo`, `ready` or `in_progress`) must
    not share a write domain unless one depends on the other. Add a dependency
-   or narrow the scope.
+   or narrow the scope. Scope is the only concurrency primitive: there is no
+   parallel declaration, and a dependency is only for real ordering, never for
+   serializing directory overlap.
 10. `Priority` is `high`, `medium` or `low`; a missing column or cell means
     `medium`.
 11. `next` sorts ready tasks by priority (`high`, `medium`, `low`), then by id.

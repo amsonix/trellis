@@ -8,6 +8,9 @@ All notable changes to this project are recorded here. The format follows
 
 ### Added
 
+- `docs/scope-and-parallelism.md` records the decision that scope is the only
+  concurrency primitive: no `parallel_ok` declaration; narrow the scope or add a
+  dependency for real ordering.
 - `scope suggest --apply --by <role>:<name>` writes the suggested file-level
   scope back to the board; it only narrows and records `task.scope.narrowed`.
 - 121 `node:test` cases.

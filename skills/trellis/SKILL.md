@@ -16,6 +16,10 @@ If `trellis` is not on `PATH` but the repository is checked out, use
 
 ## Before any write
 
+0. If a task's scope is a directory, run `trellis scope suggest --task T-NNN`
+   before claiming it. Narrow with `trellis scope suggest --task T-NNN --apply
+   --by <coordinator>:<name>` when the suggestion is a file inside the current
+   scope. Do not add a dependency just because two tasks share a directory.
 1. `trellis brief --role <your-role> --json` — the current gate, what to read,
    what to write, and what you must not do.
 2. `trellis status --json` — where the project is.
