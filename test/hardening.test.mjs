@@ -87,7 +87,8 @@ test('a torn final evidence line is ignored', async () => {
     await import('../src/core/evidence.mjs').then(({ addEvidence }) =>
       addEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'one', verdict: 'pass', by: 'executor:w1' })
     );
-    await appendFile(path.join(dir, '.trellis/evidence/T-001.jsonl'), '{"type":"add"');
+    const shard = path.join(dir, '.trellis/evidence/T-001.jsonl');
+    await writeFile(shard, `${await readFile(shard, 'utf8')}{"type":"add"`);
     assert.equal((await listEvidence(dir)).length, 1);
   } finally {
     await cleanup(dir);
