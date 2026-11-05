@@ -39,14 +39,19 @@ and the lane record is the evidence of what was measured.
 ## Getting worktree isolation without a command
 
 ```bash
-# one task per worktree
+MAIN=$PWD
 git worktree add .trellis/worktrees/T-144 -b lane/T-144
 cd .trellis/worktrees/T-144
+ln -s "$MAIN/.trellis" .trellis          # the board is not in the new tree
 trellis task claim T-144 --by executor:json-infinity --paths bench/results/frame_gate.py
 # ... work, run tests, record evidence ...
-cd -
-trellis task finish T-144 --run "npm test" --dir .
+cd "$MAIN"
+trellis task finish T-144 --run "npm test" --dir "$MAIN"
 ```
+
+`.trellis/` is usually untracked, so a fresh worktree does **not** contain the
+board: link it (as above) or pass `--dir "$MAIN"` to every command. Never run
+`trellis init` inside the worktree — that creates a second, separate board.
 
 Add `.trellis/worktrees/` to `.gitignore`. The lease is still the source of
 truth: a worktree does not by itself grant write permission.
