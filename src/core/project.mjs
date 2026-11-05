@@ -1325,7 +1325,10 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
       });
     }
     evidence = await requirePassingEvidence(root, taskId);
-    await releaseLease(root, taskId);
+    const released = await releaseLease(root, taskId, actor?.raw ?? null);
+    if (released) {
+      appendAudit(state, 'lease.released', actor, { task: taskId, reason: 'task.done', implicit: true });
+    }
   }
   if (reopening) {
     delete state.taskGates?.[taskId];

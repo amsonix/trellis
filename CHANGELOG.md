@@ -4,6 +4,15 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Reporting `done` now writes an explicit `lease.released` audit event with
+  `reason: "task.done"` and `implicit: true` (the lease was already released).
+- A regression test covers claim -> evidence -> done -> empty `lease status`.
+- 206 `node:test` cases.
+
 ## [0.9.16] - 2026-11-05
 
 ### Fixed

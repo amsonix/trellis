@@ -5,7 +5,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { claimTask, addTaskEvidence } from '../src/core/mutations.mjs';
+import { claimTask, addTaskEvidence, reportTask } from '../src/core/mutations.mjs';
 import { cleanup, makeProject } from './helpers.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -89,6 +89,22 @@ test('lease status prints a held lease without throwing', async () => {
     assert.equal(result.code, 0, result.stderr || result.stdout);
     assert.match(result.stdout, /T-001/);
     assert.match(result.stdout, /idle/);
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('reporting done releases the lease and audits the implicit release', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await claimTask(dir, 'T-001', { by: 'executor:w1' });
+    await addTaskEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'manual', verdict: 'pass', by: 'executor:w1' });
+    await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+    const status = await run(['lease', 'status', '--dir', dir, '--json']);
+    assert.deepEqual(JSON.parse(status.stdout).data.items, []);
+    const text = await readFile(path.join(dir, '.trellis/audit.jsonl'), 'utf8');
+    assert.match(text, /lease\.released/);
+    assert.match(text, /task\.done/);
   } finally {
     await cleanup(dir);
   }
