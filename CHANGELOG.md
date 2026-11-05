@@ -4,6 +4,114 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `task claim --paths <a,b>` leases only the named subset of the task scope, so
+  one held file no longer blocks a claim that needs a different file.
+- A board scope containing a glob or `?`/`[]` is refused at claim time with
+  `TASK_SCOPE_INVALID` instead of being accepted and then refused by `guard`.
+- `lease reap --older-than <hours> --by human:<name>` releases stale leases.
+
+## [0.9.4] - 2026-11-05
+
+### Added
+
+- `task add --from <tasks.json>` imports up to 200 tasks through the normal
+  validator; import is incremental and stops at the first invalid item.
+- 178 tests.
+
+## [0.9.3] - 2026-11-04
+
+### Added
+
+- `task edit` for title, acceptance, verification, dependencies and priority,
+  with `task.edited` audit.
+- `task list --status/--role/--ready/--limit`.
+- `compact --logs-keep <days>` prunes unreferenced `task finish` logs.
+- `trellis_task_edit` MCP tool.
+
+### Fixed
+
+- Unknown task statuses surface as `TASK_STATUS_INVALID` in `next` and `claim`.
+- Gate digests split structure from content: prose edits warn as
+  `GATE_CONTENT_DRIFT`, structural edits still go `GATE_STALE`.
+
+## [0.9.2] - 2026-11-04
+
+### Added
+
+- Evidence records `commit`, `dirty` and `worktree`; `verify` warns with
+  `EVIDENCE_TREE_DRIFT` after HEAD moves.
+- `task finish --run "<command>"`: run, log under `.trellis/logs/`, record
+  evidence, report done only on exit 0.
+- `lease status` shows the agent and lease age.
+- `trellis_task_finish` MCP tool.
+
+### Fixed
+
+- `finish` runs commands from a batch file on Windows (cmd.exe quote handling).
+- The coverage gate runs once on Ubuntu/Node 22.
+
+## [0.9.1] - 2026-11-04
+
+### Added
+
+- `trellis backup --out` / `trellis restore --from [--force]` with a manifest.
+- `docs/security-model.md`: trust boundary, handled threats and non-goals.
+- Fault-injection tests: corrupt state/leases, read-only `.trellis`, migration
+  idempotence.
+
+### Fixed
+
+- Writes and appends fsync files and directories.
+- The lock checks the owner PID before stealing a stale lock.
+- Release notes carry the tarball sha256; CI adds macOS.
+
+## [0.9.0] - 2026-11-04
+
+### Changed
+
+- **Breaking storage:** evidence moves to per-task shards
+  `.trellis/evidence/T-*.jsonl` (schema 3). Older builds refuse schema 3; the
+  v2 log migrates lazily on first read and is renamed `.migrated`.
+- `compact` folds each shard and archives retracted records.
+- Reading one task no longer scans the whole evidence log.
+
+## [0.8.0] - 2026-11-04
+
+### Added
+
+- `a2a serve` HTTP endpoint with an agent card and `tasks/get|list|cancel`;
+  `message/send` is refused by design.
+- Evidence parsing cache for repeated A2A exports.
+
+## [0.7.0] - 2026-11-04
+
+### Added
+
+- Terminal `canceled` task state via `task cancel`; it does not satisfy
+  dependencies and G6 warns with `TASK_CANCELED`.
+- Per-task evidence reads and a richer A2A export.
+
+### Fixed
+
+- CI serializes test files on Windows and surfaces the failure tail.
+
+## [0.6.3] - 2026-11-04
+
+### Added
+
+- Per-actor lease cap (`TRELLIS_MAX_LEASES`) and `next --limit`.
+
+## [0.6.2] - 2026-11-04
+
+### Added
+
+- Per-command help, `trellis doctor`, and contract tests for the JSON envelope,
+  A2A, MCP and schemas.
+
 ## [0.6.1] - 2026-11-04
 
 ### Fixed

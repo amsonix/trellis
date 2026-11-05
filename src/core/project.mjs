@@ -649,7 +649,19 @@ export async function agentBrief(root, { role = null } = {}) {
   };
 }
 
-export async function claimTask(root, taskId, { by }) {
+export async function reapLeases(root, { by, olderThanHours = 24 } = {}) {
+  if (!by) throw new UsageError('lease reap needs --by human:<name>');
+  const actor = parseActor(by);
+  if (actor.role !== 'human') throw new RefusedError('LEASE_REAP_ROLE', 'only a human may reap stale leases', { by: actor.raw });
+  const hours = Number(olderThanHours);
+  if (!Number.isFinite(hours) || hours <= 0) throw new UsageError('--older-than needs a positive number of hours');
+  const cutoff = Date.now() - hours * 60 * 60 * 1000;
+  const stale = (await leaseStatus(root)).filter((lease) => Date.parse(lease.createdAt) < cutoff);
+  for (const lease of stale) await releaseLease(root, lease.taskId, by);
+  return { released: stale.map((lease) => lease.taskId), count: stale.length, olderThanHours: hours };
+}
+
+export async function claimTask(root, taskId, { by, paths } = {}) {
   const actor = parseActor(by);
   const state = await loadState(root);
   if (process.env.TRELLIS_STRICT === '1' && !gateSatisfied(state, 'G4')) {
@@ -689,6 +701,28 @@ export async function claimTask(root, taskId, { by }) {
   } else if (!['todo', 'ready'].includes(task.status)) {
     throw new RefusedError('TASK_NOT_CLAIMABLE', `task ${taskId} is '${task.status}', not todo/ready`, { task: taskId });
   }
+  for (const domain of task.scope) {
+    if (!isSafeDomain(domain)) {
+      throw new RefusedError('TASK_SCOPE_INVALID', `task ${taskId} has an unsafe scope '${domain}' (globs and .. are not writable)`, {
+        task: taskId,
+        domain
+      });
+    }
+  }
+  const requested = paths ? parseScope(paths) : [];
+  for (const path of requested) {
+    if (!isSafeDomain(path)) {
+      throw new UsageError(`--paths '${path}' is unsafe: use a relative path without '..', '*' or an absolute path`);
+    }
+    if (!task.scope.some((domain) => covers(domain, path))) {
+      throw new RefusedError('LEASE_OUT_OF_SCOPE', `${path} is not inside ${taskId}'s scope`, {
+        task: taskId,
+        path,
+        scope: task.scope
+      });
+    }
+  }
+  const leaseDomains = requested.length > 0 ? requested : task.scope;
   const done = new Set(tasks.filter((item) => item.status === 'done').map((item) => item.id));
   const waitingOn = task.dependsOn.filter((dependency) => !done.has(dependency));
   if (waitingOn.length > 0) {
@@ -698,7 +732,7 @@ export async function claimTask(root, taskId, { by }) {
     });
   }
 
-  const lease = await acquireLease(root, { taskId, actor: actor.raw, domains: task.scope });
+  const lease = await acquireLease(root, { taskId, actor: actor.raw, domains: leaseDomains });
   const takenOver = task.status === 'in_progress';
   if (takenOver) {
     appendAudit(state, 'task.taken_over', actor, {

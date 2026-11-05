@@ -218,6 +218,7 @@ export function covers(prefix, target) {
 export function isSafeDomain(value) {
   const domain = normalizeDomain(value);
   if (!domain || domain === '.' || domain === '*') return false;
+  if (/[*?[\]]/.test(domain)) return false;
   if (domain.startsWith('/') || domain.includes('\\')) return false;
   if (domain.split('/').some((segment) => segment === '..')) return false;
   if (/[|\n\r]/.test(domain)) return false;

@@ -312,7 +312,7 @@ trellis task add --title <text> --scope <paths> --acceptance <text> --verificati
                    [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>] \
                    [--priority <high|medium|low>] [--follow-up-of <T-NNN>] \
                    --by <role>:<name>
-trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
+trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dir <dir>]
 trellis task ask <T-NNN> --question <text> --by <role>:<name>
 trellis task answer <Q-NNN> --decision <text> --by human:<name>
 trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
@@ -331,6 +331,7 @@ trellis verify <T-NNN> [--json]
 
 trellis lease status [--json]
 trellis lease release <T-NNN> --by <role>:<name>
+trellis lease reap --older-than <hours> --by human:<name>
 trellis guard commit --task <T-NNN> (--staged | --paths <a,b>) [--observe] [--dir <dir>]
 trellis reindex [dir] [--json]
 trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]

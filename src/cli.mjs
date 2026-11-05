@@ -37,7 +37,7 @@ import { selectTaskCommits, suggestScopeForTask } from './core/scope.mjs';
 import { doctor } from './core/doctor.mjs';
 import { startA2A } from './a2a/server.mjs';
 import { backup, restore } from './core/backup.mjs';
-import { applyTaskScope, recoverTask, cancelTask, finishTask, editTask, addTasks } from './core/mutations.mjs';
+import { applyTaskScope, recoverTask, cancelTask, finishTask, editTask, addTasks, reapLeases } from './core/mutations.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -71,6 +71,7 @@ const VALUE_OPTIONS = new Set([
   'follow-up-of',
   'priority',
   'paths',
+  'older-than',
   'proves',
   'archive-retracted',
   'question',
@@ -152,7 +153,7 @@ Usage:
                    [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>]
                    [--priority <high|medium|low>] [--follow-up-of <T-NNN>] [--id <T-NNN>]
                    --by <role>:<name> [--dir <dir>]
-  trellis task claim <T-NNN> --by <role>:<name> [--dir <dir>]
+  trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dir <dir>]
   trellis task ask <T-NNN> --question <text> --by <role>:<name> [--dir <dir>]
   trellis task answer <Q-NNN> --decision <text> --by human:<name>
   trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
@@ -167,7 +168,8 @@ Usage:
   trellis evidence list [--task <T-NNN>] [--dir <dir>] [--json]
   trellis verify <T-NNN> [--dir <dir>] [--json]
   trellis lease status [--dir <dir>] [--json]
-  trellis lease release <T-NNN> --by <role>:<name> [--dir <dir>]
+  trellis lease release <T-NNN> --by <role>:<name>
+  trellis lease reap --older-than <hours> --by human:<name> [--dir <dir>]
   trellis guard commit --task <T-NNN> (--staged | --paths <a,b>) [--observe] [--dir <dir>]
   trellis reindex [dir] [--json]
   trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]
@@ -202,7 +204,7 @@ const HELP = {
   task: ['Task board operations.', 'trellis task <list|add|claim|ask|answer|report|recover|cancel> ...'],
   'task:list': ['List the task board.', 'trellis task list [dir] [--json]'],
   'task:add': ['Validate and append a task row.', 'trellis task add --title <t> --scope <paths> --acceptance <a> --verification <v> --by <role>:<name> [--priority high|medium|low]'],
-  'task:claim': ['Claim a task (creates the lease) or take over an orphaned claim.', 'trellis task claim <T-NNN> --by <role>:<name>'],
+  'task:claim': ['Claim a task (creates the lease) or take over an orphaned claim.', 'trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>]'],
   'task:ask': ['Ask one blocking question; only a human answers it.', 'trellis task ask <T-NNN> --question <text> --by <role>:<name>'],
   'task:answer': ['Answer an open question as a human.', 'trellis task answer <Q-NNN> --decision <text> --by human:<name>'],
   'task:report': ['Report a task state; done requires passing evidence.', 'trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>]'],
@@ -218,6 +220,7 @@ const HELP = {
   lease: ['Write leases.', 'trellis lease <status|release> ...'],
   'lease:status': ['List held leases.', 'trellis lease status [--json]'],
   'lease:release': ['Release a held lease.', 'trellis lease release <T-NNN> --by <role>:<name>'],
+  'lease:reap': ['Release leases older than a threshold (human only).', 'trellis lease reap --older-than <hours> --by human:<name>'],
   guard: ['Check a set of paths against the task scope and held leases.', 'trellis guard commit --task <T-NNN> (--staged | --paths <a,b>) [--observe]'],
   reindex: ['Rebuild state.json from the artifacts.', 'trellis reindex [dir] [--json]'],
   compact: ['Fold the evidence log and rotate audit.jsonl.', 'trellis compact [dir] [--dry-run] [--archive-retracted <days>] [--json]'],
@@ -574,7 +577,7 @@ async function dispatch(args) {
       const taskId = args.positionals[0];
       if (!taskId) throw new UsageError('task claim needs a task id');
       if (!options.by) throw new UsageError('task claim needs --by <role>:<name>');
-      const data = await claimTask(dir, taskId, { by: options.by });
+      const data = await claimTask(dir, taskId, { by: options.by, paths: options.paths });
       return {
         data,
         exitCode: 0,
