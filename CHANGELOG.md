@@ -4,6 +4,15 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `next --batch` with fewer ready tasks returns what exists plus
+  `batchRequested`/`batchShortfall`, and no longer replaces the active
+  `in_progress` fallback with an empty batch.
+- 204 `node:test` cases.
+
 ## [0.9.14] - 2026-11-05
 
 ### Added

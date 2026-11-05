@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { approveGate } from '../src/core/gates.mjs';
-import { addTask } from '../src/core/mutations.mjs';
+import { addTask, claimTask } from '../src/core/mutations.mjs';
 import { nextAction } from '../src/core/project.mjs';
 import { covers } from '../src/core/util.mjs';
 import { cleanup, makeProject } from './helpers.mjs';
@@ -50,6 +50,38 @@ test('next --batch --strategy unblock prefers a task that unblocks others', asyn
     const result = await nextAction(dir, 'executor', { batch: 1, strategy: 'unblock' });
     assert.equal(result.tasks[0].id, 'T-003');
     assert.match(result.tasks[0].why, /unblocks 1/);
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('a batch smaller than requested returns the available tasks and a shortfall', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await plan(dir);
+    const result = await nextAction(dir, 'executor', { batch: 3 });
+    assert.equal(result.kind, 'tasks');
+    assert.equal(result.tasks.length, 1);
+    assert.equal(result.batchRequested, 3);
+    assert.equal(result.batchShortfall, 2);
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('batch does not replace the active-task fallback', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await addTask(dir, {
+      title: 'Waits', scope: 'docs/w', acceptance: 'w', verification: 'manual',
+      dependsOn: ['T-001'], by: 'architect:ann'
+    });
+    await plan(dir);
+    await claimTask(dir, 'T-001', { by: 'executor:w1' });
+    const result = await nextAction(dir, 'executor', { batch: 2 });
+    assert.equal(result.kind, 'tasks');
+    assert.equal(result.tasks[0].id, 'T-001');
+    assert.equal(result.note, 'in progress');
   } finally {
     await cleanup(dir);
   }

@@ -311,9 +311,11 @@ function stopReason(result) {
 
 async function nextFrom(root, state, tasks, checks, role = null, { limit = null, batch = null, strategy = 'priority' } = {}) {
   const result = await computeNext(root, state, tasks, checks, role);
-  if (result.kind === 'tasks' && Number.isInteger(batch) && batch > 0) {
+  if (result.kind === 'tasks' && result.source === 'ready' && Number.isInteger(batch) && batch > 0) {
     result.tasks = selectTaskBatch(tasks, role, { batch, strategy });
     result.batch = result.tasks.length;
+    result.batchRequested = batch;
+    result.batchShortfall = Math.max(0, batch - result.tasks.length);
     result.strategy = strategy;
   }
   if (Number.isInteger(limit) && limit > 0 && Array.isArray(result.tasks)) {
@@ -362,6 +364,7 @@ async function computeNext(root, state, tasks, checks, role = null) {
     if (ready.length > 0) {
       return {
         kind: 'tasks',
+        source: 'ready',
         tasks: ready.map(({ id, title, role: taskRole, scope, acceptance, priority }) => ({ id, title, role: taskRole, scope, acceptance, priority }))
       };
     }
