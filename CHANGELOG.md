@@ -386,3 +386,4 @@ All notable changes to this project are recorded here. The format follows
 [0.9.5]: https://github.com/amsonix/trellis/releases/tag/v0.9.5
 [0.9.6]: https://github.com/amsonix/trellis/releases/tag/v0.9.6
 [0.9.7]: https://github.com/amsonix/trellis/releases/tag/v0.9.7
+[0.9.8]: https://github.com/amsonix/trellis/releases/tag/v0.9.8
