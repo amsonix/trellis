@@ -295,6 +295,7 @@ const writeTools = [
         acceptance: text('New acceptance criteria.'),
         verification: text('New verification method.'),
         dependsOn: text('Comma-separated dependency ids.'),
+        scope: text('New scope paths (comma separated).'),
         priority: text('high, medium or low.'),
         by: text('Actor as role:name.')
       },
@@ -306,6 +307,7 @@ const writeTools = [
         acceptance: args.acceptance,
         verification: args.verification,
         dependsOn: args.dependsOn,
+        scope: args.scope,
         priority: args.priority,
         by: args.by
       })

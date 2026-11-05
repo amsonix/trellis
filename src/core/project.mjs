@@ -876,7 +876,7 @@ export async function addTask(
   return { task, followUpOf: parent?.id ?? null, depth };
 }
 
-export async function editTask(root, taskId, { title, acceptance, verification, dependsOn, priority, by } = {}) {
+export async function editTask(root, taskId, { title, acceptance, verification, dependsOn, priority, scope, by } = {}) {
   if (!taskId) throw new UsageError('task edit needs a task id');
   if (!by) throw new UsageError('task edit needs --by <role>:<name>');
   const actor = parseActor(by);
@@ -892,6 +892,16 @@ export async function editTask(root, taskId, { title, acceptance, verification, 
     if (/[|\n\r]/.test(text)) throw new UsageError(`--${field} must not contain '|' or a newline`);
     assertMaxLength(text, field, field === 'title' ? 200 : 2000);
     fields[field] = text;
+  }
+  if (scope !== undefined) {
+    const domains = parseScope(scope);
+    if (domains.length === 0) throw new UsageError('--scope needs at least one relative path');
+    for (const domain of domains) {
+      if (!isSafeDomain(domain)) {
+        throw new UsageError(`--scope '${domain}' is unsafe: use a relative path without '..', '*' or an absolute path`);
+      }
+    }
+    fields.scope = domains.join(', ');
   }
   if (priority !== undefined) {
     const normalized = String(priority).trim().toLowerCase();
@@ -910,18 +920,35 @@ export async function editTask(root, taskId, { title, acceptance, verification, 
 
   const updated = {
     ...task,
+    ...(fields.scope ? { scope: parseScope(fields.scope) } : {}),
     ...(fields.title ? { title: fields.title } : {}),
     ...(fields.acceptance ? { acceptance: fields.acceptance } : {}),
     ...(fields.verification ? { verification: fields.verification } : {}),
     ...(fields.priority ? { priority: fields.priority } : {}),
     ...(dependencies ? { dependsOn: dependencies } : {})
   };
-  const checks = validateTasks(tasks.map((item) => (item.id === taskId ? updated : item)), {
-    milestones: await milestonesFromRoadmap(root)
-  });
-  const blocking = checks.filter((check) => check.severity === 'fail');
-  if (blocking.length > 0) {
-    throw new RefusedError('TASK_INVALID', blocking.map((check) => check.message).join('; '), { checks: blocking });
+  const milestones = await milestonesFromRoadmap(root);
+  const before = validateTasks(tasks, { milestones }).filter((check) => check.severity === 'fail');
+  const after = validateTasks(tasks.map((item) => (item.id === taskId ? updated : item)), { milestones }).filter(
+    (check) => check.severity === 'fail'
+  );
+  const signature = (check) =>
+    `${check.code}|${(check.details?.tasks ?? []).join(',')}|${(check.details?.domains ?? []).join(',')}`;
+  const known = new Set(before.map(signature));
+  const introduced = after.filter((check) => !known.has(signature(check)));
+
+  // A pre-existing violation must not make the only repair command unusable.
+  // Clearing dependencies and narrowing the scope are always allowed, and any
+  // other edit is allowed as long as it introduces no new blocking check.
+  const narrowed =
+    scope !== undefined &&
+    parseScope(scope).every((domain) => task.scope.some((old) => covers(old, domain)));
+  const clearedDependencies = dependencies !== null && dependencies.length === 0;
+  if (introduced.length > 0 && !narrowed && !clearedDependencies) {
+    throw new RefusedError('TASK_INVALID', introduced.map((check) => check.message).join('; '), {
+      checks: introduced,
+      preExisting: before.length
+    });
   }
 
   const state = await loadState(root);
