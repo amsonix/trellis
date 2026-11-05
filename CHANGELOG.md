@@ -4,6 +4,14 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `lease status` with a held lease no longer throws `INTERNAL: state is not
+  defined`; the loaded state is bound before the printer reads it.
+- 205 `node:test` cases.
+
 ## [0.9.15] - 2026-11-05
 
 ### Fixed

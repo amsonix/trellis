@@ -80,3 +80,16 @@ test('a coordinator cannot reap a lease whose task has activity', async () => {
     await cleanup(dir);
   }
 });
+
+test('lease status prints a held lease without throwing', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await claimTask(dir, 'T-001', { by: 'executor:w1' });
+    const result = await run(['lease', 'status', '--dir', dir]);
+    assert.equal(result.code, 0, result.stderr || result.stdout);
+    assert.match(result.stdout, /T-001/);
+    assert.match(result.stdout, /idle/);
+  } finally {
+    await cleanup(dir);
+  }
+});
