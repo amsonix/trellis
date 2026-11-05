@@ -678,16 +678,49 @@ export async function agentBrief(root, { role = null } = {}) {
   };
 }
 
-export async function reapLeases(root, { by, olderThanHours = 24 } = {}) {
-  if (!by) throw new UsageError('lease reap needs --by human:<name>');
+export async function reapLeases(root, { by, olderThanHours = 24, reason = null } = {}) {
+  if (!by) throw new UsageError('lease reap needs --by human:<name> or coordinator:<name>');
   const actor = parseActor(by);
-  if (actor.role !== 'human') throw new RefusedError('LEASE_REAP_ROLE', 'only a human may reap stale leases', { by: actor.raw });
+  if (!['human', 'coordinator'].includes(actor.role)) {
+    throw new RefusedError('LEASE_REAP_ROLE', 'only a human or coordinator may reap stale leases', { by: actor.raw });
+  }
+  if (actor.role === 'coordinator' && !reason) {
+    throw new UsageError('a coordinator reap needs --reason "<why the holder is dead>"');
+  }
   const hours = Number(olderThanHours);
   if (!Number.isFinite(hours) || hours <= 0) throw new UsageError('--older-than needs a positive number of hours');
   const cutoff = Date.now() - hours * 60 * 60 * 1000;
+  const state = await loadState(root);
   const stale = (await leaseStatus(root)).filter((lease) => Date.parse(lease.createdAt) < cutoff);
-  for (const lease of stale) await releaseLease(root, lease.taskId, by);
-  return { released: stale.map((lease) => lease.taskId), count: stale.length, olderThanHours: hours };
+  const released = [];
+  const skipped = [];
+  for (const lease of stale) {
+    if (actor.role === 'coordinator') {
+      const holderRole = parseActor(lease.actor).role;
+      const active = state.audit.filter(
+        (event) =>
+          event.detail?.task === lease.taskId &&
+          event.action !== 'task.claimed' &&
+          Date.parse(event.at) >= Date.parse(lease.createdAt)
+      );
+      if (holderRole !== 'executor' || active.length > 0) {
+        skipped.push({
+          taskId: lease.taskId,
+          code: holderRole !== 'executor' ? 'LEASE_HOLDER_NOT_EXECUTOR' : 'LEASE_HAS_ACTIVITY',
+          message:
+            holderRole !== 'executor'
+              ? `holder ${lease.actor} is not an executor`
+              : `${active.length} audit event(s) since the claim`
+        });
+        continue;
+      }
+    }
+    await releaseLease(root, lease.taskId, by);
+    appendAudit(state, 'lease.reaped', actor, { task: lease.taskId, reason });
+    released.push(lease.taskId);
+  }
+  await saveState(root, state);
+  return { released, skipped, count: released.length, olderThanHours: hours, reason };
 }
 
 export async function claimTask(root, taskId, { by, paths } = {}) {

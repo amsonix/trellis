@@ -4,6 +4,19 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- `lease reap` accepts a coordinator when the holder is an executor and no audit
+  event followed the claim; the coordinator must pass `--reason`. `lease status`
+  prints an idle time as well as the lease age.
+- `EVIDENCE_TREE_DRIFT` only warns for `review`/`done`; HEAD moving under an
+  active task in a shared tree is normal.
+- The missing-column error says to append the column last, since Trellis reads
+  by header name and appending keeps positional readers stable.
+- 197 `node:test` cases.
+
 ## [0.9.11] - 2026-11-05
 
 ### Fixed

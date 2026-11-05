@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { PROTOCOL_VERSION } from './core/constants.mjs';
 import { ProtocolError, RefusedError, UsageError, UnavailableError } from './core/errors.mjs';
 import { summarize } from './core/checks.mjs';
+import { loadState } from './core/store.mjs';
 import {
   initProject,
   projectStatus,
@@ -705,11 +706,16 @@ async function dispatch(args) {
         data: { items },
         exitCode: 0,
         print: () => {
-          if (items.length === 0) console.log('no held leases');
+          if (items.length === 0) { console.log('no held leases'); return; }
           for (const lease of items) {
             const age = Math.max(0, Math.round((Date.now() - Date.parse(lease.createdAt)) / 1000));
+            const events = (state.audit ?? []).filter(
+              (event) => event.detail?.task === lease.taskId && Date.parse(event.at) >= Date.parse(lease.createdAt)
+            );
+            const last = events.reduce((max, event) => Math.max(max, Date.parse(event.at)), Date.parse(lease.createdAt));
+            const idle = Math.max(0, Math.round((Date.now() - last) / 1000));
             const who = lease.agent ? `${lease.actor} (${lease.agent})` : lease.actor;
-            console.log(`${lease.taskId}  ${who}  ${age}s  ${lease.domains.join(', ')}`);
+            console.log(`${lease.taskId}  ${who}  ${age}s  idle ${idle}s  ${lease.domains.join(', ')}`);
           }
         }
       };
@@ -724,8 +730,19 @@ async function dispatch(args) {
     }
     if (subcommand === 'reap') {
       if (!options.by) throw new UsageError('lease reap needs --by human:<name>');
-      const data = await reapLeases(dir, { by: options.by, olderThanHours: options['older-than'] ?? 24 });
-      return { data, exitCode: 0, print: () => console.log(`reaped ${data.count} lease(s) older than ${data.olderThanHours}h`) };
+      const data = await reapLeases(dir, {
+        by: options.by,
+        olderThanHours: options['older-than'] ?? 24,
+        reason: options.reason ?? null
+      });
+      return {
+        data,
+        exitCode: 0,
+        print: () => {
+          console.log(`reaped ${data.count} lease(s) older than ${data.olderThanHours}h`);
+          for (const item of data.skipped) console.log(`  skipped ${item.taskId}: ${item.message}`);
+        }
+      };
     }
     throw new UsageError(`unknown lease subcommand '${subcommand}' (status|release|reap)`);
   }

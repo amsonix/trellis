@@ -294,7 +294,17 @@ export async function verifyTaskEvidence(root, taskId) {
     add('EVIDENCE_NO_PASS', 'fail', `task ${taskId} has no passing evidence`);
   }
   const head = await headCommit(root);
-  const drifted = items.filter((item) => item.commit && head && item.commit !== head);
+  // HEAD moves constantly in a shared tree. Only closure-bound states care that
+  // the evidence was produced before the current commit.
+  let final = false;
+  try {
+    const { parseTasks, taskById } = await import('./tasks.mjs');
+    const { tasks } = await parseTasks(root);
+    final = ['done', 'review'].includes(taskById(tasks, taskId)?.status);
+  } catch {
+    final = false;
+  }
+  const drifted = final ? items.filter((item) => item.commit && head && item.commit !== head) : [];
   if (drifted.length > 0) {
     add(
       'EVIDENCE_TREE_DRIFT',

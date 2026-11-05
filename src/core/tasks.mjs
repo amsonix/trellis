@@ -327,7 +327,7 @@ export async function appendTask(root, task) {
     cells.push(task.priority ?? 'medium');
   } else if ((task.priority ?? 'medium') !== 'medium') {
     throw new UsageError(
-      `${TASKS_FILE} has no 'priority' column; add it to the table header before setting a non-default priority`
+      `${TASKS_FILE} has no 'priority' column; append it as the last column (Trellis reads by header name; appending keeps positional readers stable)`
     );
   }
   lines.splice(lastRow + 1, 0, `| ${cells.join(' | ')} |`);
@@ -351,7 +351,7 @@ export async function updateTaskFields(root, id, fields) {
   for (const key of Object.keys(fields)) {
     if (mapping[key] === undefined) {
       throw new UsageError(
-        `${TASKS_FILE} has no '${key}' column; add it to the table header before editing that field`
+        `${TASKS_FILE} has no '${key}' column; append it as the last column (Trellis reads by header name; appending keeps positional readers stable)`
       );
     }
   }
