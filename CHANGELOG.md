@@ -4,6 +4,19 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- `done` and `review` can be reopened to `in_progress` by a human or coordinator
+  with `--note <reason>`; the reopen is audited and clears the task's G5
+  approval.
+- Unsatisfied dependencies on a `done` task are a warning, not a refusal;
+  dependencies gate `claim`, not closure.
+- `next` includes a ready-task `candidate` (marked `blockedBy: <gate>`) while a
+  gate is pending.
+- 194 `node:test` cases.
+
 ## [0.9.9] - 2026-11-05
 
 ### Fixed

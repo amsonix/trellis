@@ -23,7 +23,7 @@ test('claim by a role that does not own the task is refused even when a lease ex
   }
 });
 
-test('done rechecks dependencies added after the claim', async () => {
+test('done records a warning when dependencies were added after the claim', async () => {
   const dir = await makeProject('generic');
   try {
     await addTask(dir, {
@@ -38,10 +38,9 @@ test('done rechecks dependencies added after the claim', async () => {
     await import('../src/core/evidence.mjs').then(({ addEvidence }) =>
       addEvidence(dir, { taskId: 'T-002', kind: 'test', uri: 'manual', verdict: 'pass', by: 'verifier:ci' })
     );
-    await assert.rejects(
-      () => reportTask(dir, 'T-002', { state: 'done', by: 'executor:w1' }),
-      (error) => error.code === 'TASK_BLOCKED_BY_DEPENDENCY'
-    );
+    const result = await reportTask(dir, 'T-002', { state: 'done', by: 'executor:w1' });
+    assert.equal(result.task.status, 'done');
+    assert.ok(result.warnings.some((warning) => warning.code === 'TASK_DONE_WITH_OPEN_DEPENDENCIES'));
   } finally {
     await cleanup(dir);
   }

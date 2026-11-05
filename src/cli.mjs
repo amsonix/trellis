@@ -383,6 +383,9 @@ function printNext(data) {
   if (data.kind === 'gate') {
     console.log(`next gate: ${data.gate.id} ${data.gate.title}`);
     console.log(data.command);
+    if (data.candidate) {
+      console.log(`candidate: ${data.candidate.id} ${data.candidate.title} (${data.candidate.priority}) — blocked by ${data.candidate.blockedBy}`);
+    }
     if (data.checks.length > 0) printChecks({ checks: data.checks, summary: summarize(data.checks) });
   } else if (data.kind === 'tasks') {
     console.log('next tasks:');

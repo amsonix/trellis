@@ -155,6 +155,21 @@ export async function runChecks(root, stage = null) {
     if (!taskChecks.some((check) => check.severity === 'fail' || check.severity === 'unavailable')) {
       checks.push(makeCheck('TASKS_VALID', 'pass', `${parsed.tasks.length} task(s) form a valid graph`, { stage: 'ready' }));
     }
+    const doneIds = new Set(parsed.tasks.filter((task) => task.status === 'done').map((task) => task.id));
+    for (const task of parsed.tasks) {
+      if (task.status !== 'done') continue;
+      const waitingOn = task.dependsOn.filter((dependency) => !doneIds.has(dependency));
+      if (waitingOn.length > 0) {
+        checks.push(
+          makeCheck(
+            'TASK_DONE_WITH_OPEN_DEPENDENCIES',
+            'warn',
+            `${task.id} is done but still waits on ${waitingOn.join(', ')}`,
+            { task: task.id, waitingOn }
+          )
+        );
+      }
+    }
     const started = parsed.tasks.filter((task) => ['in_progress', 'review', 'done'].includes(task.status));
     if (started.length > 0 && !gateSatisfied(state, 'G4')) {
       checks.push(
@@ -269,6 +284,18 @@ async function buildAttention(root, state, tasks, checks) {
   return attention;
 }
 
+function candidateTask(tasks, role, gateId) {
+  const next = readyTasks(tasks, role)[0];
+  if (!next) return null;
+  return {
+    id: next.id,
+    title: next.title,
+    role: next.role,
+    priority: next.priority,
+    blockedBy: gateId
+  };
+}
+
 function stopReason(result) {
   if (result.kind === 'gate') {
     const gate = result.gate;
@@ -318,7 +345,8 @@ async function computeNext(root, state, tasks, checks, role = null) {
       gate: { id: item.gate, title: GATE_DEFS[item.gate].title },
       checks: [],
       summary: { pass: 0, warn: 0, fail: 0, unavailable: 0, total: 0 },
-      command: `trellis gate ${item.gate} --approve --by ${GATE_DEFS[item.gate].approvers[0]}:<name>`
+      command: `trellis gate ${item.gate} --approve --by ${GATE_DEFS[item.gate].approvers[0]}:<name>`,
+      candidate: candidateTask(tasks, role, item.gate)
     };
   }
 
@@ -376,7 +404,8 @@ async function computeNext(root, state, tasks, checks, role = null) {
       gate: { ...state.gates[gate], id: gate, title: GATE_DEFS[gate]?.title ?? gate },
       checks: gateChecksResult,
       summary: summarize(gateChecksResult),
-      command: `trellis gate ${gate} --approve --by <role>:<name>`
+      command: `trellis gate ${gate} --approve --by <role>:<name>`,
+      candidate: candidateTask(tasks, role, gate)
     };
   }
   return { kind: 'waiting', attention: await buildAttention(root, state, tasks, checks) };
@@ -1156,6 +1185,13 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
   if (task.status === newStatus) {
     return { task, idempotent: true };
   }
+  const reopening = ['done', 'review'].includes(task.status) && newStatus === 'in_progress';
+  if (reopening) {
+    if (!actor || !['human', 'coordinator'].includes(actor.role)) {
+      throw new RefusedError('TASK_REOPEN_ROLE', `only a human or coordinator may reopen ${taskId}`, { task: taskId });
+    }
+    if (!note) throw new UsageError('reopening a task needs --note "<reason>"');
+  }
   const allowed = TASK_TRANSITIONS[task.status] ?? [];
   if (!allowed.includes(newStatus)) {
     throw new RefusedError('TASK_TRANSITION', `task ${taskId} cannot go from '${task.status}' to '${newStatus}'`, {
@@ -1167,25 +1203,31 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
   }
 
   let evidence = null;
+  let warnings = [];
   if (newStatus === 'done') {
     const done = new Set(tasks.filter((item) => item.status === 'done' && item.id !== taskId).map((item) => item.id));
     const waitingOn = task.dependsOn.filter((dependency) => !done.has(dependency));
     if (waitingOn.length > 0) {
-      throw new RefusedError('TASK_BLOCKED_BY_DEPENDENCY', `task ${taskId} waits on ${waitingOn.join(', ')}`, {
-        task: taskId,
+      warnings.push({
+        code: 'TASK_DONE_WITH_OPEN_DEPENDENCIES',
+        message: `${taskId} is done but still waits on ${waitingOn.join(', ')}`,
         waitingOn
       });
     }
     evidence = await requirePassingEvidence(root, taskId);
     await releaseLease(root, taskId);
   }
+  if (reopening) {
+    delete state.taskGates?.[taskId];
+    appendAudit(state, 'task.reopened', actor, { task: taskId, from: task.status, note });
+  }
 
   await updateTaskStatus(root, taskId, newStatus);
   state.taskNotes = state.taskNotes ?? {};
   state.taskNotes[taskId] = { note, at: nowIso(), by: actor?.raw ?? null, state: newStatus };
-  appendAudit(state, `task.${newStatus}`, actor, { task: taskId, note });
+  if (!reopening) appendAudit(state, `task.${newStatus}`, actor, { task: taskId, note });
   await saveState(root, state);
-  return { task: { ...task, status: newStatus }, evidence };
+  return { task: { ...task, status: newStatus }, evidence, warnings };
 }
 
 export async function finishTask(root, taskId, { run, by, timeoutMs = 30 * 60 * 1000 } = {}) {
