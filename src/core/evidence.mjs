@@ -257,7 +257,8 @@ export async function retractEvidence(root, evidenceId, { by, reason }) {
   }
 
   await migrateLegacyEvidence(root);
-  for (const file of await listShardFiles(root)) {
+  const shards = await listShardFiles(root);
+  for (const file of shards) {
     const record = foldEvidence(await readFileEvents(file)).find((item) => item.id === evidenceId);
     if (!record) continue;
     if (record.retracted) {
@@ -269,7 +270,11 @@ export async function retractEvidence(root, evidenceId, { by, reason }) {
     await appendEvent(file, event);
     return { ...record, retracted: { by: event.by, at: event.at, reason: event.reason } };
   }
-  throw new RefusedError('EVIDENCE_UNKNOWN', `no evidence record '${evidenceId}'`, { evidence: evidenceId });
+  throw new RefusedError('EVIDENCE_UNKNOWN', `no evidence record '${evidenceId}'`, {
+    evidence: evidenceId,
+    root,
+    shards: shards.length
+  });
 }
 
 export async function verifyTaskEvidence(root, taskId) {

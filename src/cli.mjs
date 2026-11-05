@@ -130,7 +130,12 @@ function parseArgv(argv) {
 }
 
 function dirOf(args, positionalIndex = 0) {
-  return path.resolve(args.options.dir || args.positionals[positionalIndex] || process.cwd());
+  if (args.options.dir) return path.resolve(args.options.dir);
+  const candidate = args.positionals[positionalIndex];
+  // An evidence/task/question id is never a project directory. Treating it as
+  // one turns `evidence retract EV-...` into a scan of a non-existent root.
+  const looksLikeId = typeof candidate === 'string' && /^(EV-[A-Za-z0-9-]+|T-\d+|Q-\d+)$/.test(candidate);
+  return path.resolve(looksLikeId ? process.cwd() : candidate || process.cwd());
 }
 
 function usage() {
@@ -666,7 +671,7 @@ async function dispatch(args) {
   }
 
   if (command === 'evidence') {
-    const dir = dirOf(args);
+    const dir = dirOf(args, 1);
     if (subcommand === 'add') {
       if (!options.task) throw new UsageError('evidence add needs --task <T-NNN>');
       if (!options.kind) throw new UsageError('evidence add needs --kind <kind>');

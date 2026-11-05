@@ -4,6 +4,18 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `evidence retract` no longer treats the evidence id as the project directory:
+  the `evidence` branch resolves the dir from positional 1, and `dirOf` refuses
+  id-shaped positionals (`EV-…`, `T-…`, `Q-…`). The documented default (cwd)
+  now works without `--dir`.
+- `EVIDENCE_UNKNOWN` reports `{ root, shards }` so a wrong directory is
+  distinguishable from a missing record.
+- 208 `node:test` cases.
+
 ## [0.9.17] - 2026-11-05
 
 ### Changed
