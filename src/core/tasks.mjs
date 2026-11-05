@@ -108,8 +108,8 @@ export async function parseTasks(root) {
       dependsOn: parseDepends(row[mapping.dependsOn]),
       acceptance: row[mapping.acceptance]?.trim() ?? '',
       verification: row[mapping.verification]?.trim() ?? '',
-      status: (row[mapping.status]?.trim().toLowerCase() || 'todo'),
-      statusValid: TASK_STATUSES.includes((row[mapping.status]?.trim().toLowerCase() || 'todo')),
+      status: ((row[mapping.status]?.trim().toLowerCase() || 'todo').split(/[\s—–:()]+/)[0] || 'todo'),
+      statusValid: TASK_STATUSES.includes((row[mapping.status]?.trim().toLowerCase() || 'todo').split(/[\s—–:()]+/)[0] || 'todo'),
       priority: (row[mapping.priority]?.trim().toLowerCase() || 'medium'),
       row: table.start + 2 + index
     });

@@ -48,7 +48,7 @@ async function adrDigest(root) {
   return parts.join('\n');
 }
 
-export async function gateDigest(root, gateId) {
+export async function gateDigest(root, gateId, { legacy = false } = {}) {
   const dependencies = GATE_DEPENDENCIES[gateId] ?? GATE_DEFS[gateId]?.artifacts ?? [];
   const files = {};
   const structures = {};
@@ -61,8 +61,14 @@ export async function gateDigest(root, gateId) {
       // roles, scopes and dependencies. Status churn is execution, not plan.
       const parsed = await parseTasks(root);
       if (!parsed.error) {
+        // Canonical order makes moving a row between board sections a no-op.
+        // `legacy` preserves arrival order so approvals made before this rule
+        // do not go stale on the upgrade.
+        const tasks = legacy
+          ? parsed.tasks
+          : [...parsed.tasks].sort((a, b) => a.id.localeCompare(b.id, 'en', { numeric: true }));
         text = JSON.stringify(
-          parsed.tasks.map((task) => ({
+          tasks.map((task) => ({
             id: task.id,
             milestone: task.milestone,
             title: task.title,
@@ -77,7 +83,7 @@ export async function gateDigest(root, gateId) {
           .createHash('sha256')
           .update(
             JSON.stringify(
-              parsed.tasks.map((task) => ({
+              tasks.map((task) => ({
                 id: task.id,
                 milestone: task.milestone,
                 role: task.role,
@@ -136,15 +142,19 @@ export async function gateChanges(root, state) {
     const gate = state.gates?.[gateId];
     if (!gate || gate.status !== 'passed' || !gate.digest?.files) continue;
     const current = await gateDigest(root, gateId);
+    const previous = await gateDigest(root, gateId, { legacy: true });
     const changed = Object.keys({ ...gate.digest.files, ...current.files }).filter(
-      (artifactId) => gate.digest.files[artifactId] !== current.files[artifactId]
+      (artifactId) =>
+        gate.digest.files[artifactId] !== current.files[artifactId] &&
+        gate.digest.files[artifactId] !== previous.files[artifactId]
     );
     if (changed.length === 0) continue;
     const structureChanged = changed.some((artifactId) => {
       const before = gate.digest.structures?.[artifactId];
       const after = current.structures?.[artifactId];
+      const oldOrder = previous.structures?.[artifactId];
       if (before === undefined || after === undefined) return true;
-      return before !== after;
+      return before !== after && before !== oldOrder;
     });
     (structureChanged ? stale : drift).push({ gate: gateId, changed });
   }
