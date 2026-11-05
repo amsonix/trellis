@@ -217,7 +217,9 @@ re-approval.
 
 `task edit` changes a field through the board validator and records
 `task.edited`; a dependency edit makes plan gates stale, a prose edit shows as
-content drift. `task list` filters by status, role, ready work and a limit.
+content drift. `task list` filters by status, role, ready work and a limit. `task add --from`
+imports a JSON array (the same fields as `task add`); it validates and appends
+in order and stops at the first invalid item, leaving earlier imports in place.
 `trellis compact --logs-keep 30` prunes `task finish` logs older than 30 days
 that no evidence record references.
 
@@ -317,6 +319,7 @@ trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
 trellis task cancel <T-NNN> --by human:<name> --reason <text>
 trellis task finish <T-NNN> --run <command> --by <role>:<name>
 trellis task edit <T-NNN> [--acceptance <a>] [--depends-on <list>] --by <role>:<name>
+trellis task add --from <tasks.json> --by <role>:<name>
 trellis task list [dir] [--status <s>] [--role <r>] [--ready] [--limit <n>]
 trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> [--note <text>] [--by <role>:<name>]
 

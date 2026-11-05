@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { PROTOCOL_VERSION } from './core/constants.mjs';
 import { ProtocolError, RefusedError, UsageError, UnavailableError } from './core/errors.mjs';
 import { summarize } from './core/checks.mjs';
@@ -36,9 +37,15 @@ import { selectTaskCommits, suggestScopeForTask } from './core/scope.mjs';
 import { doctor } from './core/doctor.mjs';
 import { startA2A } from './a2a/server.mjs';
 import { backup, restore } from './core/backup.mjs';
-import { applyTaskScope, recoverTask, cancelTask, finishTask, editTask } from './core/mutations.mjs';
+import { applyTaskScope, recoverTask, cancelTask, finishTask, editTask, addTasks } from './core/mutations.mjs';
 
 const execFileAsync = promisify(execFile);
+
+async function readStdin() {
+  const chunks = [];
+  for await (const chunk of process.stdin) chunks.push(chunk);
+  return Buffer.concat(chunks).toString('utf8');
+}
 
 const VALUE_OPTIONS = new Set([
   'dir',
@@ -499,6 +506,18 @@ async function dispatch(args) {
   if (command === 'task') {
     const dir = path.resolve(options.dir || (subcommand === 'list' ? args.positionals[0] : args.positionals[1]) || process.cwd());
     if (subcommand === 'add') {
+      if (options.from) {
+        if (!options.by) throw new UsageError('task add --from needs --by <role>:<name>');
+        let items;
+        try {
+          const raw = options.from === '-' ? await readStdin() : await readFile(options.from, 'utf8');
+          items = JSON.parse(raw);
+        } catch (error) {
+          throw new UsageError(`cannot read task JSON from ${options.from}: ${error.message}`);
+        }
+        const data = await addTasks(dir, items, { by: options.by });
+        return { data, exitCode: 0, print: () => console.log(`imported ${data.count} task(s)`) };
+      }
       if (!options.title) throw new UsageError('task add needs --title');
       if (!options.scope) throw new UsageError('task add needs --scope');
       if (!options.acceptance) throw new UsageError('task add needs --acceptance');

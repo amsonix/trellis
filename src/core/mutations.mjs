@@ -10,6 +10,7 @@ import {
   claimTask as claimTaskUnlocked,
   reportTask as reportTaskUnlocked,
   addTask as addTaskUnlocked,
+  addTasks as addTasksUnlocked,
   askTask as askTaskUnlocked,
   answerTask as answerTaskUnlocked,
   applyTaskScope as applyTaskScopeUnlocked,
@@ -31,6 +32,7 @@ const locked = (fn) => (root, ...args) => withLock(root, () => fn(root, ...args)
 export const claimTask = locked(claimTaskUnlocked);
 export const reportTask = locked(reportTaskUnlocked);
 export const addTask = locked(addTaskUnlocked);
+export const addTasks = locked(addTasksUnlocked);
 export const askTask = locked(askTaskUnlocked);
 export const answerTask = locked(answerTaskUnlocked);
 export const applyTaskScope = locked(applyTaskScopeUnlocked);

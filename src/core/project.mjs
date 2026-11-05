@@ -1194,6 +1194,22 @@ export async function finishTask(root, taskId, { run, by, timeoutMs = 30 * 60 * 
   return { taskId, exitCode, log, evidence, task: reported.task };
 }
 
+export async function addTasks(root, items, { by } = {}) {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new UsageError('task add --from needs a non-empty JSON array');
+  }
+  if (items.length > 200) throw new UsageError('task add --from accepts at most 200 tasks at a time');
+  const added = [];
+  for (const item of items) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      throw new UsageError('every imported task must be an object');
+    }
+    const result = await addTask(root, { ...item, by: item.by ?? by });
+    added.push(result.task);
+  }
+  return { tasks: added, count: added.length };
+}
+
 export async function addTaskEvidence(root, input) {
   const record = await addEvidence(root, input);
   const state = await loadState(root);
