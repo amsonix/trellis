@@ -4,7 +4,7 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.9.5] - 2026-11-05
 
 ### Fixed
 
@@ -13,6 +13,8 @@ All notable changes to this project are recorded here. The format follows
 - A board scope containing a glob or `?`/`[]` is refused at claim time with
   `TASK_SCOPE_INVALID` instead of being accepted and then refused by `guard`.
 - `lease reap --older-than <hours> --by human:<name>` releases stale leases.
+- The project lock waits 60s instead of 30s, so ten concurrent CLI writers do
+  not exhaust the wait on Windows.
 
 ## [0.9.4] - 2026-11-05
 
@@ -381,3 +383,4 @@ All notable changes to this project are recorded here. The format follows
 [0.9.2]: https://github.com/amsonix/trellis/releases/tag/v0.9.2
 [0.9.3]: https://github.com/amsonix/trellis/releases/tag/v0.9.3
 [0.9.4]: https://github.com/amsonix/trellis/releases/tag/v0.9.4
+[0.9.5]: https://github.com/amsonix/trellis/releases/tag/v0.9.5
