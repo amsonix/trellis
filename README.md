@@ -246,6 +246,10 @@ it with `trellis restore --from <dir> [--force]`. The trust boundary and the
 threats Trellis does not handle are in
 [`docs/security-model.md`](docs/security-model.md).
 
+The lane model that inspired `--paths`, `lease reap` and the evidence tree
+fields is documented in [`docs/lane-model.md`](docs/lane-model.md), including
+the worktree recipe Trellis does not wrap.
+
 Spec Kit users can capture a `tasks.md` checklist through
 [`examples/spec-kit/`](examples/spec-kit/): Spec Kit keeps the spec and the plan,
 Trellis records who is doing the work and what proves it.
