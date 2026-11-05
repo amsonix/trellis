@@ -4,6 +4,17 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `next --batch <n> [--strategy priority|unblock|oldest]`: a deterministic,
+  scope-disjoint batch with `why` per task. `next` remains read-only; the agent
+  still claims each task explicitly.
+- The agent skill tells agents to select work through `next --batch`, not by
+  reading titles.
+- 202 `node:test` cases.
+
 ## [0.9.13] - 2026-11-05
 
 ### Changed

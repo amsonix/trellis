@@ -83,7 +83,9 @@ const VALUE_OPTIONS = new Set([
   'out',
   'from',
   'run',
-  'logs-keep'
+  'logs-keep',
+  'batch',
+  'strategy'
 ]);
 
 const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready']);
@@ -144,7 +146,7 @@ Usage:
        profile defaults to generic, name defaults to the directory name)
   trellis status [dir] [--json]
   trellis check [dir] [--stage <stage>] [--json]
-  trellis next [dir] [--role <role>] [--limit <n>] [--json]
+  trellis next [dir] [--role <role>] [--limit <n>] [--batch <n>] [--strategy priority|unblock|oldest] [--json]
   trellis brief [dir] [--role <role>] [--json]
   trellis report [dir] [--json]
   trellis gate <G0|G1|G2|G3|G4|G5|G6|G7> --approve|--waive --by <role>:<name>
@@ -198,7 +200,7 @@ const HELP = {
   init: ['Create .trellis/ in a new or existing project.', 'trellis init [project-dir] [--profile <p>] [--name <n>]'],
   status: ['Where the project is: stage, gates, task counts, attention.', 'trellis status [dir] [--json]'],
   check: ['Run the structural checks, optionally for one stage.', 'trellis check [dir] [--stage <stage>] [--json]'],
-  next: ['The one action allowed now (tasks batch, gate, or stop reason).', 'trellis next [dir] [--role <role>] [--limit <n>] [--json]'],
+  next: ['The one action allowed now (tasks batch, gate, or stop reason).', 'trellis next [dir] [--role <role>] [--limit <n>] [--batch <n>] [--strategy priority|unblock|oldest] [--json]'],
   brief: ['The gate brief: read set, write set, prohibitions, next commands.', 'trellis brief [dir] [--role <role>] [--json]'],
   report: ['Progress and gaps: gates, tasks, stale gates, questions, leases.', 'trellis report [dir] [--json]'],
   gate: ['Approve or waive a gate.', 'trellis gate <G0..G7> --approve --by <role>:<name> [--task T-NNN] [--note <t>]'],
@@ -480,7 +482,16 @@ async function dispatch(args) {
     if (limit !== null && (!Number.isInteger(limit) || limit < 1)) {
       throw new UsageError('--limit must be a positive integer');
     }
-    const data = await nextAction(dirOf(args), options.role || null, { limit });
+    let batch = null;
+    if (options.batch !== undefined) {
+      batch = Number.parseInt(options.batch, 10);
+      if (!Number.isInteger(batch) || batch < 1) throw new UsageError('--batch must be a positive integer');
+    }
+    const strategy = options.strategy ?? 'priority';
+    if (!['priority', 'unblock', 'oldest'].includes(strategy)) {
+      throw new UsageError('--strategy must be priority, unblock or oldest');
+    }
+    const data = await nextAction(dirOf(args), options.role || null, { limit, batch, strategy });
     return { data, exitCode: 0, print: () => printNext(data) };
   }
 

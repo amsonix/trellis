@@ -24,7 +24,7 @@ import { addEvidence, verifyTaskEvidence, requirePassingEvidence, listEvidence }
 import { acquireLease, releaseLease, leaseStatus } from './lease.mjs';
 import { defaultState, loadState, saveState, appendAudit } from './store.mjs';
 import { RefusedError, UnavailableError, UsageError } from './errors.mjs';
-import { nowIso, parseActor, parseScope, isSafeDomain, assertMaxLength, writeText, covers } from './util.mjs';
+import { nowIso, parseActor, parseScope, isSafeDomain, assertMaxLength, writeText, covers, overlaps } from './util.mjs';
 import { currentAgent } from './identity.mjs';
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -309,8 +309,13 @@ function stopReason(result) {
   return null;
 }
 
-async function nextFrom(root, state, tasks, checks, role = null, { limit = null } = {}) {
+async function nextFrom(root, state, tasks, checks, role = null, { limit = null, batch = null, strategy = 'priority' } = {}) {
   const result = await computeNext(root, state, tasks, checks, role);
+  if (result.kind === 'tasks' && Number.isInteger(batch) && batch > 0) {
+    result.tasks = selectTaskBatch(tasks, role, { batch, strategy });
+    result.batch = result.tasks.length;
+    result.strategy = strategy;
+  }
   if (Number.isInteger(limit) && limit > 0 && Array.isArray(result.tasks)) {
     result.tasks = result.tasks.slice(0, limit);
   }
@@ -449,12 +454,72 @@ export async function projectStatus(root) {
   };
 }
 
-export async function nextAction(root, role = null, { limit = null } = {}) {
+export async function nextAction(root, role = null, { limit = null, batch = null, strategy = 'priority' } = {}) {
   const state = await loadState(root);
   const parsed = await parseTasks(root);
   const tasks = parsed.tasks ?? [];
   const checksResult = await runChecks(root);
-  return nextFrom(root, state, tasks, checksResult.checks, role, { limit });
+  return nextFrom(root, state, tasks, checksResult.checks, role, { limit, batch, strategy });
+}
+
+const STRATEGIES = ['priority', 'unblock', 'oldest'];
+
+function unblockCounts(tasks) {
+  const counts = new Map();
+  for (const task of tasks) {
+    if (task.status === 'done' || task.status === 'canceled') continue;
+    for (const dependency of task.dependsOn) counts.set(dependency, (counts.get(dependency) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function selectTaskBatch(tasks, role, { batch, strategy = 'priority' } = {}) {
+  const mode = STRATEGIES.includes(strategy) ? strategy : 'priority';
+  const unblocks = unblockCounts(tasks);
+  const rank = (task) => ({ high: 0, medium: 1, low: 2 }[task.priority] ?? 1);
+  const compare = (a, b) => {
+    if (mode === 'unblock') {
+      const byUnblock = (unblocks.get(b.id) ?? 0) - (unblocks.get(a.id) ?? 0);
+      if (byUnblock !== 0) return byUnblock;
+    }
+    if (mode === 'oldest') {
+      const byId = a.id.localeCompare(b.id, 'en', { numeric: true });
+      if (byId !== 0) return byId;
+    }
+    const byPriority = rank(a) - rank(b);
+    if (byPriority !== 0) return byPriority;
+    const byMilestone = String(a.milestone).localeCompare(String(b.milestone), 'en', { numeric: true });
+    if (byMilestone !== 0) return byMilestone;
+    const byUnblock = (unblocks.get(b.id) ?? 0) - (unblocks.get(a.id) ?? 0);
+    if (byUnblock !== 0) return byUnblock;
+    return a.id.localeCompare(b.id, 'en', { numeric: true });
+  };
+
+  const selected = [];
+  for (const task of [...readyTasks(tasks, role)].sort(compare)) {
+    if (selected.length >= batch) break;
+    if (task.scope.some((domain) => selected.some((picked) => picked.scope.some((other) => overlaps(domain, other))))) {
+      continue;
+    }
+    const count = unblocks.get(task.id) ?? 0;
+    const why = [
+      `${task.priority} priority`,
+      task.milestone ? `milestone ${task.milestone}` : null,
+      count > 0 ? `unblocks ${count}` : null
+    ].filter(Boolean).join(', ');
+    selected.push({
+      id: task.id,
+      title: task.title,
+      role: task.role,
+      scope: task.scope,
+      acceptance: task.acceptance,
+      priority: task.priority,
+      milestone: task.milestone,
+      unblocks: count,
+      why
+    });
+  }
+  return selected;
 }
 
 const STALE_LEASE_HOURS = 24;

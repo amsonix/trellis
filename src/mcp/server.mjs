@@ -75,9 +75,16 @@ const readTools = [
     inputSchema: object({
       dir: dirProp,
       role: text('Role to answer as, e.g. architect.'),
-      limit: { type: 'integer', minimum: 1, description: 'Return at most this many tasks.' }
+      limit: { type: 'integer', minimum: 1, description: 'Return at most this many tasks.' },
+      batch: { type: 'integer', minimum: 1, description: 'Select a scope-disjoint batch of this size.' },
+      strategy: text('priority, unblock or oldest.')
     }),
-    run: (args) => nextAction(dirOf(args), args.role ?? null, { limit: args.limit ?? null })
+    run: (args) =>
+      nextAction(dirOf(args), args.role ?? null, {
+        limit: args.limit ?? null,
+        batch: args.batch ?? null,
+        strategy: args.strategy ?? 'priority'
+      })
   },
   {
     name: 'trellis_brief',

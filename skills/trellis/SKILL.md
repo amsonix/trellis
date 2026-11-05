@@ -59,8 +59,12 @@ cannot retract its own failure.
 
 ## Running a batch
 
-Call `trellis next --json`. If `needsUser` is false, do every task in `tasks`
-(claim → work → evidence → `report --state done`) and call `next` again. If it
+Call `trellis next --batch <n> --json`. If `needsUser` is false, the `tasks`
+array is already priority-ordered, scope-disjoint and carries a `why` for each
+entry. Claim them one by one (`task claim`), do the work, record evidence and
+`report --state done`. Do not pick tasks by title or by reading the whole board.
+If `next` returns a gate, work is not allowed yet; the `candidate` is a preview.
+If it
 is true, stop and surface `reason`; do not invent work to keep going.
 
 While doing a task you may discover follow-up work inside the same milestone:
@@ -91,7 +95,7 @@ Do not use it for unrelated work or for anything outside the parent's scope.
 ```text
 trellis status [dir] [--json]
 trellis check [dir] [--stage <stage>] [--json]
-trellis next [dir] [--role <role>] [--limit <n>] [--json]
+trellis next [dir] [--role <role>] [--batch <n>] [--strategy priority|unblock|oldest] [--json]
 trellis brief [dir] [--role <role>] [--json]
 trellis report [dir] [--json]
 
