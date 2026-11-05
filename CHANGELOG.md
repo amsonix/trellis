@@ -4,6 +4,15 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `task edit --priority` on a board whose table has no `priority` column is now
+  refused with a USAGE error instead of being audited and discarded. The same
+  guard applies to `task add` with a non-default priority.
+- 194 `node:test` cases.
+
 ## [0.9.10] - 2026-11-05
 
 ### Changed

@@ -323,7 +323,13 @@ export async function appendTask(root, task) {
     task.verification,
     task.status
   ];
-  if (hasPriority) cells.push(task.priority ?? 'medium');
+  if (hasPriority) {
+    cells.push(task.priority ?? 'medium');
+  } else if ((task.priority ?? 'medium') !== 'medium') {
+    throw new UsageError(
+      `${TASKS_FILE} has no 'priority' column; add it to the table header before setting a non-default priority`
+    );
+  }
   lines.splice(lastRow + 1, 0, `| ${cells.join(' | ')} |`);
   await writeText(file, lines.join('\n'));
 }
@@ -342,6 +348,13 @@ export async function updateTaskFields(root, id, fields) {
     });
     break;
   }
+  for (const key of Object.keys(fields)) {
+    if (mapping[key] === undefined) {
+      throw new UsageError(
+        `${TASKS_FILE} has no '${key}' column; add it to the table header before editing that field`
+      );
+    }
+  }
   let changed = false;
   for (let i = 0; i < lines.length; i += 1) {
     if (!/^\s*\|/.test(lines[i])) continue;
@@ -349,7 +362,9 @@ export async function updateTaskFields(root, id, fields) {
     if (cells[0] !== id) continue;
     for (const [key, value] of Object.entries(fields)) {
       const index = mapping[key];
-      if (index === undefined || index >= cells.length) continue;
+      if (index >= cells.length) {
+        throw new UsageError(`row ${id} has no cell for '${key}'; fix ${TASKS_FILE}`);
+      }
       cells[index] = value;
     }
     lines[i] = `| ${cells.join(' | ')} |`;
