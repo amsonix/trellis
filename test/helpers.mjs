@@ -11,7 +11,17 @@ export async function makeProject(profile = 'web-app') {
 }
 
 export async function cleanup(dir) {
-  await rm(dir, { recursive: true, force: true });
+  // Windows runners occasionally still hold a handle (indexer/AV) when a test
+  // finishes; retry instead of turning a passing test into an EBUSY failure.
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      return;
+    } catch (error) {
+      if (!['EBUSY', 'EPERM', 'ENOTEMPTY'].includes(error.code) || attempt >= 5) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)));
+    }
+  }
 }
 
 export async function read(dir, rel) {
