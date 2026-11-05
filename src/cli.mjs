@@ -718,7 +718,12 @@ async function dispatch(args) {
       if (!released) throw new RefusedError('LEASE_NOT_HELD', `no held lease for ${taskId}`, { task: taskId });
       return { data: { taskId, released }, exitCode: 0, print: () => console.log(`released ${taskId}`) };
     }
-    throw new UsageError(`unknown lease subcommand '${subcommand}' (status|release)`);
+    if (subcommand === 'reap') {
+      if (!options.by) throw new UsageError('lease reap needs --by human:<name>');
+      const data = await reapLeases(dir, { by: options.by, olderThanHours: options['older-than'] ?? 24 });
+      return { data, exitCode: 0, print: () => console.log(`reaped ${data.count} lease(s) older than ${data.olderThanHours}h`) };
+    }
+    throw new UsageError(`unknown lease subcommand '${subcommand}' (status|release|reap)`);
   }
 
   if (command === 'guard') {
