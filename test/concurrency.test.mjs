@@ -35,7 +35,8 @@ test('parallel evidence writes are not lost', async () => {
           '--verdict', 'pass', '--by', 'executor:w1', '--dir', dir, '--json'])
       );
     }
-    await Promise.all(runs);
+    const results = await Promise.all(runs);
+    assert.ok(results.every((result) => result.code === 0), `a writer failed: ${JSON.stringify(results.find((result) => result.code !== 0))}`);
 
     const lines = (await readFile(path.join(dir, '.trellis/evidence/T-001.jsonl'), 'utf8'))
       .trim()

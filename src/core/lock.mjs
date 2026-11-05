@@ -12,7 +12,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 const LOCK_FILE = '.trellis/.lock';
 const STALE_MS = 20_000;
-const TIMEOUT_MS = 30_000;
+const TIMEOUT_MS = 60_000;
 const RETRY_MS = 10;
 
 const held = new AsyncLocalStorage();
