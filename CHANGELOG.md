@@ -4,6 +4,35 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.8] - 2026-11-05
+
+### Fixed
+
+- `task edit` validates the delta, not the whole board: a pre-existing conflict
+  no longer disables the only repair command. Clearing dependencies and
+  narrowing scope are always allowed; other edits are refused only when they
+  introduce a new blocking check.
+- `task edit` accepts `--scope` (CLI and MCP).
+
+## [0.9.7] - 2026-11-05
+
+### Fixed
+
+- `trellis lease reap` now reaches the reaper; the help entry existed but the
+  dispatcher had no branch.
+- A source-level test fails when a `command:subcommand` help key has no
+  dispatcher branch.
+
+## [0.9.6] - 2026-11-05
+
+### Fixed
+
+- Gate digests hash tasks in id order, so moving a completed row between board
+  sections no longer makes G3/G4 stale; earlier approvals still compare against
+  arrival order and stay valid.
+- A status cell may carry a note after the status word (`done — closed by lane`).
+- Test cleanup retries Windows `EBUSY`/`EPERM` on temporary directories.
+
 ## [0.9.5] - 2026-11-05
 
 ### Fixed
