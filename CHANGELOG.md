@@ -4,6 +4,16 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- `done`/`review` can be reopened to `todo` as well as `in_progress`; moving
+  `in_progress -> todo` requires that no lease is held.
+- `lease` checks for protocol state first, so running it outside a project
+  reports UNAVAILABLE instead of a misleading `LEASE_NOT_HELD`.
+- 200 `node:test` cases.
+
 ## [0.9.12] - 2026-11-05
 
 ### Changed

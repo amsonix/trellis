@@ -1218,7 +1218,7 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
   if (task.status === newStatus) {
     return { task, idempotent: true };
   }
-  const reopening = ['done', 'review'].includes(task.status) && newStatus === 'in_progress';
+  const reopening = ['done', 'review'].includes(task.status) && ['in_progress', 'todo'].includes(newStatus);
   if (reopening) {
     if (!actor || !['human', 'coordinator'].includes(actor.role)) {
       throw new RefusedError('TASK_REOPEN_ROLE', `only a human or coordinator may reopen ${taskId}`, { task: taskId });
@@ -1235,6 +1235,15 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
     });
   }
 
+  if (newStatus === 'todo') {
+    const held = (await leaseStatus(root)).find((lease) => lease.taskId === taskId);
+    if (held) {
+      throw new RefusedError('TASK_LEASE_HELD', `task ${taskId} still holds a lease; release it before moving to todo`, {
+        task: taskId,
+        lease: held.id
+      });
+    }
+  }
   let evidence = null;
   let warnings = [];
   if (newStatus === 'done') {

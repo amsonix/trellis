@@ -68,3 +68,31 @@ test('next names a candidate task while a gate is pending', async () => {
     await cleanup(dir);
   }
 });
+
+test('a done task can go back to todo directly', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await claimTask(dir, 'T-001', { by: 'executor:w1' });
+    await addEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'manual', verdict: 'pass', by: 'executor:w1' });
+    await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+    const result = await reportTask(dir, 'T-001', {
+      state: 'todo', by: 'human:alice', note: 'closed by mistake'
+    });
+    assert.equal(result.task.status, 'todo');
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('in_progress cannot go to todo while the lease is held', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await claimTask(dir, 'T-001', { by: 'executor:w1' });
+    await assert.rejects(
+      () => reportTask(dir, 'T-001', { state: 'todo', by: 'human:alice', note: 'reset' }),
+      (error) => error.code === 'TASK_LEASE_HELD'
+    );
+  } finally {
+    await cleanup(dir);
+  }
+});

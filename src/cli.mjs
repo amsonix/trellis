@@ -700,6 +700,7 @@ async function dispatch(args) {
 
   if (command === 'lease') {
     const dir = dirOf(args);
+    await loadState(dir);
     if (subcommand === 'status') {
       const items = await leaseStatus(dir);
       return {

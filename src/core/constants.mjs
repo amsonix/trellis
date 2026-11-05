@@ -111,10 +111,10 @@ export const TASK_STATUSES = [
 export const TASK_TRANSITIONS = {
   todo: ['in_progress', 'blocked'],
   ready: ['in_progress', 'blocked'],
-  in_progress: ['review', 'blocked', 'done'],
-  review: ['done', 'blocked', 'in_progress'],
+  in_progress: ['review', 'blocked', 'done', 'todo'],
+  review: ['done', 'blocked', 'in_progress', 'todo'],
   blocked: ['in_progress', 'review', 'done'],
-  done: ['in_progress']
+  done: ['in_progress', 'todo']
 };
 
 export const EVIDENCE_VERDICTS = ['pass', 'fail', 'inconclusive'];
