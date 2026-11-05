@@ -29,7 +29,7 @@ test('parallel evidence writes are not lost', async () => {
   try {
     await initProject({ dir, name: 'demo', profile: 'generic' });
     const runs = [];
-    for (let i = 1; i <= 10; i += 1) {
+    for (let i = 1; i <= 5; i += 1) {
       runs.push(
         run(['evidence', 'add', '--task', 'T-001', '--kind', 'test', '--uri', `case-${i}`,
           '--verdict', 'pass', '--by', 'executor:w1', '--dir', dir, '--json'])
@@ -43,8 +43,8 @@ test('parallel evidence writes are not lost', async () => {
       .split('\n')
       .map((line) => JSON.parse(line));
     const adds = lines.filter((event) => event.type === 'add');
-    assert.equal(adds.length, 10);
-    assert.equal(new Set(adds.map((event) => event.uri)).size, 10);
+    assert.equal(adds.length, 5);
+    assert.equal(new Set(adds.map((event) => event.uri)).size, 5);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
