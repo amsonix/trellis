@@ -4,6 +4,13 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.9] - 2026-11-05
+
+### Fixed
+
+- Restore the missing 0.9.6–0.9.8 changelog entries. A test now fails when the
+  current `package.json` version has no `CHANGELOG.md` section.
+
 ## [0.9.8] - 2026-11-05
 
 ### Fixed
@@ -416,3 +423,4 @@ All notable changes to this project are recorded here. The format follows
 [0.9.6]: https://github.com/amsonix/trellis/releases/tag/v0.9.6
 [0.9.7]: https://github.com/amsonix/trellis/releases/tag/v0.9.7
 [0.9.8]: https://github.com/amsonix/trellis/releases/tag/v0.9.8
+[0.9.9]: https://github.com/amsonix/trellis/releases/tag/v0.9.9
