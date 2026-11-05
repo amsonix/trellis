@@ -1,8 +1,8 @@
 # Lanes, leases and worktrees
 
-Trellis borrows several ideas from the **lane** model used by
-[vela-engine](https://github.com/) (a local rendering-engine project; its
-`scripts/lane.sh` and `docs/lanes/` are not public). This page records what was
+Trellis borrows several ideas from the **lane** model used by `vela-engine`
+(a local rendering-engine project; its `scripts/lane.sh` and `docs/lanes/` are
+not part of this repository). This page records what was
 adopted, what was deliberately not, and how to get the rest with plain git.
 
 ## The lane model in one paragraph
