@@ -4,7 +4,7 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.9.19] - 2026-11-10
 
 ### Fixed
 
@@ -541,3 +541,4 @@ All notable changes to this project are recorded here. The format follows
 [0.9.16]: https://github.com/amsonix/trellis/releases/tag/v0.9.16
 [0.9.17]: https://github.com/amsonix/trellis/releases/tag/v0.9.17
 [0.9.18]: https://github.com/amsonix/trellis/releases/tag/v0.9.18
+[0.9.19]: https://github.com/amsonix/trellis/releases/tag/v0.9.19
