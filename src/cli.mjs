@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
-import { PROTOCOL_VERSION } from './core/constants.mjs';
+import { PROTOCOL_VERSION, TASK_STATUSES } from './core/constants.mjs';
 import { ProtocolError, RefusedError, UsageError, UnavailableError } from './core/errors.mjs';
 import { summarize } from './core/checks.mjs';
 import { loadState } from './core/store.mjs';
@@ -84,6 +84,7 @@ const VALUE_OPTIONS = new Set([
   'from',
   'run',
   'logs-keep',
+  'to',
   'batch',
   'strategy'
 ]);
@@ -210,7 +211,7 @@ const HELP = {
   report: ['Progress and gaps: gates, tasks, stale gates, questions, leases.', 'trellis report [dir] [--json]'],
   gate: ['Approve or waive a gate.', 'trellis gate <G0..G7> --approve --by <role>:<name> [--task T-NNN] [--note <t>]'],
   task: ['Task board operations.', 'trellis task <list|add|claim|ask|answer|report|recover|cancel> ...'],
-  'task:list': ['List the task board.', 'trellis task list [dir] [--json]'],
+  'task:list': ['List the task board.', 'trellis task list [dir] [--status <status>] [--role <role>] [--ready] [--limit <n>] [--json]'],
   'task:add': ['Validate and append a task row.', 'trellis task add --title <t> --scope <paths> --acceptance <a> --verification <v> --by <role>:<name> [--priority high|medium|low]'],
   'task:claim': ['Claim a task (creates the lease) or take over an orphaned claim.', 'trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>]'],
   'task:ask': ['Ask one blocking question; only a human answers it.', 'trellis task ask <T-NNN> --question <text> --by <role>:<name>'],
@@ -565,8 +566,11 @@ async function dispatch(args) {
       const { tasks, error } = await parseTasks(dir);
       if (error) throw new UnavailableError(error.message, error);
       let filtered = tasks;
-      if (options.status) {
+      if (options.status !== undefined) {
         const status = String(options.status).toLowerCase();
+        if (!TASK_STATUSES.includes(status)) {
+          throw new UsageError(`--status must be one of: ${TASK_STATUSES.join(', ')}`);
+        }
         filtered = filtered.filter((task) => task.status === status);
       }
       if (options.role) filtered = filtered.filter((task) => task.role === String(options.role).toLowerCase());
@@ -578,7 +582,7 @@ async function dispatch(args) {
       }
       const limit = Number.parseInt(options.limit ?? '0', 10);
       if (Number.isFinite(limit) && limit > 0) filtered = filtered.slice(0, limit);
-      return { data: { tasks: filtered }, exitCode: 0, print: () => printTaskList(filtered) };
+      return { data: { tasks: filtered, items: filtered }, exitCode: 0, print: () => printTaskList(filtered) };
     }
     if (subcommand === 'edit') {
       const taskId = args.positionals[0];

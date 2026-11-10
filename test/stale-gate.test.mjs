@@ -141,7 +141,7 @@ test('two stale plan gates are re-approved in order, not blocked by each other',
   }
 });
 
-test('next still lists claimable work while a gate waits', async () => {
+test('next keeps listing claimable work while a stale plan gate waits', async () => {
   const dir = await makeProject('generic');
   try {
     for (const [gate, by] of [
@@ -155,9 +155,9 @@ test('next still lists claimable work while a gate waits', async () => {
     });
 
     const next = await nextAction(dir, 'executor');
-    assert.equal(next.kind, 'gate');
-    assert.equal(next.needsUser, true);
-    assert.ok(next.alsoReady.some((task) => task.id === 'T-002'));
+    assert.equal(next.kind, 'tasks');
+    assert.ok(next.tasks.some((task) => task.id === 'T-002'));
+    assert.ok(next.attention.some((item) => item.code === 'GATE_STALE'));
   } finally {
     await cleanup(dir);
   }

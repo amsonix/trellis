@@ -4,6 +4,20 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `next` no longer puts a passed-but-stale plan gate ahead of claimable work:
+  execution allowed by G4 returns the ready tasks with a `GATE_STALE`
+  attention entry; the stale gate is returned only when no work is claimable.
+- `task list --status` validates the closed set; an unknown or empty value is a
+  USAGE error instead of an empty success.
+- `task list` help names `--status/--role/--ready/--limit`, and `task recover`
+  accepts its documented `--to`.
+- `task list --json` also returns `items` as an alias for `tasks`.
+- 212 `node:test` cases.
+
 ## [0.9.18] - 2026-11-05
 
 ### Fixed

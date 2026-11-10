@@ -284,6 +284,18 @@ async function buildAttention(root, state, tasks, checks) {
   return attention;
 }
 
+function staleGateResult(item, tasks, role) {
+  return {
+    kind: 'gate',
+    gate: { id: item.gate, title: GATE_DEFS[item.gate].title, stale: true },
+    checks: [],
+    summary: { pass: 0, warn: 0, fail: 0, unavailable: 0, total: 0 },
+    command: `trellis gate ${item.gate} --approve --by ${GATE_DEFS[item.gate].approvers[0]}:<name>`,
+    candidate: candidateTask(tasks, role, item.gate),
+    reason: `${item.gate} is approved but stale; re-approve it before integration`
+  };
+}
+
 function candidateTask(tasks, role, gateId) {
   const next = readyTasks(tasks, role)[0];
   if (!next) return null;
@@ -345,17 +357,19 @@ async function computeNext(root, state, tasks, checks, role = null) {
   }
   const stage = computeStage(state, tasks);
   const stale = await staleGates(root, state);
-  if (stale.length > 0) {
-    const item = stale[0];
-    return {
-      kind: 'gate',
-      gate: { id: item.gate, title: GATE_DEFS[item.gate].title },
-      checks: [],
-      summary: { pass: 0, warn: 0, fail: 0, unavailable: 0, total: 0 },
-      command: `trellis gate ${item.gate} --approve --by ${GATE_DEFS[item.gate].approvers[0]}:<name>`,
-      candidate: candidateTask(tasks, role, item.gate)
-    };
+  // A stale plan gate must be re-approved before review/integration, but it does
+  // not stop execution that G4 already allows. Putting it first made `next`
+  // return an approved-but-stale gate while ready tasks were claimable.
+  const executingNow = gateSatisfied(state, 'G4') && !gateSatisfied(state, 'G6') && stage === 'executing';
+  if (stale.length > 0 && !executingNow) {
+    return staleGateResult(stale[0], tasks, role);
   }
+  const staleAttention = stale.map((item) => ({
+    kind: 'gate',
+    code: 'GATE_STALE',
+    message: `${item.gate} was approved but its plan changed; re-approve it before integration`,
+    gate: item.gate
+  }));
 
   // While G4 is satisfied and G6 is not, execution is the work. A reviewer can
   // ask for --role reviewer to see the per-task review gate instead.
@@ -365,7 +379,8 @@ async function computeNext(root, state, tasks, checks, role = null) {
       return {
         kind: 'tasks',
         source: 'ready',
-        tasks: ready.map(({ id, title, role: taskRole, scope, acceptance, priority }) => ({ id, title, role: taskRole, scope, acceptance, priority }))
+        tasks: ready.map(({ id, title, role: taskRole, scope, acceptance, priority }) => ({ id, title, role: taskRole, scope, acceptance, priority })),
+        ...(staleAttention.length > 0 ? { attention: staleAttention } : {})
       };
     }
     const active = tasks.filter((task) => task.status === 'in_progress' && (!role || task.role === role));
@@ -373,9 +388,11 @@ async function computeNext(root, state, tasks, checks, role = null) {
       return {
         kind: 'tasks',
         tasks: active.map(({ id, title, role: taskRole, scope, acceptance }) => ({ id, title, role: taskRole, scope, acceptance })),
-        note: 'in progress'
+        note: 'in progress',
+        ...(staleAttention.length > 0 ? { attention: staleAttention } : {})
       };
     }
+    if (stale.length > 0) return staleGateResult(stale[0], tasks, role);
     const reviewed = tasks.find((task) => ['review', 'done'].includes(task.status) && !taskGateSatisfied(state, task.id));
     if (reviewed) {
       return {
