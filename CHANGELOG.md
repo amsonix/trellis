@@ -4,6 +4,16 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- A table-driven help/parser audit: every option named in a usage string must be
+  accepted, and every accepted option must be documented (globals excepted).
+  It found and fixed the missing `--waive`, `--milestone`, `--follow-up-of`,
+  `--id` and `--logs-keep` entries, with negative controls in both directions.
+- 215 `node:test` cases.
+
 ## [0.9.19] - 2026-11-10
 
 ### Fixed
