@@ -4,6 +4,22 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `task report --dry-run`: validate a transition (including evidence and lease
+  rules) without writing state, releasing a lease or appending audit.
+- `evidence add --supersedes <EV,...>`: a passing replacement can retract stale
+  records with an explicit link, instead of a bare manual retract. Restricted to
+  human/reviewer/verifier and to the same task.
+
+### Fixed
+
+- `blocked` can return to `todo` or `ready`; it no longer requires a false
+  `in_progress` claim to unblock a row.
+- 219 `node:test` cases.
+
 ## [0.9.20] - 2026-11-10
 
 ### Added

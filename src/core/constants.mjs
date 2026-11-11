@@ -113,7 +113,7 @@ export const TASK_TRANSITIONS = {
   ready: ['in_progress', 'blocked'],
   in_progress: ['review', 'blocked', 'done', 'todo'],
   review: ['done', 'blocked', 'in_progress', 'todo'],
-  blocked: ['in_progress', 'review', 'done'],
+  blocked: ['in_progress', 'review', 'done', 'todo', 'ready'],
   done: ['in_progress', 'todo']
 };
 

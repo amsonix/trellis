@@ -186,7 +186,7 @@ export async function listEvidence(root, taskId = null) {
   return taskId ? items.filter((item) => item.taskId === taskId) : items;
 }
 
-export async function addEvidence(root, { taskId, kind, uri, verdict, by, note = null, proves = null }) {
+export async function addEvidence(root, { taskId, kind, uri, verdict, by, note = null, proves = null, supersedes = null }) {
   if (!taskId) throw new UsageError('evidence add needs --task <T-NNN>');
   if (!/^T-\d+$/.test(taskId)) throw new UsageError(`task id '${taskId}' does not look like T-001`);
   if (!EVIDENCE_KINDS.includes(kind)) {
@@ -215,6 +215,35 @@ export async function addEvidence(root, { taskId, kind, uri, verdict, by, note =
     if (await exists(local)) digest = await fileSha256(local);
   }
 
+  let superseded = [];
+  if (supersedes !== null) {
+    const ids = (Array.isArray(supersedes) ? supersedes : String(supersedes).split(','))
+      .map((value) => String(value).trim())
+      .filter(Boolean);
+    if (ids.length === 0) throw new UsageError('--supersedes needs at least one evidence id');
+    if (!RETRACTOR_ROLES.includes(actor.role)) {
+      throw new RefusedError('EVIDENCE_SUPERSEDE_ROLE', `${actor.raw} cannot supersede evidence; allowed: ${RETRACTOR_ROLES.join(', ')}`, {
+        actor: actor.raw,
+        allowed: RETRACTOR_ROLES
+      });
+    }
+    const active = await listEvidence(root, taskId);
+    for (const id of ids) {
+      const previous = active.find((item) => item.id === id);
+      if (!previous) throw new RefusedError('EVIDENCE_UNKNOWN', `no evidence record '${id}'`, { evidence: id });
+      if (previous.taskId !== taskId) {
+        throw new RefusedError('EVIDENCE_SUPERSEDE_TASK', `${id} belongs to ${previous.taskId}, not ${taskId}`, {
+          evidence: id,
+          task: taskId,
+          owner: previous.taskId
+        });
+      }
+      if (previous.retracted) {
+        throw new RefusedError('EVIDENCE_ALREADY_RETRACTED', `evidence ${id} is already retracted`, { evidence: id });
+      }
+    }
+    superseded = ids;
+  }
   const git = await gitInfo(root);
   const record = {
     type: 'add',
@@ -234,8 +263,18 @@ export async function addEvidence(root, { taskId, kind, uri, verdict, by, note =
     worktree: git.worktree
   };
   await appendEvent(shardPath(root, taskId), record);
+  for (const id of superseded) {
+    await appendEvent(shardPath(root, taskId), {
+      type: 'retract',
+      id,
+      by: actor.raw,
+      at: nowIso(),
+      reason: `superseded by ${record.id}`,
+      supersedes: record.id
+    });
+  }
   const { type, ...rest } = record;
-  return rest;
+  return { ...rest, superseded };
 }
 
 export const RETRACTOR_ROLES = ['human', 'reviewer', 'verifier'];

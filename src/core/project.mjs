@@ -1293,7 +1293,7 @@ export async function answerTask(root, questionId, { decision, by }) {
   return { question: record, task: { id: record.taskId, status: record.previousStatus } };
 }
 
-export async function reportTask(root, taskId, { state: newStatus, note = null, by }) {
+export async function reportTask(root, taskId, { state: newStatus, note = null, by, dryRun = false } = {}) {
   if (!newStatus) throw new UsageError('task report needs --state <status>');
   const actor = by ? parseActor(by) : null;
   const state = await loadState(root);
@@ -1320,7 +1320,7 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
     });
   }
 
-  if (newStatus === 'todo') {
+  if (['todo', 'ready'].includes(newStatus)) {
     const held = (await leaseStatus(root)).find((lease) => lease.taskId === taskId);
     if (held) {
       throw new RefusedError('TASK_LEASE_HELD', `task ${taskId} still holds a lease; release it before moving to todo`, {
@@ -1342,16 +1342,21 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
       });
     }
     evidence = await requirePassingEvidence(root, taskId);
-    const released = await releaseLease(root, taskId, actor?.raw ?? null);
-    if (released) {
-      appendAudit(state, 'lease.released', actor, { task: taskId, reason: 'task.done', implicit: true });
+    if (!dryRun) {
+      const released = await releaseLease(root, taskId, actor?.raw ?? null);
+      if (released) {
+        appendAudit(state, 'lease.released', actor, { task: taskId, reason: 'task.done', implicit: true });
+      }
     }
   }
-  if (reopening) {
+  if (reopening && !dryRun) {
     delete state.taskGates?.[taskId];
     appendAudit(state, 'task.reopened', actor, { task: taskId, from: task.status, note });
   }
 
+  if (dryRun) {
+    return { task: { ...task, status: newStatus }, evidence, warnings, dryRun: true };
+  }
   await updateTaskStatus(root, taskId, newStatus);
   state.taskNotes = state.taskNotes ?? {};
   state.taskNotes[taskId] = { note, at: nowIso(), by: actor?.raw ?? null, state: newStatus };

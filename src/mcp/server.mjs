@@ -231,12 +231,18 @@ const writeTools = [
         task: text('Task id.'),
         state: text('todo, ready, in_progress, review, blocked or done.'),
         by: text('Actor as role:name.'),
-        note: text('Short note or the one question when blocked.')
+        note: text('Short note or the one question when blocked.'),
+        dryRun: { type: 'boolean', description: 'Validate the transition without writing.' }
       },
       ['task', 'state']
     ),
     run: (args) =>
-      reportTask(dirOf(args), args.task, { state: args.state, note: args.note ?? null, by: args.by ?? null })
+      reportTask(dirOf(args), args.task, {
+        state: args.state,
+        note: args.note ?? null,
+        by: args.by ?? null,
+        dryRun: Boolean(args.dryRun)
+      })
   },
   {
     name: 'trellis_evidence_add',
@@ -250,7 +256,8 @@ const writeTools = [
         verdict: text('pass, fail or inconclusive.'),
         by: text('Producer as role:name.'),
         note: text('Optional note.'),
-        proves: text('Optional: which acceptance clause this evidence proves.')
+        proves: text('Optional: which acceptance clause this evidence proves.'),
+        supersedes: text('Comma-separated evidence ids this record invalidates (human/reviewer/verifier).')
       },
       ['task', 'kind', 'uri', 'verdict', 'by']
     ),
@@ -262,7 +269,8 @@ const writeTools = [
         verdict: args.verdict,
         by: args.by,
         note: args.note ?? null,
-        proves: args.proves ?? null
+        proves: args.proves ?? null,
+        supersedes: args.supersedes ?? null
       })
   },
   {

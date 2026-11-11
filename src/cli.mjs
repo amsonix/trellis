@@ -84,6 +84,7 @@ const VALUE_OPTIONS = new Set([
   'from',
   'run',
   'logs-keep',
+  'supersedes',
   'to',
   'batch',
   'strategy'
@@ -216,13 +217,13 @@ const HELP = {
   'task:claim': ['Claim a task (creates the lease) or take over an orphaned claim.', 'trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>]'],
   'task:ask': ['Ask one blocking question; only a human answers it.', 'trellis task ask <T-NNN> --question <text> --by <role>:<name>'],
   'task:answer': ['Answer an open question as a human.', 'trellis task answer <Q-NNN> --decision <text> --by human:<name>'],
-  'task:report': ['Report a task state; done requires passing evidence.', 'trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>]'],
+  'task:report': ['Report a task state; done requires passing evidence.', 'trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dry-run]'],
   'task:recover': ['Return an in_progress task with no lease to ready or todo.', 'trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]'],
   'task:cancel': ['Cancel work that is no longer needed; canceled tasks do not satisfy dependencies.', 'trellis task cancel <T-NNN> --by human:<name> --reason <text>'],
   'task:finish': ['Run the verification command, record the evidence and mark the task done.', 'trellis task finish <T-NNN> --run <command> --by <role>:<name>'],
   'task:edit': ['Edit a task field through the board validator (adds an audit record).', 'trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--scope <paths>] [--priority <p>] --by <role>:<name>'],
   evidence: ['Evidence log operations.', 'trellis evidence <add|list|retract> ...'],
-  'evidence:add': ['Record evidence for a task.', 'trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] --by <role>:<name>'],
+  'evidence:add': ['Record evidence for a task.', 'trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] [--supersedes <EV,...>] --by <role>:<name>'],
   'evidence:list': ['List evidence, optionally for one task.', 'trellis evidence list [--task <T-NNN>] [--json]'],
   'evidence:retract': ['Retract evidence with a reason (human, reviewer, verifier).', 'trellis evidence retract <EV-id> --by <role>:<name> --reason <text>'],
   verify: ['Check whether a task has enough passing evidence.', 'trellis verify <T-NNN> [--json]'],
@@ -668,8 +669,17 @@ async function dispatch(args) {
       const taskId = args.positionals[0];
       if (!taskId) throw new UsageError('task report needs a task id');
       if (!options.state) throw new UsageError('task report needs --state <status>');
-      const data = await reportTask(dir, taskId, { state: options.state, note: options.note || null, by: options.by || null });
-      return { data, exitCode: 0, print: () => console.log(`${taskId}: ${data.task.status}`) };
+      const data = await reportTask(dir, taskId, {
+        state: options.state,
+        note: options.note || null,
+        by: options.by || null,
+        dryRun: Boolean(options['dry-run'])
+      });
+      return {
+        data,
+        exitCode: 0,
+        print: () => console.log(data.dryRun ? `would move ${taskId} -> ${data.task.status}` : `${taskId}: ${data.task.status}`)
+      };
     }
     throw new UsageError(`unknown task subcommand '${subcommand}' (list|claim|report)`);
   }
@@ -688,9 +698,17 @@ async function dispatch(args) {
         uri: options.uri,
         verdict: options.verdict,
         by: options.by,
-        note: options.note || null
+        note: options.note || null,
+        supersedes: options.supersedes ?? null
       });
-      return { data: record, exitCode: 0, print: () => console.log(`added ${record.id} for ${record.taskId} (${record.verdict})`) };
+      return {
+        data: record,
+        exitCode: 0,
+        print: () => {
+          const extra = record.superseded?.length ? `; superseded ${record.superseded.join(', ')}` : '';
+          console.log(`added ${record.id} for ${record.taskId} (${record.verdict})${extra}`);
+        }
+      };
     }
     if (subcommand === 'list') {
       const items = await evidenceFor(dir, options.task || null);
