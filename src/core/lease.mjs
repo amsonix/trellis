@@ -54,6 +54,21 @@ export async function leaseStatus(root) {
   return ledger.items.filter((lease) => lease.state === 'held');
 }
 
+export async function leaseConflicts(root, { taskId, domains }) {
+  const ledger = await loadLeases(root);
+  const wanted = (domains ?? []).map((domain) => String(domain).trim()).filter(Boolean);
+  const conflicts = [];
+  for (const lease of ledger.items.filter((item) => item.state === 'held')) {
+    if (lease.taskId === taskId) continue;
+    for (const a of wanted) {
+      for (const b of lease.domains) {
+        if (overlaps(a, b)) conflicts.push({ domain: a, taskId: lease.taskId, actor: lease.actor, other: b });
+      }
+    }
+  }
+  return conflicts;
+}
+
 export async function acquireLease(root, { taskId, actor, domains }) {
   if (!taskId) throw new UsageError('a task id is required to acquire a lease');
   const parsedActor = parseActor(actor);
@@ -77,22 +92,14 @@ export async function acquireLease(root, { taskId, actor, domains }) {
     }
   }
 
-  const conflicts = [];
-  for (const lease of held) {
-    if (lease.taskId === taskId) continue;
-    for (const a of wanted) {
-      for (const b of lease.domains) {
-        if (overlaps(a, b)) conflicts.push({ domain: a, lease, other: b });
-      }
-    }
-  }
+  const conflicts = await leaseConflicts(root, { taskId, domains: wanted });
   if (conflicts.length > 0) {
     throw new RefusedError(
       'LEASE_CONFLICT',
       `cannot lease ${wanted.join(', ')} for ${taskId}: ${conflicts
-        .map((conflict) => `${conflict.domain} is held by ${conflict.lease.taskId} (${conflict.lease.actor})`)
+        .map((conflict) => `${conflict.domain} is held by ${conflict.taskId} (${conflict.actor})`)
         .join('; ')}`,
-      { conflicts: conflicts.map((conflict) => ({ domain: conflict.domain, taskId: conflict.lease.taskId, actor: conflict.lease.actor })) }
+      { conflicts }
     );
   }
 

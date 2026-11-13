@@ -22,7 +22,9 @@ test('tree drift only warns for a closure-bound task', async () => {
 
     const active = await verifyTaskEvidence(dir, 'T-001');
     assert.ok(!active.some((check) => check.code === 'EVIDENCE_TREE_DRIFT'));
+    assert.ok(active.some((check) => check.code === 'EVIDENCE_STALE' && check.severity === 'fail'));
 
+    await addEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'manual', verdict: 'pass', by: 'executor:w1' });
     await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
     const closed = await verifyTaskEvidence(dir, 'T-001');
     assert.ok(closed.some((check) => check.code === 'EVIDENCE_TREE_DRIFT' && check.severity === 'warn'));

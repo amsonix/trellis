@@ -219,8 +219,18 @@ const writeTools = [
   {
     name: 'trellis_task_claim',
     description: 'Claim a task and acquire the lease over its write scope.',
-    inputSchema: object({ dir: dirProp, task: text('Task id.'), by: text('Actor as role:name.') }, ['task', 'by']),
-    run: (args) => claimTask(dirOf(args), args.task, { by: args.by })
+    inputSchema: object(
+      {
+        dir: dirProp,
+        task: text('Task id.'),
+        by: text('Actor as role:name.'),
+        paths: text('Comma-separated subset of the task scope to lease.'),
+        dryRun: { type: 'boolean', description: 'Validate conflicts without acquiring the lease.' }
+      },
+      ['task', 'by']
+    ),
+    run: (args) =>
+      claimTask(dirOf(args), args.task, { by: args.by, paths: args.paths ?? null, dryRun: Boolean(args.dryRun) })
   },
   {
     name: 'trellis_task_report',

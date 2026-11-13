@@ -255,7 +255,10 @@ Rules:
   `proves` field names the acceptance clause the evidence is meant to prove.
   A `uri` that names a local file must stay inside the project; use a URL or a
   commit for external evidence. An evidence record also carries `commit`,
-  `dirty` and `worktree` when the project is a git repository. `verify` warns
+  `dirty` and `worktree` when the project is a git repository. Evidence whose
+  recorded commit is not HEAD describes another tree: it is kept and reported
+  (`EVIDENCE_STALE_TREE`) but neither proves nor blocks the current tree;
+  `EVIDENCE_STALE` is raised when no current evidence remains. `verify` warns
   with `EVIDENCE_TREE_DRIFT` only for a task in `review`/`done`; HEAD moving
   under an active task is normal in a shared tree.
 - A local file URI gets a sha256 at add time; a changed file needs new evidence.

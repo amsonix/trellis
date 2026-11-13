@@ -71,7 +71,7 @@ test('evidence records its commit and verify warns after HEAD moves', async () =
 
     await git(dir, '-c', 'user.email=a@b', '-c', 'user.name=a', 'commit', '--allow-empty', '-qm', 'later');
     const checks = await verifyTaskEvidence(dir, 'T-001');
-    assert.ok(checks.some((check) => check.code === 'EVIDENCE_TREE_DRIFT' && check.severity === 'warn'));
+    assert.ok(checks.some((check) => check.code === 'EVIDENCE_STALE' && check.severity === 'fail'));
   } finally {
     await cleanup(dir);
   }

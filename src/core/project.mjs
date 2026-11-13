@@ -21,7 +21,7 @@ import {
   gateDigest
 } from './gates.mjs';
 import { addEvidence, verifyTaskEvidence, requirePassingEvidence, listEvidence } from './evidence.mjs';
-import { acquireLease, releaseLease, leaseStatus } from './lease.mjs';
+import { acquireLease, releaseLease, leaseStatus, leaseConflicts } from './lease.mjs';
 import { defaultState, loadState, saveState, appendAudit } from './store.mjs';
 import { RefusedError, UnavailableError, UsageError } from './errors.mjs';
 import { nowIso, parseActor, parseScope, isSafeDomain, assertMaxLength, writeText, covers, overlaps } from './util.mjs';
@@ -808,7 +808,7 @@ export async function reapLeases(root, { by, olderThanHours = 24, reason = null 
   return { released, skipped, count: released.length, olderThanHours: hours, reason };
 }
 
-export async function claimTask(root, taskId, { by, paths } = {}) {
+export async function claimTask(root, taskId, { by, paths, dryRun = false } = {}) {
   const actor = parseActor(by);
   const state = await loadState(root);
   if (process.env.TRELLIS_STRICT === '1' && !gateSatisfied(state, 'G4')) {
@@ -870,6 +870,19 @@ export async function claimTask(root, taskId, { by, paths } = {}) {
     }
   }
   const leaseDomains = requested.length > 0 ? requested : task.scope;
+  if (dryRun) {
+    const conflicts = await leaseConflicts(root, { taskId, domains: leaseDomains });
+    if (conflicts.length > 0) {
+      throw new RefusedError(
+        'LEASE_CONFLICT',
+        `cannot lease ${leaseDomains.join(', ')} for ${taskId}: ${conflicts
+          .map((conflict) => `${conflict.domain} is held by ${conflict.taskId} (${conflict.actor})`)
+          .join('; ')}`,
+        { conflicts }
+      );
+    }
+    return { task, lease: { taskId, actor: actor.raw, domains: leaseDomains, dryRun: true }, dryRun: true };
+  }
   const done = new Set(tasks.filter((item) => item.status === 'done').map((item) => item.id));
   const waitingOn = task.dependsOn.filter((dependency) => !done.has(dependency));
   if (waitingOn.length > 0) {
@@ -1120,7 +1133,7 @@ export async function cancelTask(root, taskId, { by, reason }) {
   const { tasks } = await parseTasks(root);
   const task = taskById(tasks, taskId);
   if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
-  if (['done', 'canceled'].includes(task.status)) {
+  if (task.status === 'canceled') {
     throw new RefusedError('TASK_CANCEL_STATE', `task ${taskId} is '${task.status}' and cannot be canceled`, {
       task: taskId,
       status: task.status
@@ -1302,6 +1315,14 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
   if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
   if (task.status === newStatus) {
     return { task, idempotent: true };
+  }
+  const heldLease = (await leaseStatus(root)).find((lease) => lease.taskId === taskId);
+  if (heldLease && actor && heldLease.actor !== actor.raw && newStatus === 'blocked') {
+    throw new RefusedError('TASK_LEASE_HELD_BY_OTHER', `task ${taskId} is leased by ${heldLease.actor}`, {
+      task: taskId,
+      lease: heldLease.id,
+      actor: heldLease.actor
+    });
   }
   const reopening = ['done', 'review'].includes(task.status) && ['in_progress', 'todo'].includes(newStatus);
   if (reopening) {

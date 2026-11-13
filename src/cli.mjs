@@ -116,6 +116,10 @@ function parseArgv(argv) {
       } else if (FLAG_OPTIONS.has(key)) {
         options[key] = true;
       } else {
+        const suggestion = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+        if (VALUE_OPTIONS.has(suggestion) || FLAG_OPTIONS.has(suggestion)) {
+          throw new UsageError(`unknown option --${key}; did you mean --${suggestion}?`);
+        }
         throw new UsageError(`unknown option --${key}`);
       }
     } else {
@@ -603,11 +607,15 @@ async function dispatch(args) {
       const taskId = args.positionals[0];
       if (!taskId) throw new UsageError('task claim needs a task id');
       if (!options.by) throw new UsageError('task claim needs --by <role>:<name>');
-      const data = await claimTask(dir, taskId, { by: options.by, paths: options.paths });
+      const data = await claimTask(dir, taskId, { by: options.by, paths: options.paths, dryRun: Boolean(options['dry-run']) });
       return {
         data,
         exitCode: 0,
         print: () => {
+          if (data.dryRun) {
+            console.log(`would claim ${taskId} for ${data.lease.domains.join(', ')}`);
+            return;
+          }
           if (data.takenOver) {
             console.log(
               `claimed ${taskId} by taking over a claim with no lease; lease ${data.lease.id} on ${data.lease.domains.join(', ')}`
@@ -699,6 +707,7 @@ async function dispatch(args) {
         verdict: options.verdict,
         by: options.by,
         note: options.note || null,
+        proves: options.proves ?? null,
         supersedes: options.supersedes ?? null
       });
       return {

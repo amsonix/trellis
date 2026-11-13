@@ -317,14 +317,33 @@ export async function retractEvidence(root, evidenceId, { by, reason }) {
 }
 
 export async function verifyTaskEvidence(root, taskId) {
-  const items = (await listEvidence(root, taskId)).filter((item) => !item.retracted);
+  const head = await headCommit(root);
+  const all = (await listEvidence(root, taskId)).filter((item) => !item.retracted);
+  // Evidence made against another commit describes a tree that no longer
+  // exists. It stays in the ledger, but it neither proves nor blocks the
+  // current tree.
+  const items = all.filter((item) => !item.commit || !head || item.commit === head);
+  const stale = all.filter((item) => item.commit && head && item.commit !== head);
   const checks = [];
   const add = (code, severity, message, extra = {}) =>
     checks.push(makeCheck(code, severity, message, { stage: 'executing', task: taskId, ...extra }));
 
-  if (items.length === 0) {
+  if (all.length === 0) {
     add('EVIDENCE_MISSING', 'fail', `task ${taskId} has no active evidence`);
     return checks;
+  }
+  if (items.length === 0) {
+    add('EVIDENCE_STALE', 'fail', `task ${taskId} has only evidence from other commits; re-run the check`, {
+      evidence: stale.map((item) => item.id),
+      head
+    });
+    return checks;
+  }
+  if (stale.length > 0) {
+    add('EVIDENCE_STALE_TREE', 'warn', `${stale.length} evidence item(s) target another commit and were ignored`, {
+      evidence: stale.map((item) => item.id),
+      head
+    });
   }
 
   const fails = items.filter((item) => item.verdict === 'fail');
@@ -337,7 +356,6 @@ export async function verifyTaskEvidence(root, taskId) {
   if (passes.length === 0) {
     add('EVIDENCE_NO_PASS', 'fail', `task ${taskId} has no passing evidence`);
   }
-  const head = await headCommit(root);
   // HEAD moves constantly in a shared tree. Only closure-bound states care that
   // the evidence was produced before the current commit.
   let final = false;
@@ -348,7 +366,7 @@ export async function verifyTaskEvidence(root, taskId) {
   } catch {
     final = false;
   }
-  const drifted = final ? items.filter((item) => item.commit && head && item.commit !== head) : [];
+  const drifted = final ? all.filter((item) => item.commit && head && item.commit !== head) : [];
   if (drifted.length > 0) {
     add(
       'EVIDENCE_TREE_DRIFT',

@@ -4,6 +4,24 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- A task leased by another actor can no longer be pushed into `blocked`; the
+  guard is `TASK_LEASE_HELD_BY_OTHER`. The same actor, and `cancel`, still work.
+- `task cancel` accepts a `done` task, so revoking a completed row no longer
+  requires dropping it to `todo` first.
+- `task claim --dry-run` validates role/dependencies/scope/lease conflicts
+  without acquiring anything.
+- A camelCase option gets a spelling suggestion (`--dependsOn` ->
+  `--depends-on`) instead of a bare unknown-option error.
+- Evidence whose commit is not HEAD no longer blocks `done`: it is reported as
+  `EVIDENCE_STALE_TREE` and ignored; `EVIDENCE_STALE` is raised only when no
+  current evidence remains.
+- `evidence add --proves` is stored (the CLI accepted it but never passed it).
+- 225 `node:test` cases.
+
 ## [0.9.21] - 2026-11-12
 
 ### Added
