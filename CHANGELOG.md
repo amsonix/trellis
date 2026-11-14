@@ -4,6 +4,18 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `doc list`, `doc show`, `doc check` and `doc scaffold`: per-artifact inspection,
+  structural validation and template scaffolding (never overwriting).
+- `adr new`: allocate the next ADR number, render the template with title/status
+  and audit `adr.created`.
+- MCP: `trellis_doc_list`, `trellis_doc_show`, `trellis_doc_check`,
+  `trellis_adr_new`.
+- 229 `node:test` cases.
+
 ## [0.9.22] - 2026-11-13
 
 ### Fixed

@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { PROTOCOL_VERSION, TASK_STATUSES } from './core/constants.mjs';
 import { ProtocolError, RefusedError, UsageError, UnavailableError } from './core/errors.mjs';
 import { summarize } from './core/checks.mjs';
+import { listDocs, showDoc, checkDoc, scaffoldDoc, createAdr } from './core/docs.mjs';
 import { loadState } from './core/store.mjs';
 import {
   initProject,
@@ -129,7 +130,7 @@ function parseArgv(argv) {
 
   const command = positionals.shift() ?? null;
   let subcommand = null;
-  if (['task', 'evidence', 'lease', 'guard', 'profile', 'scope'].includes(command)) {
+  if (['task', 'evidence', 'lease', 'guard', 'profile', 'scope', 'doc', 'adr'].includes(command)) {
     subcommand = positionals.shift() ?? null;
   }
   return { command, subcommand, positionals, options };
@@ -176,6 +177,11 @@ Usage:
   trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--scope <paths>] [--priority <p>] --by <role>:<name>
   trellis task list [dir] [--status <s>] [--role <r>] [--ready] [--limit <n>] [--dir <dir>]
   trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dir <dir>]
+  trellis doc list [dir] [--json]
+  trellis doc show <ID> [dir] [--json]
+  trellis doc check <ID> [dir] [--json]
+  trellis doc scaffold <ID> --by <role>:<name> [dir]
+  trellis adr new --title <decision> [--status proposed|accepted|superseded] --by <role>:<name> [dir] [--json]
   trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit>
                               --verdict <pass|fail|inconclusive> --by <role>:<name> [--dir <dir>]
   trellis evidence retract <EV-id> --by <role>:<name> --reason <text> [--dir <dir>]
@@ -215,6 +221,13 @@ const HELP = {
   brief: ['The gate brief: read set, write set, prohibitions, next commands.', 'trellis brief [dir] [--role <role>] [--json]'],
   report: ['Progress and gaps: gates, tasks, stale gates, questions, leases.', 'trellis report [dir] [--json]'],
   gate: ['Approve or waive a gate.', 'trellis gate <G0..G7> (--approve|--waive) --by <role>:<name> [--task T-NNN] [--note <t>]'],
+  doc: ['Inspect and scaffold the project documents.', 'trellis doc <list|show|check|scaffold> ...'],
+  'doc:list': ['List the document artifacts, their paths and existence.', 'trellis doc list [dir] [--json]'],
+  'doc:show': ['Print one document (or its path/metadata with --json).', 'trellis doc show <ID> [dir] [--json]'],
+  'doc:check': ['Run the structural checks for one document.', 'trellis doc check <ID> [dir] [--json]'],
+  'doc:scaffold': ['Create a missing document from its template (never overwrites).', 'trellis doc scaffold <ID> --by <role>:<name> [dir] [--json]'],
+  adr: ['Architecture decision records.', 'trellis adr <new> ...'],
+  'adr:new': ['Create the next ADR from the template and audit it.', 'trellis adr new --title <decision> [--status proposed|accepted|superseded] --by <role>:<name> [dir] [--json]'],
   task: ['Task board operations.', 'trellis task <list|add|claim|ask|answer|report|recover|cancel> ...'],
   'task:list': ['List the task board.', 'trellis task list [dir] [--status <status>] [--role <role>] [--ready] [--limit <n>] [--json]'],
   'task:add': ['Validate and append a task row.', 'trellis task add --title <t> --scope <paths> --acceptance <a> --verification <v> --by <role>:<name> [--role <role>] [--milestone <M0>] [--priority high|medium|low] [--depends-on <ids>] [--follow-up-of <T-NNN>] [--id <T-NNN>] [--from <json>]'],
@@ -530,6 +543,59 @@ async function dispatch(args) {
       data = await approveGate(dir, gateId, { by: options.by, note: options.note || null, taskId: options.task || null });
     }
     return { data, exitCode: 0, print: () => console.log(`${data.gate}${data.taskId ? ` ${data.taskId}` : ''}: ${data.status} by ${data.approvedBy}`) };
+  }
+
+  if (command === 'doc') {
+    if (subcommand === 'list') {
+      const data = await listDocs(dirOf(args));
+      return {
+        data,
+        exitCode: 0,
+        print: () => {
+          for (const item of data.items) {
+            const state = item.exists ? (item.status ?? 'present') : 'missing';
+            console.log(`${item.id.padEnd(14)} ${state.padEnd(10)} ${item.path}`);
+          }
+        }
+      };
+    }
+    if (subcommand === 'show') {
+      const id = args.positionals[0];
+      if (!id) throw new UsageError('doc show needs a document id');
+      const data = await showDoc(dirOf(args, 1), id);
+      return { data, exitCode: 0, print: () => console.log(data.text ?? `${data.path} is missing`) };
+    }
+    if (subcommand === 'check') {
+      const id = args.positionals[0];
+      if (!id) throw new UsageError('doc check needs a document id');
+      const checks = await checkDoc(dirOf(args, 1), id);
+      const summary = summarize(checks);
+      const failed = checks.some((check) => check.severity === 'fail' || check.severity === 'unavailable');
+      return {
+        data: { checks, summary },
+        exitCode: failed ? 3 : 0,
+        print: () => printChecks({ checks, summary })
+      };
+    }
+    if (subcommand === 'scaffold') {
+      const id = args.positionals[0];
+      if (!id) throw new UsageError('doc scaffold needs a document id');
+      const data = await scaffoldDoc(dirOf(args, 1), id, { by: options.by });
+      return { data, exitCode: 0, print: () => console.log(`created ${data.path}`) };
+    }
+    throw new UsageError(`unknown doc subcommand '${subcommand}' (list|show|check|scaffold)`);
+  }
+
+  if (command === 'adr') {
+    if (subcommand === 'new') {
+      const data = await createAdr(dirOf(args), {
+        title: options.title,
+        status: options.status || 'proposed',
+        by: options.by
+      });
+      return { data, exitCode: 0, print: () => console.log(`created ${data.path}: ${data.title} (${data.status})`) };
+    }
+    throw new UsageError(`unknown adr subcommand '${subcommand}' (new)`);
   }
 
   if (command === 'task') {

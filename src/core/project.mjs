@@ -28,10 +28,10 @@ import { nowIso, parseActor, parseScope, isSafeDomain, assertMaxLength, writeTex
 import { currentAgent } from './identity.mjs';
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../../', import.meta.url));
-const TEMPLATE_DIR = path.join(PACKAGE_ROOT, 'templates');
+export const TEMPLATE_DIR = path.join(PACKAGE_ROOT, 'templates');
 const SKILL_SOURCE = path.join(PACKAGE_ROOT, 'skills', 'trellis', 'SKILL.md');
 
-const TEMPLATE_MAP = {
+export const TEMPLATE_MAP = {
   'README.md': 'README.md',
   'PROJECT.md': 'PROJECT.md',
   'RESEARCH.md': 'docs/RESEARCH.md',

@@ -324,6 +324,11 @@ trellis task cancel <T-NNN> --by human:<name> --reason <text>
 trellis task finish <T-NNN> --run <command> --by <role>:<name>
 trellis task edit <T-NNN> [--acceptance <a>] [--depends-on <list>] --by <role>:<name>
 trellis task add --from <tasks.json> --by <role>:<name>
+trellis doc list [dir] [--json]
+trellis doc show <ID> [dir] [--json]
+trellis doc check <ID> [dir] [--json]
+trellis doc scaffold <ID> --by <role>:<name> [dir]
+trellis adr new --title <decision> [--status proposed|accepted|superseded] --by <role>:<name>
 trellis task list [dir] [--status <s>] [--role <r>] [--ready] [--limit <n>]
 trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> [--note <text>] [--by <role>:<name>]
 

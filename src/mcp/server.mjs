@@ -21,6 +21,7 @@ import {
   evidenceFor,
   listProfiles
 } from '../core/project.mjs';
+import { listDocs, showDoc, checkDoc, createAdr } from '../core/docs.mjs';
 import {
   addTask,
   askTask,
@@ -99,6 +100,24 @@ const readTools = [
     run: (args) => projectReport(dirOf(args))
   },
   {
+    name: 'trellis_doc_list',
+    description: 'List the document artifacts with path, stage, existence and status.',
+    inputSchema: object({ dir: dirProp }),
+    run: (args) => listDocs(dirOf(args))
+  },
+  {
+    name: 'trellis_doc_show',
+    description: 'Print one document artifact (text, front-matter and path).',
+    inputSchema: object({ dir: dirProp, id: text('Artifact id, e.g. PROJECT or ARCHITECTURE.') }, ['id']),
+    run: (args) => showDoc(dirOf(args), args.id)
+  },
+  {
+    name: 'trellis_doc_check',
+    description: 'Run the structural checks for one document artifact.',
+    inputSchema: object({ dir: dirProp, id: text('Artifact id, e.g. ROADMAP.') }, ['id']),
+    run: (args) => checkDoc(dirOf(args), args.id)
+  },
+  {
     name: 'trellis_task_list',
     description: 'The task board with scope, dependencies, acceptance and status.',
     inputSchema: object({ dir: dirProp }),
@@ -140,6 +159,21 @@ const readTools = [
 ];
 
 const writeTools = [
+  {
+    name: 'trellis_adr_new',
+    description: 'Create the next ADR from the template and audit it. Human or architect only.',
+    inputSchema: object(
+      {
+        dir: dirProp,
+        title: text('The decision, one line.'),
+        status: text('proposed, accepted or superseded. Defaults to proposed.'),
+        by: text('Actor as role:name.')
+      },
+      ['title', 'by']
+    ),
+    run: (args) =>
+      createAdr(dirOf(args), { title: args.title, status: args.status ?? 'proposed', by: args.by })
+  },
   {
     name: 'trellis_init',
     description: 'Create .trellis/ and the agent skill in a project that does not have them. Never overwrites files.',
