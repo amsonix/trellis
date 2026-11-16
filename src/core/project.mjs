@@ -369,7 +369,7 @@ function stopReason(result) {
   return null;
 }
 
-async function nextFrom(root, state, tasks, checks, role = null, { limit = null, batch = null, strategy = 'priority' } = {}) {
+async function nextFrom(root, state, tasks, checks, role = null, { limit = null, batch = null, strategy = 'priority', context = false } = {}) {
   const result = await computeNext(root, state, tasks, checks, role);
   if (result.kind === 'tasks' && result.source === 'ready' && Number.isInteger(batch) && batch > 0) {
     result.tasks = selectTaskBatch(tasks, role, { batch, strategy });
@@ -380,6 +380,23 @@ async function nextFrom(root, state, tasks, checks, role = null, { limit = null,
   }
   if (Number.isInteger(limit) && limit > 0 && Array.isArray(result.tasks)) {
     result.tasks = result.tasks.slice(0, limit);
+  }
+  if (context && Array.isArray(result.tasks)) {
+    const brief = await agentBrief(root, { role });
+    const read = [...new Set([`${META_DIR}/docs/TASKS.md`, ...brief.read])];
+    result.stage = brief.stage;
+    result.gate = brief.gate;
+    result.read = read;
+    result.tasks = result.tasks.map((summary) => {
+      const full = tasks.find((item) => item.id === summary.id);
+      const children = tasks.filter((item) => item.parent === summary.id);
+      return {
+        ...summary,
+        parent: full?.parent ?? null,
+        openChildren: children.filter((item) => !['done', 'canceled'].includes(item.status)).length,
+        read
+      };
+    });
   }
   const needsUser = result.kind !== 'tasks';
   if (needsUser && gateSatisfied(state, 'G4') && !gateSatisfied(state, 'G6')) {
@@ -556,12 +573,12 @@ export async function projectStatus(root) {
   };
 }
 
-export async function nextAction(root, role = null, { limit = null, batch = null, strategy = 'priority' } = {}) {
+export async function nextAction(root, role = null, { limit = null, batch = null, strategy = 'priority', context = false } = {}) {
   const state = await loadState(root);
   const parsed = await parseTasks(root);
   const tasks = parsed.tasks ?? [];
   const checksResult = await runChecks(root);
-  return nextFrom(root, state, tasks, checksResult.checks, role, { limit, batch, strategy });
+  return nextFrom(root, state, tasks, checksResult.checks, role, { limit, batch, strategy, context });
 }
 
 const STRATEGIES = ['priority', 'unblock', 'oldest'];
@@ -1303,6 +1320,62 @@ export async function editTask(root, taskId, { title, acceptance, verification, 
   appendAudit(state, 'task.edited', actor, { task: taskId, fields: Object.keys(fields) });
   await saveState(root, state);
   return { task: updated, changed: Object.keys(fields) };
+}
+
+export async function taskShow(root, taskId, { context = false } = {}) {
+  if (!taskId) throw new UsageError('task show needs a task id');
+  const state = await loadState(root);
+  const { tasks } = await parseTasks(root);
+  const task = taskById(tasks, taskId);
+  if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
+
+  const parent = task.parent ? tasks.find((item) => item.id === task.parent) ?? null : null;
+  const children = tasks.filter((item) => item.parent === task.id);
+  const summary = (item) => ({
+    id: item.id,
+    title: item.title,
+    status: item.status,
+    role: item.role,
+    acceptance: item.acceptance,
+    scope: item.scope
+  });
+  const base = {
+    task: { ...task, ageDays: ageDays(task) },
+    parent: parent ? summary(parent) : null,
+    children: children.map(summary),
+    openChildren: children.filter((item) => !['done', 'canceled'].includes(item.status)).length
+  };
+  if (!context) return base;
+
+  const brief = await agentBrief(root, { role: task.role });
+  const evidence = await listEvidence(root, taskId);
+  const activeEvidence = evidence.filter((item) => !item.retracted);
+  const leases = (await leaseStatus(root)).filter((lease) => lease.taskId === taskId);
+  const milestone = (await milestonesFromRoadmap(root)).find((item) => item.id === task.milestone) ?? null;
+  const read = [
+    ...new Set([
+      `${META_DIR}/docs/TASKS.md`,
+      `${META_DIR}/PROJECT.md`,
+      `${META_DIR}/docs/ROADMAP.md`,
+      `${META_DIR}/docs/VERIFICATION.md`,
+      `${META_DIR}/docs/ARCHITECTURE.md`,
+      ...brief.read
+    ])
+  ];
+  return {
+    ...base,
+    stage: brief.stage,
+    gate: brief.gate,
+    milestone: milestone ? { id: milestone.id, title: milestone.title } : null,
+    read,
+    evidence: {
+      active: activeEvidence.length,
+      failing: activeEvidence.filter((item) => item.verdict === 'fail').map((item) => item.id),
+      passing: activeEvidence.filter((item) => item.verdict === 'pass').map((item) => item.id)
+    },
+    leases: leases.map((lease) => ({ id: lease.id, actor: lease.actor, domains: lease.domains, createdAt: lease.createdAt })),
+    claimCommand: `trellis task claim ${taskId} --by ${task.role}:<name>`
+  };
 }
 
 export async function cancelTask(root, taskId, { by, reason, cascade = false } = {}) {

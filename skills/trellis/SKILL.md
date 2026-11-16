@@ -64,7 +64,8 @@ cannot retract its own failure.
 
 ## Running a batch
 
-Call `trellis next --batch <n> --role <your-role> --json`. The returned
+Call `trellis next --batch <n> --role <your-role> --context --json`; the
+`read` array names the files to inspect before working. The returned
 `tasks` array is the **only** candidate set: priority/age ordered,
 scope-disjoint, each with a `why`.
 
@@ -79,11 +80,14 @@ The selection contract:
    - `TASK_BLOCKED_BY_DEPENDENCY` / `TASK_ROLE` / `LEASE_LIMIT` → re-run `next`
      with the right role or after releasing; do not guess.
    - `TASK_STATUS_INVALID` / `TASK_PRIORITY_INVALID` → stop; the board is broken.
-4. After each `report --state done` (or `task finish`), call `next` again. Never
+4. Before writing, read the task's `read` set (`task show <ID> --context` when
+   you need the full task, parent/children, evidence and leases). The task row
+   is a pointer, not the whole specification.
+5. After each `report --state done` (or `task finish`), call `next` again. Never
    reuse an old candidate list.
-5. `kind: "gate"` or `kind: "waiting"` → stop and surface `reason`; do not
+6. `kind: "gate"` or `kind: "waiting"` → stop and surface `reason`; do not
    bypass with `task list`. `candidate` is a preview, not permission.
-6. `task list` is for diagnosis and backlog review only. It is never a
+7. `task list` is for diagnosis and backlog review only. It is never a
    selection input.
 
 If `batchShortfall > 0`, work with what is available; do not fill the gap from

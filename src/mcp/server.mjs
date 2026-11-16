@@ -19,6 +19,7 @@ import {
   projectReport,
   verifyTask,
   evidenceFor,
+  taskShow,
   listProfiles
 } from '../core/project.mjs';
 import { listDocs, showDoc, checkDoc, createAdr } from '../core/docs.mjs';
@@ -78,13 +79,15 @@ const readTools = [
       role: text('Role to answer as, e.g. architect.'),
       limit: { type: 'integer', minimum: 1, description: 'Return at most this many tasks.' },
       batch: { type: 'integer', minimum: 1, description: 'Select a scope-disjoint batch of this size.' },
-      strategy: text('priority, unblock or oldest.')
+      strategy: text('priority, unblock or oldest.'),
+      context: { type: 'boolean', description: 'Attach the read set and parent/children context.' }
     }),
     run: (args) =>
       nextAction(dirOf(args), args.role ?? null, {
         limit: args.limit ?? null,
         batch: args.batch ?? null,
-        strategy: args.strategy ?? 'priority'
+        strategy: args.strategy ?? 'priority',
+        context: Boolean(args.context)
       })
   },
   {
@@ -135,6 +138,19 @@ const readTools = [
         })
       };
     }
+  },
+  {
+    name: 'trellis_task_show',
+    description: 'Show one task; with context, include the read set, parent/children, evidence and leases.',
+    inputSchema: object(
+      {
+        dir: dirProp,
+        task: text('Task id.'),
+        context: { type: 'boolean', description: 'Include the read set and roll-up context.' }
+      },
+      ['task']
+    ),
+    run: (args) => taskShow(dirOf(args), args.task, { context: Boolean(args.context) })
   },
   {
     name: 'trellis_evidence_list',

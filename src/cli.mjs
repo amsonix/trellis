@@ -16,6 +16,7 @@ import {
   projectReport,
   verifyTask,
   evidenceFor,
+  taskShow,
   listProfiles
 } from './core/project.mjs';
 import {
@@ -93,7 +94,7 @@ const VALUE_OPTIONS = new Set([
   'strategy'
 ]);
 
-const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready', 'cascade']);
+const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready', 'cascade', 'context']);
 
 function parseArgv(argv) {
   const positionals = [];
@@ -170,7 +171,8 @@ Usage:
                    [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>]
                    [--priority <high|medium|low>] [--follow-up-of <T-NNN>] [--id <T-NNN>]
                    --by <role>:<name> [--dir <dir>]
-  trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dir <dir>]
+  trellis task show <T-NNN> [dir] [--context] [--json]
+trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dir <dir>]
   trellis task ask <T-NNN> --question <text> --by <role>:<name> [--dir <dir>]
   trellis task answer <Q-NNN> --decision <text> --by human:<name>
   trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
@@ -230,10 +232,11 @@ const HELP = {
   'doc:scaffold': ['Create a missing document from its template (never overwrites).', 'trellis doc scaffold <ID> --by <role>:<name> [dir] [--json]'],
   adr: ['Architecture decision records.', 'trellis adr <new> ...'],
   'adr:new': ['Create the next ADR from the template and audit it.', 'trellis adr new --title <decision> [--status proposed|accepted|superseded] --by <role>:<name> [dir] [--json]'],
-  task: ['Task board operations.', 'trellis task <list|add|claim|ask|answer|report|recover|cancel> ...'],
+  task: ['Task board operations.', 'trellis task <list|show|add|claim|ask|answer|report|recover|cancel> ...'],
+  'task:show': ['Show one task, optionally with its context (read set, parent, children, evidence).', 'trellis task show <T-NNN> [dir] [--context] [--json]'],
   'task:list': ['List the task board.', 'trellis task list [dir] [--status <status>] [--role <role>] [--ready] [--children-of <T-NNN>] [--limit <n>] [--json]'],
   'task:add': ['Validate and append a task row.', 'trellis task add --title <t> --scope <paths> --acceptance <a> --verification <v> --by <role>:<name> [--role <role>] [--milestone <M0>] [--priority high|medium|low] [--depends-on <ids>] [--follow-up-of <T-NNN>] [--parent <T-NNN>] [--id <T-NNN>] [--from <json>] [--force]'],
-  'task:claim': ['Claim a task (creates the lease) or take over an orphaned claim.', 'trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>]'],
+  'task:claim': ['Claim a task (creates the lease) or take over an orphaned claim.', 'trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dry-run]'],
   'task:ask': ['Ask one blocking question; only a human answers it.', 'trellis task ask <T-NNN> --question <text> --by <role>:<name>'],
   'task:answer': ['Answer an open question as a human.', 'trellis task answer <Q-NNN> --decision <text> --by human:<name>'],
   'task:report': ['Report a task state; done requires passing evidence.', 'trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dry-run]'],
@@ -425,6 +428,30 @@ function printNext(data) {
   }
 }
 
+function printTaskShow(data) {
+  const task = data.task;
+  console.log(`${task.id}  ${task.status}  ${task.role}  ${task.title}`);
+  console.log(`      scope: ${task.scope.join(', ')} | depends: ${task.dependsOn.join(', ') || '-'} | parent: ${task.parent ?? '-'}`);
+  console.log(`      acceptance: ${task.acceptance}`);
+  console.log(`      verification: ${task.verification}`);
+  if (task.note) console.log(`      note: ${task.note}`);
+  if (data.parent) console.log(`      parent task: ${data.parent.id} (${data.parent.status}) ${data.parent.title}`);
+  if (data.children.length > 0) {
+    console.log(`      children: ${data.children.map((child) => `${child.id}:${child.status}`).join(', ')}`);
+  }
+  if (data.read) {
+    console.log('      read:');
+    for (const file of data.read) console.log(`        - ${file}`);
+  }
+  if (data.evidence) {
+    console.log(`      evidence: ${data.evidence.active} active, ${data.evidence.failing.length} failing`);
+  }
+  if (data.leases?.length) {
+    console.log(`      leases: ${data.leases.map((lease) => `${lease.actor} [${lease.domains.join(', ')}]`).join('; ')}`);
+  }
+  if (data.claimCommand) console.log(`      claim: ${data.claimCommand}`);
+}
+
 function printTaskList(tasks) {
   if (tasks.length === 0) {
     console.log('no tasks');
@@ -550,6 +577,12 @@ async function dispatch(args) {
   }
 
   if (command === 'doc') {
+    if (subcommand === 'show') {
+      const taskId = args.positionals[0];
+      if (!taskId) throw new UsageError('task show needs a task id');
+      const data = await taskShow(dirOf(args, 1), taskId, { context: Boolean(options.context) });
+      return { data, exitCode: 0, print: () => printTaskShow(data) };
+    }
     if (subcommand === 'list') {
       const data = await listDocs(dirOf(args));
       return {
@@ -638,6 +671,12 @@ async function dispatch(args) {
         by: options.by
       });
       return { data, exitCode: 0, print: () => console.log(`added ${data.task.id}: ${data.task.title}`) };
+    }
+    if (subcommand === 'show') {
+      const taskId = args.positionals[0];
+      if (!taskId) throw new UsageError('task show needs a task id');
+      const data = await taskShow(dirOf(args, 1), taskId, { context: Boolean(options.context) });
+      return { data, exitCode: 0, print: () => printTaskShow(data) };
     }
     if (subcommand === 'list') {
       const { tasks, error } = await parseTasks(dir);
@@ -803,6 +842,12 @@ async function dispatch(args) {
           console.log(`added ${record.id} for ${record.taskId} (${record.verdict})${extra}`);
         }
       };
+    }
+    if (subcommand === 'show') {
+      const taskId = args.positionals[0];
+      if (!taskId) throw new UsageError('task show needs a task id');
+      const data = await taskShow(dirOf(args, 1), taskId, { context: Boolean(options.context) });
+      return { data, exitCode: 0, print: () => printTaskShow(data) };
     }
     if (subcommand === 'list') {
       const items = await evidenceFor(dir, options.task || null);
