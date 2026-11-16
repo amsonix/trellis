@@ -55,9 +55,19 @@ export async function setMilestoneStatus(root, id, status, { by, note = null, re
   }
 
   const progress = await getMilestone(root, id);
+  const warnings = [];
   if (status === 'done') {
     const { tasks } = await parseTasks(root);
     const open = tasks.filter((task) => task.milestone === id && !CLOSED.includes(task.status));
+    const raw = (await milestonesFromRoadmap(root)).find((item) => item.id === id);
+    const unchecked = (raw?.criteria ?? []).filter((criterion) => !criterion.checked);
+    if (unchecked.length > 0) {
+      warnings.push({
+        code: 'MILESTONE_CRITERIA_UNCHECKED',
+        message: `${unchecked.length} exit criterion/criteria are not checked in ROADMAP`,
+        criteria: unchecked.map((criterion) => criterion.index)
+      });
+    }
     if (open.length > 0) {
       throw new RefusedError('MILESTONE_OPEN_TASKS', `${id} has open task(s): ${open.map((task) => task.id).join(', ')}`, {
         milestone: id,
@@ -97,7 +107,7 @@ export async function setMilestoneStatus(root, id, status, { by, note = null, re
     note: note ?? reason
   });
   await saveState(root, state);
-  return { milestone: await getMilestone(root, id), idempotent: false };
+  return { milestone: await getMilestone(root, id), warnings, idempotent: false };
 }
 
 export async function closeMilestone(root, id, { by, note } = {}) {

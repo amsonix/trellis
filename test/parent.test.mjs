@@ -51,12 +51,17 @@ test('a child records its parent and openChildren', async () => {
 test('a parent cannot be done while a child is open', async () => {
   const dir = await makeProject('generic');
   try {
-    await child(dir);
     await claimTask(dir, 'T-001', { by: 'executor:w1' });
     await addEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'manual', verdict: 'pass', by: 'executor:w1' });
+    await releaseLease(dir, 'T-001', 'executor:w1');
+    await child(dir);
     await assert.rejects(
       () => reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' }),
       (error) => error.code === 'TASK_OPEN_CHILDREN'
+    );
+    await assert.rejects(
+      () => claimTask(dir, 'T-001', { by: 'executor:w1' }),
+      (error) => error.code === 'PARENT_HAS_OPEN_CHILDREN'
     );
   } finally {
     await cleanup(dir);

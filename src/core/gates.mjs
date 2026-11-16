@@ -6,6 +6,7 @@ import { makeCheck, summarize } from './checks.mjs';
 import { checkArtifact, ARTIFACTS } from './artifacts.mjs';
 import { validateTasks, milestonesFromRoadmap, taskById, parseTasks } from './tasks.mjs';
 import { verifyTaskEvidence } from './evidence.mjs';
+import { coverageFor } from './coverage.mjs';
 import { loadState, saveState, appendAudit } from './store.mjs';
 import { getProfile } from './profiles.mjs';
 import { RefusedError, UsageError } from './errors.mjs';
@@ -231,6 +232,22 @@ export async function gateChecks(root, gateId, { profile, state, tasks, taskId =
 
   for (const artifactId of definition.artifacts ?? []) {
     checks.push(...(await checkArtifact(root, artifactId, profile)));
+  }
+
+  if (gateId === 'G3') {
+    const coverage = coverageFor(tasks, await milestonesFromRoadmap(root));
+    for (const report of coverage.milestones) {
+      if (report.uncovered.length === 0) continue;
+      const started = report.declared === 'active';
+      checks.push(
+        makeCheck(
+          'PLAN_UNCOVERED',
+          started ? 'fail' : 'warn',
+          `${report.id} has ${report.uncovered.length} uncovered exit criterion/criteria (${report.uncovered.map((index) => `exit-${index}`).join(', ')})`,
+          { gate: 'G3', milestone: report.id, criteria: report.uncovered }
+        )
+      );
+    }
   }
 
   if (gateId === 'G4') {

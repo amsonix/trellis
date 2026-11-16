@@ -4,6 +4,23 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- G3 now fails `PLAN_UNCOVERED` for an `active` milestone with uncovered exit
+  criteria (planned milestones warn).
+- `claim` refuses a parent with open children (`PARENT_HAS_OPEN_CHILDREN`),
+  closing the re-claim/lease deadlock.
+- `doc list` reports every dependent gate, not just the first, so a stale G4 on
+  ROADMAP is no longer hidden by a passed G3.
+- `Source` names are validated against known artifacts, not only ROADMAP.
+- ADR status transitions follow a matrix; superseded stays terminal.
+- `milestone close` warns when exit criteria are still unchecked.
+- `next` excludes tasks that conflict with a held lease and reports them under
+  `excluded`; `task list` exposes `effectiveSource`.
+- 251 `node:test` cases.
+
 ## [0.9.29] - 2026-11-16
 
 ### Changed

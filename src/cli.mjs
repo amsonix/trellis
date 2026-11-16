@@ -7,7 +7,7 @@ import { ProtocolError, RefusedError, UsageError, UnavailableError } from './cor
 import { summarize } from './core/checks.mjs';
 import { listDocs, showDoc, checkDoc, scaffoldDoc, createAdr } from './core/docs.mjs';
 import { closeMilestone, getMilestone, listMilestones, reopenMilestone } from './core/milestones.mjs';
-import { planCoverage } from './core/coverage.mjs';
+import { planCoverage, sourceMap } from './core/coverage.mjs';
 import { listAdrs, setAdrStatus } from './core/adr.mjs';
 import { loadState } from './core/store.mjs';
 import {
@@ -613,8 +613,8 @@ async function dispatch(args) {
           for (const item of data.items) {
             const state = !item.exists
               ? 'missing'
-              : item.gate
-                ? `${item.gate.status}${item.gate.stale ? ' (stale)' : ''}`
+              : item.gates?.length
+                ? item.gates.map((gate) => `${gate.id}:${gate.status}${gate.stale ? ' (stale)' : ''}`).join(' ')
                 : 'present';
             console.log(`${item.id.padEnd(14)} ${state.padEnd(16)} ${item.path}`);
           }
@@ -698,7 +698,14 @@ async function dispatch(args) {
       const data = subcommand === 'close'
         ? await closeMilestone(dirOf(args, 1), id, { by: options.by, note: options.note ?? null })
         : await reopenMilestone(dirOf(args, 1), id, { by: options.by, note: options.note ?? null });
-      return { data, exitCode: 0, print: () => console.log(`${id}: declared ${data.milestone.declared}`) };
+      return {
+        data,
+        exitCode: 0,
+        print: () => {
+          console.log(`${id}: declared ${data.milestone.declared}`);
+          for (const warning of data.warnings ?? []) console.log(`  warning ${warning.code}: ${warning.message}`);
+        }
+      };
     }
     throw new UsageError(`unknown milestone subcommand '${subcommand}' (list|status|close|reopen)`);
   }
@@ -810,11 +817,13 @@ async function dispatch(args) {
       }
       const limit = Number.parseInt(options.limit ?? '0', 10);
       if (Number.isFinite(limit) && limit > 0) filtered = filtered.slice(0, limit);
+      const sources = sourceMap(tasks);
       const decorated = filtered.map((task) => {
         const children = tasks.filter((item) => item.parent === task.id);
         return {
           ...task,
           parent: task.parent ?? null,
+          effectiveSource: sources.get(task.id) ?? null,
           children: children.map((item) => item.id),
           openChildren: children.filter((item) => !['done', 'canceled'].includes(item.status)).length
         };

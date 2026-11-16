@@ -27,7 +27,12 @@ export async function listDocs(root) {
   const items = [];
   for (const definition of Object.values(ARTIFACTS)) {
     const artifact = await readArtifact(root, definition.id);
-    const gateId = Object.keys(GATE_DEPENDENCIES).find((id) => GATE_DEPENDENCIES[id].includes(definition.id)) ?? null;
+    const gateIds = Object.keys(GATE_DEPENDENCIES).filter((id) => GATE_DEPENDENCIES[id].includes(definition.id));
+    const gates = gateIds.map((id) => ({
+      id,
+      status: state.gates?.[id]?.status ?? 'pending',
+      stale: stale.includes(id)
+    }));
     items.push({
       id: definition.id,
       title: definition.title,
@@ -36,9 +41,8 @@ export async function listDocs(root) {
       required: profile.requiredArtifacts.includes(definition.id),
       optional: profile.optionalArtifacts.includes(definition.id),
       exists: !artifact.missing,
-      gate: gateId
-        ? { id: gateId, status: state.gates?.[gateId]?.status ?? 'pending', stale: stale.includes(gateId) }
-        : null
+      gate: gates[0] ?? null,
+      gates
     });
   }
   return { items };

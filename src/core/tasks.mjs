@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { ROLES, TASK_STATUSES, TASK_PRIORITIES, TASK_PRIORITY_RANK, META_DIR } from './constants.mjs';
+import { ARTIFACTS } from './artifacts.mjs';
 import { makeCheck } from './checks.mjs';
 import { UsageError } from './errors.mjs';
 import {
@@ -252,6 +253,8 @@ export function validateTasks(tasks, { milestones = [] } = {}) {
       const match = /^([A-Z]+)#(.+)$/.exec(task.source);
       if (!match) {
         add('TASK_SOURCE_INVALID', 'fail', `task ${task.id} source '${task.source}' must look like ROADMAP#M2/exit-1`, { task: task.id });
+      } else if (match[1] !== 'ADR' && !ARTIFACTS[match[1]]) {
+        add('TASK_SOURCE_INVALID', 'fail', `task ${task.id} source names unknown artifact '${match[1]}'`, { task: task.id });
       } else if (match[1] === 'ROADMAP') {
         const [milestoneId, criterion] = match[2].split('/');
         const milestone = milestones.find((item) => item.id === milestoneId);

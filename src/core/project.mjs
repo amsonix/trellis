@@ -413,7 +413,8 @@ function stopReason(result) {
 async function nextFrom(root, state, tasks, checks, role = null, { limit = null, batch = null, strategy = 'priority', context = false } = {}) {
   const result = await computeNext(root, state, tasks, checks, role);
   if (result.kind === 'tasks' && result.source === 'ready' && Number.isInteger(batch) && batch > 0) {
-    result.tasks = selectTaskBatch(tasks, role, { batch, strategy });
+    const skip = new Set((result.excluded ?? []).map((item) => item.id));
+    result.tasks = selectTaskBatch(tasks, role, { batch, strategy, excludeIds: skip });
     result.batch = result.tasks.length;
     result.batchRequested = batch;
     result.batchShortfall = Math.max(0, batch - result.tasks.length);
@@ -441,7 +442,7 @@ async function nextFrom(root, state, tasks, checks, role = null, { limit = null,
   }
   const needsUser = result.kind !== 'tasks';
   if (needsUser && gateSatisfied(state, 'G4') && !gateSatisfied(state, 'G6')) {
-    const ready = readyTasks(tasks, role);
+    const { ready, excluded } = await leaseBlockedReady(root, tasks, role);
     if (ready.length > 0) {
       result.alsoReady = ready.map(({ id, title, priority }) => ({ id, title, priority }));
     }
@@ -488,7 +489,7 @@ async function computeNext(root, state, tasks, checks, role = null) {
   // While G4 is satisfied and G6 is not, execution is the work. A reviewer can
   // ask for --role reviewer to see the per-task review gate instead.
   if (gateSatisfied(state, 'G4') && !gateSatisfied(state, 'G6') && stage === 'executing') {
-    const ready = readyTasks(tasks, role);
+    const { ready, excluded } = await leaseBlockedReady(root, tasks, role);
     if (ready.length > 0) {
       return {
         kind: 'tasks',
@@ -508,7 +509,8 @@ async function computeNext(root, state, tasks, checks, role = null) {
             (item) => item.parent === task.id && !['done', 'canceled'].includes(item.status)
           ).length
         })),
-        ...(staleAttention.length > 0 ? { attention: staleAttention } : {})
+        ...(staleAttention.length > 0 ? { attention: staleAttention } : {}),
+        ...(excluded.length > 0 ? { excluded } : {})
       };
     }
     const active = tasks.filter((task) => task.status === 'in_progress' && (!role || task.role === role));
@@ -635,7 +637,29 @@ function unblockCounts(tasks) {
   return counts;
 }
 
-function selectTaskBatch(tasks, role, { batch, strategy = 'priority' } = {}) {
+async function leaseBlockedReady(root, tasks, role) {
+  const leases = (await leaseStatus(root)).filter((lease) => lease.state === 'held');
+  const ready = readyTasks(tasks, role);
+  const usable = [];
+  const excluded = [];
+  for (const task of ready) {
+    const conflicts = leases.filter(
+      (lease) => lease.taskId !== task.id && task.scope.some((domain) => lease.domains.some((other) => overlaps(domain, other)))
+    );
+    if (conflicts.length > 0) {
+      excluded.push({
+        id: task.id,
+        code: 'LEASE_CONFLICT',
+        heldBy: conflicts.map((lease) => lease.taskId)
+      });
+    } else {
+      usable.push(task);
+    }
+  }
+  return { ready: usable, excluded };
+}
+
+function selectTaskBatch(tasks, role, { batch, strategy = 'priority', excludeIds = new Set() } = {}) {
   const mode = STRATEGIES.includes(strategy) ? strategy : 'priority';
   const unblocks = unblockCounts(tasks);
   const rank = (task) => ({ high: 0, medium: 1, low: 2 }[task.priority] ?? 1);
@@ -665,6 +689,7 @@ function selectTaskBatch(tasks, role, { batch, strategy = 'priority' } = {}) {
   const selected = [];
   for (const task of [...readyTasks(tasks, role)].sort(compare)) {
     if (selected.length >= batch) break;
+    if (excludeIds.has(task.id)) continue;
     if (task.scope.some((domain) => selected.some((picked) => picked.scope.some((other) => overlaps(domain, other))))) {
       continue;
     }
@@ -1034,6 +1059,15 @@ export async function claimTask(root, taskId, { by, paths, dryRun = false } = {}
       );
     }
     return { task, lease: { taskId, actor: actor.raw, domains: leaseDomains, dryRun: true }, dryRun: true };
+  }
+  const openChildren = tasks.filter(
+    (item) => item.parent === taskId && !['done', 'canceled'].includes(item.status)
+  );
+  if (openChildren.length > 0) {
+    throw new RefusedError('PARENT_HAS_OPEN_CHILDREN', `task ${taskId} has open child task(s): ${openChildren.map((item) => item.id).join(', ')}`, {
+      task: taskId,
+      children: openChildren.map((item) => item.id)
+    });
   }
   const done = new Set(tasks.filter((item) => item.status === 'done').map((item) => item.id));
   const waitingOn = task.dependsOn.filter((dependency) => !done.has(dependency));

@@ -52,6 +52,13 @@ test('an invalid source is refused', async () => {
       }),
       (error) => error.code === 'TASK_INVALID'
     );
+    await assert.rejects(
+      () => addTask(dir, {
+        title: 'Bad artifact', scope: 'docs/c', acceptance: 'c', verification: 'manual',
+        source: 'NOPE#section', by: 'architect:ann'
+      }),
+      (error) => error.code === 'TASK_INVALID'
+    );
   } finally {
     await cleanup(dir);
   }

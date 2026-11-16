@@ -53,6 +53,19 @@ export async function setAdrStatus(root, target, status, { by, note = null } = {
   if (TERMINAL.includes(current)) {
     throw new RefusedError('ADR_TERMINAL', `${path.basename(file)} is superseded and cannot change status`, { adr: target });
   }
+  const transitions = {
+    proposed: ['accepted', 'rejected', 'superseded'],
+    accepted: ['superseded'],
+    rejected: ['proposed', 'accepted', 'superseded'],
+    superseded: []
+  };
+  if (current !== 'unknown' && !transitions[current]?.includes(normalized)) {
+    throw new RefusedError('ADR_TRANSITION', `${path.basename(file)} cannot go from '${current}' to '${normalized}'`, {
+      adr: target,
+      from: current,
+      to: normalized
+    });
+  }
 
   const lines = text.split(/\r?\n/);
   const heading = lines.findIndex((line) => /^##\s+Status\s*$/.test(line.trim()));
