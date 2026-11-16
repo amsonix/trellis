@@ -41,7 +41,8 @@ const HEADER_ALIASES = {
   status: 'status',
   priority: 'priority',
   created: 'createdAt',
-  createdat: 'createdAt'
+  createdat: 'createdAt',
+  parent: 'parent'
 };
 
 function normalizeHeader(value) {
@@ -115,6 +116,10 @@ export async function parseTasks(root) {
       priority: (row[mapping.priority]?.trim().toLowerCase() || 'medium'),
       priorityValid: TASK_PRIORITIES.includes((row[mapping.priority]?.trim().toLowerCase() || 'medium')),
       createdAt: row[mapping.createdAt]?.trim() || null,
+      parent: (() => {
+        const raw = row[mapping.parent]?.trim();
+        return raw && raw !== '-' ? raw : null;
+      })(),
       row: table.start + 2 + index
     });
   }
@@ -180,6 +185,42 @@ export function validateTasks(tasks, { milestones = [] } = {}) {
   }
 
   const ids = new Set(tasks.map((task) => task.id));
+  const parentById = new Map(tasks.map((task) => [task.id, task]));
+  for (const task of tasks) {
+    if (task.parent) {
+      if (task.parent === task.id) {
+        add('TASK_PARENT_SELF', 'fail', `task ${task.id} cannot be its own parent`, { task: task.id });
+      } else if (!parentById.has(task.parent)) {
+        add('TASK_PARENT_UNKNOWN', 'fail', `task ${task.id} has unknown parent '${task.parent}'`, { task: task.id, parent: task.parent });
+      } else {
+        const parent = parentById.get(task.parent);
+        if (['done', 'canceled'].includes(parent.status)) {
+          add('TASK_PARENT_CLOSED', 'fail', `task ${task.id} has parent ${parent.id} which is already ${parent.status}`, { task: task.id, parent: parent.id });
+        }
+        for (const domain of task.scope) {
+          if (!parent.scope.some((prefix) => domain === prefix || domain.startsWith(`${prefix}/`))) {
+            add('TASK_PARENT_SCOPE', 'fail', `task ${task.id} scope '${domain}' is outside parent ${parent.id}`, { task: task.id, parent: parent.id });
+          }
+        }
+        let cursor = parent;
+        let depth = 1;
+        const chain = new Set([task.id]);
+        while (cursor) {
+          if (chain.has(cursor.id)) {
+            add('TASK_PARENT_CYCLE', 'fail', `task ${task.id} parent chain has a cycle`, { task: task.id });
+            break;
+          }
+          chain.add(cursor.id);
+          if (depth > 2) {
+            add('TASK_PARENT_DEPTH', 'fail', `task ${task.id} parent chain is deeper than 2`, { task: task.id });
+            break;
+          }
+          cursor = cursor.parent ? parentById.get(cursor.parent) : null;
+          depth += 1;
+        }
+      }
+    }
+  }
   for (const task of tasks) {
     if (!/^T-\d+$/.test(task.id)) {
       add('TASK_ID_FORMAT', 'warn', `task id '${task.id}' does not look like T-001`, { task: task.id });
@@ -264,6 +305,15 @@ export function validateTasks(tasks, { milestones = [] } = {}) {
       const b = active[j];
       const ordered = closure.get(a.id)?.has(b.id) || closure.get(b.id)?.has(a.id);
       if (ordered) continue;
+      const isAncestor = (ancestor, descendant) => {
+        let cursor = byId.get(descendant.parent);
+        while (cursor) {
+          if (cursor.id === ancestor.id) return true;
+          cursor = cursor.parent ? byId.get(cursor.parent) : null;
+        }
+        return false;
+      };
+      if (isAncestor(a, b) || isAncestor(b, a)) continue;
       for (const left of a.scope) {
         for (const right of b.scope) {
           const coversLeft = left === right || left.startsWith(`${right}/`) || right.startsWith(`${left}/`);
@@ -341,6 +391,8 @@ export async function appendTask(root, task) {
   }
   const hasCreated = headerCells.some((cell) => HEADER_ALIASES[normalizeHeader(cell)] === 'createdAt');
   if (hasCreated) cells.push(task.createdAt ?? new Date().toISOString().slice(0, 10));
+  const hasParent = headerCells.some((cell) => HEADER_ALIASES[normalizeHeader(cell)] === 'parent');
+  if (hasParent) cells.push(task.parent ?? '-');
   lines.splice(lastRow + 1, 0, `| ${cells.join(' | ')} |`);
   await writeText(file, lines.join('\n'));
 }

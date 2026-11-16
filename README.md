@@ -325,7 +325,7 @@ trellis task answer <Q-NNN> --decision <text> --by human:<name>
 trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
 trellis task cancel <T-NNN> --by human:<name> --reason <text>
 trellis task finish <T-NNN> --run <command> --by <role>:<name>
-trellis task edit <T-NNN> [--acceptance <a>] [--depends-on <list>] --by <role>:<name>
+trellis task edit <T-NNN> [--acceptance <a>] [--depends-on <list>] [--parent <T-NNN>] --by <role>:<name>
 trellis task add --from <tasks.json> --by <role>:<name>
 trellis doc list [dir] [--json]
 trellis doc show <ID> [dir] [--json]

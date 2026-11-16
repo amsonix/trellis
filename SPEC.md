@@ -188,9 +188,17 @@ Rules:
 12. `TRELLIS_MAX_OPEN` (default 0 = unlimited) caps open tasks
     (`todo/ready/in_progress/review/blocked`). At the cap, `task add` refuses
     with `TASK_BACKLOG_FULL`; only a human may pass `--force`.
-13. `done` requires at least one `pass` evidence item for the task and no
+13. `Parent` is an optional containment link, distinct from `dependsOn`. A
+    child must be inside its parent's scope, may not be parented to a
+    `done`/`canceled` task, may not create a cycle, and the chain is at most 2
+    deep. A parent holding a lease must release it before spawning a child
+    (`PARENT_LEASE_HELD`). A parent cannot be marked `done` while an open child
+    exists (`TASK_OPEN_CHILDREN`); canceled children are a warning
+    (`CHILD_CANCELED`). Parent-child scope overlap is exempt from the G4 check.
+    `task cancel --cascade` cancels open children first.
+14. `done` requires at least one `pass` evidence item for the task and no
     `fail` evidence. `inconclusive` is not a pass.
-14. New work — a requirement, a bug report, test feedback — is added with
+15. New work — a requirement, a bug report, test feedback — is added with
     `task add`, which validates rules 1–9 before appending the row and records
     `task.added` with the actor. Overlapping scope without a dependency is
     refused, so the caller must declare the dependency rather than widen the

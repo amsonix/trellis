@@ -123,7 +123,17 @@ const readTools = [
     inputSchema: object({ dir: dirProp }),
     run: async (args) => {
       const { tasks } = await parseTasks(dirOf(args));
-      return { tasks };
+      return {
+        tasks: tasks.map((task) => {
+          const children = tasks.filter((item) => item.parent === task.id);
+          return {
+            ...task,
+            parent: task.parent ?? null,
+            children: children.map((item) => item.id),
+            openChildren: children.filter((item) => !['done', 'canceled'].includes(item.status)).length
+          };
+        })
+      };
     }
   },
   {
@@ -203,6 +213,7 @@ const writeTools = [
         dependsOn: text('Comma-separated task ids.'),
         priority: { type: 'string', enum: ['high', 'medium', 'low'], description: 'Scheduling priority; defaults to medium.' },
         followUpOf: text('Parent task id for execution-time work that must not re-open the plan gates.'),
+        parent: text('Parent task id for containment: this task is part of that parent.'),
         force: { type: 'boolean', description: 'Human only: exceed TRELLIS_MAX_OPEN.' },
         by: text('Actor as role:name.')
       },
@@ -219,6 +230,7 @@ const writeTools = [
         priority: args.priority ?? 'medium',
         dependsOn: args.dependsOn ?? [],
         followUpOf: args.followUpOf ?? null,
+        parent: args.parent ?? null,
         force: Boolean(args.force),
         by: args.by
       })
@@ -358,6 +370,7 @@ const writeTools = [
         dependsOn: text('Comma-separated dependency ids.'),
         scope: text('New scope paths (comma separated).'),
         priority: text('high, medium or low.'),
+        parent: text('Parent task id (containment); empty or - detaches.'),
         by: text('Actor as role:name.')
       },
       ['task', 'by']
@@ -368,6 +381,7 @@ const writeTools = [
         acceptance: args.acceptance,
         verification: args.verification,
         dependsOn: args.dependsOn,
+        parent: args.parent,
         scope: args.scope,
         priority: args.priority,
         by: args.by
@@ -397,11 +411,12 @@ const writeTools = [
         dir: dirProp,
         task: text('Task id.'),
         by: text('Actor as human:<name> or coordinator:<name>.'),
-        reason: text('Why the task is canceled.')
+        reason: text('Why the task is canceled.'),
+        cascade: { type: 'boolean', description: 'Cancel open child tasks first.' }
       },
       ['task', 'by', 'reason']
     ),
-    run: (args) => cancelTask(dirOf(args), args.task, { by: args.by, reason: args.reason })
+    run: (args) => cancelTask(dirOf(args), args.task, { by: args.by, reason: args.reason, cascade: Boolean(args.cascade) })
   },
   {
     name: 'trellis_task_recover',

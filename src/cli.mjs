@@ -86,12 +86,14 @@ const VALUE_OPTIONS = new Set([
   'run',
   'logs-keep',
   'supersedes',
+  'children-of',
+  'parent',
   'to',
   'batch',
   'strategy'
 ]);
 
-const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready']);
+const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready', 'cascade']);
 
 function parseArgv(argv) {
   const positionals = [];
@@ -229,16 +231,16 @@ const HELP = {
   adr: ['Architecture decision records.', 'trellis adr <new> ...'],
   'adr:new': ['Create the next ADR from the template and audit it.', 'trellis adr new --title <decision> [--status proposed|accepted|superseded] --by <role>:<name> [dir] [--json]'],
   task: ['Task board operations.', 'trellis task <list|add|claim|ask|answer|report|recover|cancel> ...'],
-  'task:list': ['List the task board.', 'trellis task list [dir] [--status <status>] [--role <role>] [--ready] [--limit <n>] [--json]'],
-  'task:add': ['Validate and append a task row.', 'trellis task add --title <t> --scope <paths> --acceptance <a> --verification <v> --by <role>:<name> [--role <role>] [--milestone <M0>] [--priority high|medium|low] [--depends-on <ids>] [--follow-up-of <T-NNN>] [--id <T-NNN>] [--from <json>] [--force]'],
+  'task:list': ['List the task board.', 'trellis task list [dir] [--status <status>] [--role <role>] [--ready] [--children-of <T-NNN>] [--limit <n>] [--json]'],
+  'task:add': ['Validate and append a task row.', 'trellis task add --title <t> --scope <paths> --acceptance <a> --verification <v> --by <role>:<name> [--role <role>] [--milestone <M0>] [--priority high|medium|low] [--depends-on <ids>] [--follow-up-of <T-NNN>] [--parent <T-NNN>] [--id <T-NNN>] [--from <json>] [--force]'],
   'task:claim': ['Claim a task (creates the lease) or take over an orphaned claim.', 'trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>]'],
   'task:ask': ['Ask one blocking question; only a human answers it.', 'trellis task ask <T-NNN> --question <text> --by <role>:<name>'],
   'task:answer': ['Answer an open question as a human.', 'trellis task answer <Q-NNN> --decision <text> --by human:<name>'],
   'task:report': ['Report a task state; done requires passing evidence.', 'trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dry-run]'],
   'task:recover': ['Return an in_progress task with no lease to ready or todo.', 'trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]'],
-  'task:cancel': ['Cancel work that is no longer needed; canceled tasks do not satisfy dependencies.', 'trellis task cancel <T-NNN> --by human:<name> --reason <text>'],
+  'task:cancel': ['Cancel work that is no longer needed; canceled tasks do not satisfy dependencies.', 'trellis task cancel <T-NNN> --by human:<name> --reason <text> [--cascade]'],
   'task:finish': ['Run the verification command, record the evidence and mark the task done.', 'trellis task finish <T-NNN> --run <command> --by <role>:<name>'],
-  'task:edit': ['Edit a task field through the board validator (adds an audit record).', 'trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--scope <paths>] [--priority <p>] --by <role>:<name>'],
+  'task:edit': ['Edit a task field through the board validator (adds an audit record).', 'trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--scope <paths>] [--parent <T-NNN>] [--priority <p>] --by <role>:<name>'],
   evidence: ['Evidence log operations.', 'trellis evidence <add|list|retract> ...'],
   'evidence:add': ['Record evidence for a task.', 'trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] [--supersedes <EV,...>] --by <role>:<name>'],
   'evidence:list': ['List evidence, optionally for one task.', 'trellis evidence list [--task <T-NNN>] [--json]'],
@@ -431,6 +433,8 @@ function printTaskList(tasks) {
   for (const task of tasks) {
     console.log(`${task.id}  ${task.status.padEnd(12)} ${task.role.padEnd(10)} ${task.title}`);
     console.log(`      scope: ${task.scope.join(', ')} | depends: ${task.dependsOn.join(', ') || '-'}`);
+    if (task.parent) console.log(`      parent: ${task.parent}`);
+    if (task.children?.length) console.log(`      children: ${task.children.join(', ')} (open ${task.openChildren})`);
     console.log(`      acceptance: ${task.acceptance}`);
     console.log(`      verification: ${task.verification}`);
   }
@@ -628,6 +632,7 @@ async function dispatch(args) {
         priority: options.priority || 'medium',
         dependsOn: options['depends-on'] || [],
         followUpOf: options['follow-up-of'] || null,
+        parent: options.parent || null,
         id: options.id || null,
         force: Boolean(options.force),
         by: options.by
@@ -638,6 +643,9 @@ async function dispatch(args) {
       const { tasks, error } = await parseTasks(dir);
       if (error) throw new UnavailableError(error.message, error);
       let filtered = tasks;
+      if (options['children-of'] !== undefined) {
+        filtered = filtered.filter((task) => task.parent === options['children-of']);
+      }
       if (options.status !== undefined) {
         const status = String(options.status).toLowerCase();
         if (!TASK_STATUSES.includes(status)) {
@@ -654,7 +662,16 @@ async function dispatch(args) {
       }
       const limit = Number.parseInt(options.limit ?? '0', 10);
       if (Number.isFinite(limit) && limit > 0) filtered = filtered.slice(0, limit);
-      return { data: { tasks: filtered, items: filtered }, exitCode: 0, print: () => printTaskList(filtered) };
+      const decorated = filtered.map((task) => {
+        const children = tasks.filter((item) => item.parent === task.id);
+        return {
+          ...task,
+          parent: task.parent ?? null,
+          children: children.map((item) => item.id),
+          openChildren: children.filter((item) => !['done', 'canceled'].includes(item.status)).length
+        };
+      });
+      return { data: { tasks: decorated, items: decorated }, exitCode: 0, print: () => printTaskList(decorated) };
     }
     if (subcommand === 'edit') {
       const taskId = args.positionals[0];
@@ -666,6 +683,7 @@ async function dispatch(args) {
         dependsOn: options['depends-on'],
         priority: options.priority,
         scope: options.scope,
+        parent: options.parent,
         by: options.by
       });
       return { data, exitCode: 0, print: () => console.log(`edited ${taskId}: ${data.changed.join(', ')}`) };

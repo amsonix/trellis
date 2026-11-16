@@ -4,6 +4,23 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Optional `Parent` column and containment semantics: a child must be inside
+  the parent's scope, cannot hang off a `done`/`canceled` parent, depth is at
+  most 2, and the parent must have released its lease before spawning.
+- A parent cannot be done while an open child exists (`TASK_OPEN_CHILDREN`);
+  canceled children warn (`CHILD_CANCELED`). `task cancel --cascade` cancels
+  children first.
+- `task list` exposes `parent`, `children` and `openChildren` and accepts
+  `--children-of`; `next` carries the same fields; `status` reports
+  `TASK_OPEN_CHILDREN` / `TASK_PARENT_READY`.
+- Parent-child scope overlap is exempt from G4.
+- `task add/edit --parent` and MCP `parent`/`cascade`.
+- 240 `node:test` cases.
+
 ## [0.9.24] - 2026-11-16
 
 ### Added

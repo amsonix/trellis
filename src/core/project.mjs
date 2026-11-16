@@ -281,6 +281,28 @@ async function buildAttention(root, state, tasks, checks) {
       gate
     });
   }
+  for (const parent of tasks.filter((task) => ['in_progress', 'review'].includes(task.status))) {
+    const children = tasks.filter((task) => task.parent === parent.id);
+    if (children.length === 0) continue;
+    const openChildren = children.filter((child) => !['done', 'canceled'].includes(child.status));
+    if (openChildren.length > 0) {
+      attention.push({
+        kind: 'task',
+        code: 'TASK_OPEN_CHILDREN',
+        message: `${parent.id} has ${openChildren.length} open child task(s): ${openChildren.map((child) => child.id).join(', ')}`,
+        task: parent.id,
+        children: openChildren.map((child) => child.id)
+      });
+    } else {
+      attention.push({
+        kind: 'task',
+        code: 'TASK_PARENT_READY',
+        message: `${parent.id} has no open children; it can be closed`,
+        task: parent.id,
+        children: children.map((child) => child.id)
+      });
+    }
+  }
   const open = tasks.filter((task) => OPEN_STATUSES.includes(task.status));
   const maxOpen = backlogLimit();
   if (maxOpen > 0 && open.length >= Math.ceil(maxOpen * 0.8)) {
@@ -421,7 +443,11 @@ async function computeNext(root, state, tasks, checks, role = null) {
           acceptance: task.acceptance,
           priority: task.priority,
           createdAt: task.createdAt,
-          ageDays: ageDays(task)
+          ageDays: ageDays(task),
+          parent: task.parent ?? null,
+          openChildren: tasks.filter(
+            (item) => item.parent === task.id && !['done', 'canceled'].includes(item.status)
+          ).length
         })),
         ...(staleAttention.length > 0 ? { attention: staleAttention } : {})
       };
@@ -438,7 +464,11 @@ async function computeNext(root, state, tasks, checks, role = null) {
           acceptance: task.acceptance,
           priority: task.priority,
           createdAt: task.createdAt,
-          ageDays: ageDays(task)
+          ageDays: ageDays(task),
+          parent: task.parent ?? null,
+          openChildren: tasks.filter(
+            (item) => item.parent === task.id && !['done', 'canceled'].includes(item.status)
+          ).length
         })),
         note: 'in progress',
         ...(staleAttention.length > 0 ? { attention: staleAttention } : {})
@@ -995,6 +1025,7 @@ export async function addTask(
     priority = 'medium',
     id = null,
     followUpOf = null,
+    parent: parentId = null,
     force = false,
     by
   } = {}
@@ -1055,6 +1086,44 @@ export async function addTask(
   let resolvedMilestone = milestone ?? milestones[0]?.id ?? null;
   let parent = null;
   let depth = 0;
+  let containment = null;
+  if (parentId) {
+    containment = tasks.find((task) => task.id === parentId);
+    if (!containment) {
+      throw new RefusedError('TASK_PARENT_UNKNOWN', `parent ${parentId} is not on the board`, { parent: parentId });
+    }
+    if (['done', 'canceled'].includes(containment.status)) {
+      throw new RefusedError('TASK_PARENT_CLOSED', `parent ${parentId} is already ${containment.status}`, {
+        parent: parentId,
+        status: containment.status
+      });
+    }
+    const held = (await leaseStatus(root)).find((lease) => lease.taskId === parentId);
+    if (held) {
+      throw new RefusedError('PARENT_LEASE_HELD', `${parentId} holds a lease; release it before spawning a child`, {
+        parent: parentId,
+        lease: held.id
+      });
+    }
+    for (const domain of domains) {
+      if (!containment.scope.some((prefix) => covers(prefix, domain))) {
+        throw new RefusedError('TASK_PARENT_SCOPE', `${domain} is outside parent ${parentId}`, {
+          parent: parentId,
+          domain
+        });
+      }
+    }
+    let cursor = containment;
+    let chainDepth = 1;
+    while (cursor?.parent) {
+      chainDepth += 1;
+      if (chainDepth > 2) {
+        throw new RefusedError('TASK_PARENT_DEPTH', `parent chain for ${parentId} is already 2 deep`, { parent: parentId });
+      }
+      cursor = tasks.find((task) => task.id === cursor.parent);
+    }
+    resolvedMilestone = containment.milestone;
+  }
 
   if (followUpOf) {
     parent = tasks.find((task) => task.id === followUpOf);
@@ -1102,7 +1171,8 @@ export async function addTask(
     acceptance: String(acceptance).trim(),
     verification: String(verification).trim(),
     status: 'todo',
-    priority: normalizedPriority
+    priority: normalizedPriority,
+    parent: containment?.id ?? null
   };
 
   const checks = validateTasks([...tasks, task], { milestones });
@@ -1123,13 +1193,18 @@ export async function addTask(
       }
     }
   } else {
-    appendAudit(state, 'task.added', actor, { task: task.id, title: task.title, milestone: task.milestone });
+    appendAudit(state, 'task.added', actor, {
+      task: task.id,
+      title: task.title,
+      milestone: task.milestone,
+      parent: task.parent
+    });
   }
   await saveState(root, state);
   return { task, followUpOf: parent?.id ?? null, depth };
 }
 
-export async function editTask(root, taskId, { title, acceptance, verification, dependsOn, priority, scope, by } = {}) {
+export async function editTask(root, taskId, { title, acceptance, verification, dependsOn, priority, scope, parent, by } = {}) {
   if (!taskId) throw new UsageError('task edit needs a task id');
   if (!by) throw new UsageError('task edit needs --by <role>:<name>');
   const actor = parseActor(by);
@@ -1156,6 +1231,24 @@ export async function editTask(root, taskId, { title, acceptance, verification, 
     }
     fields.scope = domains.join(', ');
   }
+  let parentField;
+  if (parent !== undefined) {
+    const raw = String(parent).trim();
+    if (!raw || raw === '-') {
+      parentField = null;
+    } else {
+      const candidate = tasks.find((item) => item.id === raw);
+      if (!candidate) throw new RefusedError('TASK_PARENT_UNKNOWN', `parent ${raw} is not on the board`, { parent: raw });
+      if (candidate.id === taskId) throw new RefusedError('TASK_PARENT_SELF', 'a task cannot be its own parent', { task: taskId });
+      if (['done', 'canceled'].includes(candidate.status)) {
+        throw new RefusedError('TASK_PARENT_CLOSED', `parent ${raw} is already ${candidate.status}`, { parent: raw });
+      }
+      const held = (await leaseStatus(root)).find((lease) => lease.taskId === raw);
+      if (held) throw new RefusedError('PARENT_LEASE_HELD', `${raw} holds a lease; release it first`, { parent: raw, lease: held.id });
+      parentField = raw;
+    }
+    fields.parent = parentField ?? '-';
+  }
   if (priority !== undefined) {
     const normalized = String(priority).trim().toLowerCase();
     if (!TASK_PRIORITIES.includes(normalized)) throw new UsageError(`--priority must be one of: ${TASK_PRIORITIES.join(', ')}`);
@@ -1174,6 +1267,7 @@ export async function editTask(root, taskId, { title, acceptance, verification, 
   const updated = {
     ...task,
     ...(fields.scope ? { scope: parseScope(fields.scope) } : {}),
+    ...(parent !== undefined ? { parent: parentField } : {}),
     ...(fields.title ? { title: fields.title } : {}),
     ...(fields.acceptance ? { acceptance: fields.acceptance } : {}),
     ...(fields.verification ? { verification: fields.verification } : {}),
@@ -1211,7 +1305,7 @@ export async function editTask(root, taskId, { title, acceptance, verification, 
   return { task: updated, changed: Object.keys(fields) };
 }
 
-export async function cancelTask(root, taskId, { by, reason }) {
+export async function cancelTask(root, taskId, { by, reason, cascade = false } = {}) {
   if (!taskId) throw new UsageError('task cancel needs a task id');
   if (!by) throw new UsageError('task cancel needs --by <role>:<name>');
   if (!reason || String(reason).trim() === '') throw new UsageError('task cancel needs --reason "<why>"');
@@ -1231,6 +1325,20 @@ export async function cancelTask(root, taskId, { by, reason }) {
       task: taskId,
       status: task.status
     });
+  }
+  const openChildren = tasks.filter(
+    (item) => item.parent === taskId && !['done', 'canceled'].includes(item.status)
+  );
+  if (openChildren.length > 0) {
+    if (!cascade) {
+      throw new RefusedError('TASK_OPEN_CHILDREN', `task ${taskId} has open child task(s): ${openChildren.map((item) => item.id).join(', ')}`, {
+        task: taskId,
+        children: openChildren.map((item) => item.id)
+      });
+    }
+    for (const child of openChildren) {
+      await cancelTask(root, child.id, { by, reason: `cascade from ${taskId}: ${String(reason).trim()}`, cascade: true });
+    }
   }
 
   const state = await loadState(root);
@@ -1446,6 +1554,23 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
   let evidence = null;
   let warnings = [];
   if (newStatus === 'done') {
+    const openChildren = tasks.filter(
+      (item) => item.parent === taskId && !['done', 'canceled'].includes(item.status)
+    );
+    if (openChildren.length > 0) {
+      throw new RefusedError('TASK_OPEN_CHILDREN', `task ${taskId} has open child task(s): ${openChildren.map((item) => item.id).join(', ')}`, {
+        task: taskId,
+        children: openChildren.map((item) => item.id)
+      });
+    }
+    const canceledChildren = tasks.filter((item) => item.parent === taskId && item.status === 'canceled');
+    if (canceledChildren.length > 0) {
+      warnings.push({
+        code: 'CHILD_CANCELED',
+        message: `${taskId} has canceled child task(s): ${canceledChildren.map((item) => item.id).join(', ')}`,
+        children: canceledChildren.map((item) => item.id)
+      });
+    }
     const done = new Set(tasks.filter((item) => item.status === 'done' && item.id !== taskId).map((item) => item.id));
     const waitingOn = task.dependsOn.filter((dependency) => !done.has(dependency));
     if (waitingOn.length > 0) {

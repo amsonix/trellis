@@ -33,7 +33,7 @@ test('at equal priority the older task is selected first', async () => {
   try {
     const board = path.join(dir, '.trellis/docs/TASKS.md');
     const text = await readFile(board, 'utf8');
-    await writeFile(board, text.replace(/\| ([0-9]{4}-[0-9]{2}-[0-9]{2}) \|\n/, '| 2020-01-01 |\n'));
+    await writeFile(board, text.replace(/\| [0-9]{4}-[0-9]{2}-[0-9]{2} \|/, '| 2020-01-01 |'));
     await addTask(dir, { title: 'Second', scope: 'docs/b', acceptance: 'b', verification: 'manual', by: 'architect:ann' });
     await approvePlan(dir);
 
@@ -92,7 +92,7 @@ test('status surfaces stale backlog by age', async () => {
   try {
     const board = path.join(dir, '.trellis/docs/TASKS.md');
     const text = await readFile(board, 'utf8');
-    await writeFile(board, text.replace(/\| ([0-9]{4}-[0-9]{2}-[0-9]{2}) \|\n/, '| 2020-01-01 |\n'));
+    await writeFile(board, text.replace(/\| [0-9]{4}-[0-9]{2}-[0-9]{2} \|/, '| 2020-01-01 |'));
     const status = await projectStatus(dir);
     const stale = status.attention.find((item) => item.code === 'TASK_BACKLOG_STALE');
     assert.ok(stale);

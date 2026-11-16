@@ -75,6 +75,7 @@ export async function gateDigest(root, gateId, { legacy = false } = {}) {
             role: task.role,
             scope: task.scope,
             dependsOn: task.dependsOn,
+            parent: task.parent ?? null,
             acceptance: task.acceptance,
             verification: task.verification
           }))
@@ -88,7 +89,8 @@ export async function gateDigest(root, gateId, { legacy = false } = {}) {
                 milestone: task.milestone,
                 role: task.role,
                 scope: task.scope,
-                dependsOn: task.dependsOn
+                dependsOn: task.dependsOn,
+                parent: task.parent ?? null
               }))
             )
           )

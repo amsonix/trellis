@@ -89,9 +89,16 @@ The selection contract:
 If `batchShortfall > 0`, work with what is available; do not fill the gap from
 the board.
 
-While doing a task you may discover follow-up work inside the same milestone:
-add it with `--follow-up-of <T-NNN>`. That does not re-open the plan gates.
-Do not use it for unrelated work or for anything outside the parent's scope.
+While doing a task you may discover work that is *part of* it: add it with
+`--parent <T-NNN>`. Containment means the parent cannot be marked done until
+the child is done or canceled, and the child must stay inside the parent's
+scope. The parent must have released its lease before spawning. Use
+`--follow-up-of` only for ordering (child waits for parent), and never use
+either for unrelated work.
+
+Before reporting a parent `done`, check `openChildren` from `task list` or
+`next`; `TASK_OPEN_CHILDREN` is a refusal, not a warning. To abandon a parent
+and its children together, a human uses `task cancel --cascade`.
 
 ## The rules
 
