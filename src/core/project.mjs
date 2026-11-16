@@ -23,9 +23,10 @@ import {
 import { addEvidence, verifyTaskEvidence, requirePassingEvidence, listEvidence } from './evidence.mjs';
 import { acquireLease, releaseLease, leaseStatus, leaseConflicts } from './lease.mjs';
 import { milestoneProgress as computeMilestoneProgress } from './milestones.mjs';
+import { coverageFor } from './coverage.mjs';
 import { defaultState, loadState, saveState, appendAudit } from './store.mjs';
 import { RefusedError, UnavailableError, UsageError } from './errors.mjs';
-import { nowIso, parseActor, parseScope, isSafeDomain, assertMaxLength, writeText, covers, overlaps } from './util.mjs';
+import { nowIso, parseActor, parseScope, isSafeDomain, assertMaxLength, writeText, covers, overlaps, normalizeSource } from './util.mjs';
 import { currentAgent } from './identity.mjs';
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -322,6 +323,26 @@ async function buildAttention(root, state, tasks, checks) {
       });
     }
   }
+  const milestoneCoverage = coverageFor(tasks, await milestonesFromRoadmap(root));
+  for (const report of milestoneCoverage.milestones) {
+    if (report.uncovered.length > 0 && (report.declared === 'active' || report.openTasks > 0)) {
+      attention.push({
+        kind: 'milestone',
+        code: 'MILESTONE_UNCOVERED',
+        message: `${report.id} has ${report.uncovered.length} uncovered exit criterion/criteria`,
+        milestone: report.id,
+        criteria: report.uncovered
+      });
+    }
+  }
+  for (const task of tasks.filter((item) => item.status === 'in_progress' && !item.source)) {
+    attention.push({
+      kind: 'task',
+      code: 'TASK_SOURCE_MISSING',
+      message: `${task.id} is in progress without a Source`,
+      task: task.id
+    });
+  }
   const open = tasks.filter((task) => OPEN_STATUSES.includes(task.status));
   const maxOpen = backlogLimit();
   if (maxOpen > 0 && open.length >= Math.ceil(maxOpen * 0.8)) {
@@ -481,6 +502,7 @@ async function computeNext(root, state, tasks, checks, role = null) {
           createdAt: task.createdAt,
           ageDays: ageDays(task),
           parent: task.parent ?? null,
+          source: task.source ?? null,
           openChildren: tasks.filter(
             (item) => item.parent === task.id && !['done', 'canceled'].includes(item.status)
           ).length
@@ -502,6 +524,7 @@ async function computeNext(root, state, tasks, checks, role = null) {
           createdAt: task.createdAt,
           ageDays: ageDays(task),
           parent: task.parent ?? null,
+          source: task.source ?? null,
           openChildren: tasks.filter(
             (item) => item.parent === task.id && !['done', 'canceled'].includes(item.status)
           ).length
@@ -662,6 +685,7 @@ function selectTaskBatch(tasks, role, { batch, strategy = 'priority' } = {}) {
       milestone: task.milestone,
       createdAt: task.createdAt,
       ageDays: ageDays(task),
+      source: task.source ?? null,
       unblocks: count,
       why
     });
@@ -1049,6 +1073,7 @@ export async function addTask(
     id = null,
     followUpOf = null,
     parent: parentId = null,
+    source = null,
     force = false,
     by
   } = {}
@@ -1195,7 +1220,8 @@ export async function addTask(
     verification: String(verification).trim(),
     status: 'todo',
     priority: normalizedPriority,
-    parent: containment?.id ?? null
+    parent: containment?.id ?? null,
+    source: source ? normalizeSource(source) : null
   };
 
   const checks = validateTasks([...tasks, task], { milestones });
@@ -1227,7 +1253,7 @@ export async function addTask(
   return { task, followUpOf: parent?.id ?? null, depth };
 }
 
-export async function editTask(root, taskId, { title, acceptance, verification, dependsOn, priority, scope, parent, by } = {}) {
+export async function editTask(root, taskId, { title, acceptance, verification, dependsOn, priority, scope, parent, source, by } = {}) {
   if (!taskId) throw new UsageError('task edit needs a task id');
   if (!by) throw new UsageError('task edit needs --by <role>:<name>');
   const actor = parseActor(by);
@@ -1272,6 +1298,12 @@ export async function editTask(root, taskId, { title, acceptance, verification, 
     }
     fields.parent = parentField ?? '-';
   }
+  let sourceField;
+  if (source !== undefined) {
+    const raw = String(source).trim();
+    sourceField = raw ? normalizeSource(raw) : null;
+    fields.source = sourceField ?? '-';
+  }
   if (priority !== undefined) {
     const normalized = String(priority).trim().toLowerCase();
     if (!TASK_PRIORITIES.includes(normalized)) throw new UsageError(`--priority must be one of: ${TASK_PRIORITIES.join(', ')}`);
@@ -1291,6 +1323,7 @@ export async function editTask(root, taskId, { title, acceptance, verification, 
     ...task,
     ...(fields.scope ? { scope: parseScope(fields.scope) } : {}),
     ...(parent !== undefined ? { parent: parentField } : {}),
+    ...(source !== undefined ? { source: sourceField } : {}),
     ...(fields.title ? { title: fields.title } : {}),
     ...(fields.acceptance ? { acceptance: fields.acceptance } : {}),
     ...(fields.verification ? { verification: fields.verification } : {}),

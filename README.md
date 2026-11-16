@@ -336,6 +336,7 @@ trellis adr list [dir] [--json]
 trellis adr accept <number|file> --by <role>:<name>
 trellis milestone list [dir] [--json]
 trellis milestone close <M0> --by <role>:<name> [--note <text>]
+trellis plan coverage [dir] [--strict] [--json]
 trellis task show <T-NNN> [dir] [--context] [--json]
 trellis task list [dir] [--status <s>] [--role <r>] [--ready] [--limit <n>]
 trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> [--note <text>] [--by <role>:<name>]

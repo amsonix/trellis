@@ -10,6 +10,7 @@ import {
   isSafeDomain,
   splitSections,
   normalizeHeading,
+  normalizeSource,
   writeText
 } from './util.mjs';
 
@@ -42,7 +43,8 @@ const HEADER_ALIASES = {
   priority: 'priority',
   created: 'createdAt',
   createdat: 'createdAt',
-  parent: 'parent'
+  parent: 'parent',
+  source: 'source'
 };
 
 function normalizeHeader(value) {
@@ -120,6 +122,10 @@ export async function parseTasks(root) {
         const raw = row[mapping.parent]?.trim();
         return raw && raw !== '-' ? raw : null;
       })(),
+      source: (() => {
+        const raw = row[mapping.source]?.trim();
+        return raw && raw !== '-' ? normalizeSource(raw) : null;
+      })(),
       row: table.start + 2 + index
     });
   }
@@ -167,12 +173,22 @@ export async function milestonesFromRoadmap(root) {
       const declared = statusLine
         ? statusLine.replace(/^\*\*Status:\*\*/i, '').trim().split(/[\s(—–-]+/)[0].toLowerCase()
         : 'planned';
+      const criteria = section.content
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => /^[-*]\s*\[[ xX]\]\s+/.test(line))
+        .map((line, index) => ({
+          index: index + 1,
+          text: line.replace(/^[-*]\s*\[[ xX]\]\s+/, '').trim(),
+          checked: /\[[xX]\]/.test(line)
+        }));
       return {
         id: section.title.split(/\s+/)[0],
         title: section.title,
         key: section.key,
         content: section.content,
-        declared
+        declared,
+        criteria
       };
     });
 }
@@ -232,6 +248,23 @@ export function validateTasks(tasks, { milestones = [] } = {}) {
     }
   }
   for (const task of tasks) {
+    if (task.source) {
+      const match = /^([A-Z]+)#(.+)$/.exec(task.source);
+      if (!match) {
+        add('TASK_SOURCE_INVALID', 'fail', `task ${task.id} source '${task.source}' must look like ROADMAP#M2/exit-1`, { task: task.id });
+      } else if (match[1] === 'ROADMAP') {
+        const [milestoneId, criterion] = match[2].split('/');
+        const milestone = milestones.find((item) => item.id === milestoneId);
+        if (!milestone) {
+          add('TASK_SOURCE_INVALID', 'fail', `task ${task.id} source names unknown milestone '${milestoneId}'`, { task: task.id });
+        } else if (criterion) {
+          const exit = /^exit-(\d+)$/.exec(criterion);
+          if (!exit || Number(exit[1]) < 1 || Number(exit[1]) > (milestone.criteria ?? []).length) {
+            add('TASK_SOURCE_INVALID', 'fail', `task ${task.id} source '${task.source}' names no exit criterion`, { task: task.id });
+          }
+        }
+      }
+    }
     if (!/^T-\d+$/.test(task.id)) {
       add('TASK_ID_FORMAT', 'warn', `task id '${task.id}' does not look like T-001`, { task: task.id });
     }
@@ -403,6 +436,8 @@ export async function appendTask(root, task) {
   if (hasCreated) cells.push(task.createdAt ?? new Date().toISOString().slice(0, 10));
   const hasParent = headerCells.some((cell) => HEADER_ALIASES[normalizeHeader(cell)] === 'parent');
   if (hasParent) cells.push(task.parent ?? '-');
+  const hasSource = headerCells.some((cell) => HEADER_ALIASES[normalizeHeader(cell)] === 'source');
+  if (hasSource) cells.push(task.source ?? '-');
   lines.splice(lastRow + 1, 0, `| ${cells.join(' | ')} |`);
   await writeText(file, lines.join('\n'));
 }

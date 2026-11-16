@@ -46,11 +46,13 @@ the task board instead of only discussing it:
 ```bash
 trellis task add --title "<one line>" --scope "<paths>" \
   --acceptance "<what proves it done>" --verification "<how it is checked>" \
-  --by coordinator:<you>
+  --source "ROADMAP#M2/exit-1" --by coordinator:<you>
 ```
 
 If the scope overlaps an open task, pass `--depends-on T-NNN` instead of
-widening it. `--milestone` defaults to the first milestone. Ask one question only
+widening it. Every task derived from a document should carry `--source`; before
+approving G3 run `trellis plan coverage --strict` and close the gaps. A task
+without a source is an orphan, not a covered requirement. `--milestone` defaults to the first milestone. Ask one question only
 when the scope or the acceptance is genuinely unknown.
 
 Before adding, check the backlog (`trellis status` / `task list --ready`). If

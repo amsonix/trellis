@@ -4,6 +4,18 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Optional `Source` column (`ROADMAP#M2/exit-1`, `PROJECT#Acceptance`, ...),
+  validated against the artifact, milestone and exit-criterion index.
+- `plan coverage` maps ROADMAP exit criteria to Source tasks; a milestone-level
+  source covers all criteria. `--strict` exits 3 on gaps.
+- `status` reports `MILESTONE_UNCOVERED` and `TASK_SOURCE_MISSING`; `next` and
+  `task show` carry `source`.
+- 247 `node:test` cases.
+
 ## [0.9.27] - 2026-11-16
 
 ### Changed

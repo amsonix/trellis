@@ -23,6 +23,7 @@ import {
   listProfiles
 } from '../core/project.mjs';
 import { listDocs, showDoc, checkDoc, createAdr } from '../core/docs.mjs';
+import { planCoverage } from '../core/coverage.mjs';
 import {
   addTask,
   askTask,
@@ -113,6 +114,12 @@ const readTools = [
     description: 'Print one document artifact (text, front-matter and path).',
     inputSchema: object({ dir: dirProp, id: text('Artifact id, e.g. PROJECT or ARCHITECTURE.') }, ['id']),
     run: (args) => showDoc(dirOf(args), args.id)
+  },
+  {
+    name: 'trellis_plan_coverage',
+    description: 'Map ROADMAP exit criteria to tasks through Source.',
+    inputSchema: object({ dir: dirProp }),
+    run: (args) => planCoverage(dirOf(args))
   },
   {
     name: 'trellis_doc_check',
@@ -230,6 +237,7 @@ const writeTools = [
         priority: { type: 'string', enum: ['high', 'medium', 'low'], description: 'Scheduling priority; defaults to medium.' },
         followUpOf: text('Parent task id for execution-time work that must not re-open the plan gates.'),
         parent: text('Parent task id for containment: this task is part of that parent.'),
+        source: text('Document source, e.g. ROADMAP#M2/exit-1.'),
         force: { type: 'boolean', description: 'Human only: exceed TRELLIS_MAX_OPEN.' },
         by: text('Actor as role:name.')
       },
@@ -247,6 +255,7 @@ const writeTools = [
         dependsOn: args.dependsOn ?? [],
         followUpOf: args.followUpOf ?? null,
         parent: args.parent ?? null,
+        source: args.source ?? null,
         force: Boolean(args.force),
         by: args.by
       })
@@ -387,6 +396,7 @@ const writeTools = [
         scope: text('New scope paths (comma separated).'),
         priority: text('high, medium or low.'),
         parent: text('Parent task id (containment); empty or - detaches.'),
+        source: text('Document source, e.g. ROADMAP#M2/exit-1.'),
         by: text('Actor as role:name.')
       },
       ['task', 'by']
@@ -398,6 +408,7 @@ const writeTools = [
         verification: args.verification,
         dependsOn: args.dependsOn,
         parent: args.parent,
+        source: args.source,
         scope: args.scope,
         priority: args.priority,
         by: args.by

@@ -7,6 +7,7 @@ import { ProtocolError, RefusedError, UsageError, UnavailableError } from './cor
 import { summarize } from './core/checks.mjs';
 import { listDocs, showDoc, checkDoc, scaffoldDoc, createAdr } from './core/docs.mjs';
 import { closeMilestone, getMilestone, listMilestones, reopenMilestone } from './core/milestones.mjs';
+import { planCoverage } from './core/coverage.mjs';
 import { listAdrs, setAdrStatus } from './core/adr.mjs';
 import { loadState } from './core/store.mjs';
 import {
@@ -91,12 +92,13 @@ const VALUE_OPTIONS = new Set([
   'supersedes',
   'children-of',
   'parent',
+  'source',
   'to',
   'batch',
   'strategy'
 ]);
 
-const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready', 'cascade', 'context']);
+const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready', 'cascade', 'context', 'strict']);
 
 function parseArgv(argv) {
   const positionals = [];
@@ -135,7 +137,7 @@ function parseArgv(argv) {
 
   const command = positionals.shift() ?? null;
   let subcommand = null;
-  if (['task', 'evidence', 'lease', 'guard', 'profile', 'scope', 'doc', 'adr', 'milestone'].includes(command)) {
+  if (['task', 'evidence', 'lease', 'guard', 'profile', 'scope', 'doc', 'adr', 'milestone', 'plan'].includes(command)) {
     subcommand = positionals.shift() ?? null;
   }
   return { command, subcommand, positionals, options };
@@ -191,6 +193,7 @@ trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dir <dir>]
   trellis adr list [dir] [--json]
   trellis milestone list [dir] [--json]
   trellis milestone close <M0> --by <role>:<name> [--note <text>] [dir]
+  trellis plan coverage [dir] [--strict] [--json]
   trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit>
                               --verdict <pass|fail|inconclusive> --by <role>:<name> [--dir <dir>]
   trellis evidence retract <EV-id> --by <role>:<name> --reason <text> [--dir <dir>]
@@ -235,6 +238,8 @@ const HELP = {
   'doc:show': ['Print one document (or its path/metadata with --json).', 'trellis doc show <ID> [dir] [--json]'],
   'doc:check': ['Run the structural checks for one document.', 'trellis doc check <ID> [dir] [--json]'],
   'doc:scaffold': ['Create a missing document from its template (never overwrites).', 'trellis doc scaffold <ID> --by <role>:<name> [dir] [--json]'],
+  plan: ['Plan coverage and derivations.', 'trellis plan <coverage> ...'],
+  'plan:coverage': ['Map ROADMAP exit criteria to tasks through Source.', 'trellis plan coverage [dir] [--strict] [--json]'],
   milestone: ['Milestone declared status (computed vs declared).', 'trellis milestone <list|status|close|reopen> ...'],
   'milestone:list': ['List milestones with computed and declared status.', 'trellis milestone list [dir] [--json]'],
   'milestone:status': ['Show one milestone.', 'trellis milestone status <M0> [dir] [--json]'],
@@ -251,7 +256,7 @@ const HELP = {
   task: ['Task board operations.', 'trellis task <list|show|add|claim|ask|answer|report|recover|cancel> ...'],
   'task:show': ['Show one task, optionally with its context (read set, parent, children, evidence).', 'trellis task show <T-NNN> [dir] [--context] [--json]'],
   'task:list': ['List the task board.', 'trellis task list [dir] [--status <status>] [--role <role>] [--ready] [--children-of <T-NNN>] [--limit <n>] [--json]'],
-  'task:add': ['Validate and append a task row.', 'trellis task add --title <t> --scope <paths> --acceptance <a> --verification <v> --by <role>:<name> [--role <role>] [--milestone <M0>] [--priority high|medium|low] [--depends-on <ids>] [--follow-up-of <T-NNN>] [--parent <T-NNN>] [--id <T-NNN>] [--from <json>] [--force]'],
+  'task:add': ['Validate and append a task row.', 'trellis task add --title <t> --scope <paths> --acceptance <a> --verification <v> --by <role>:<name> [--role <role>] [--milestone <M0>] [--priority high|medium|low] [--depends-on <ids>] [--follow-up-of <T-NNN>] [--parent <T-NNN>] [--source <ref>] [--id <T-NNN>] [--from <json>] [--force]'],
   'task:claim': ['Claim a task (creates the lease) or take over an orphaned claim.', 'trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dry-run]'],
   'task:ask': ['Ask one blocking question; only a human answers it.', 'trellis task ask <T-NNN> --question <text> --by <role>:<name>'],
   'task:answer': ['Answer an open question as a human.', 'trellis task answer <Q-NNN> --decision <text> --by human:<name>'],
@@ -259,7 +264,7 @@ const HELP = {
   'task:recover': ['Return an in_progress task with no lease to ready or todo.', 'trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]'],
   'task:cancel': ['Cancel work that is no longer needed; canceled tasks do not satisfy dependencies.', 'trellis task cancel <T-NNN> --by human:<name> --reason <text> [--cascade]'],
   'task:finish': ['Run the verification command, record the evidence and mark the task done.', 'trellis task finish <T-NNN> --run <command> --by <role>:<name>'],
-  'task:edit': ['Edit a task field through the board validator (adds an audit record).', 'trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--scope <paths>] [--parent <T-NNN>] [--priority <p>] --by <role>:<name>'],
+  'task:edit': ['Edit a task field through the board validator (adds an audit record).', 'trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--scope <paths>] [--parent <T-NNN>] [--source <ref>] [--priority <p>] --by <role>:<name>'],
   evidence: ['Evidence log operations.', 'trellis evidence <add|list|retract> ...'],
   'evidence:add': ['Record evidence for a task.', 'trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] [--supersedes <EV,...>] --by <role>:<name>'],
   'evidence:list': ['List evidence, optionally for one task.', 'trellis evidence list [--task <T-NNN>] [--json]'],
@@ -447,7 +452,7 @@ function printNext(data) {
 function printTaskShow(data) {
   const task = data.task;
   console.log(`${task.id}  ${task.status}  ${task.role}  ${task.title}`);
-  console.log(`      scope: ${task.scope.join(', ')} | depends: ${task.dependsOn.join(', ') || '-'} | parent: ${task.parent ?? '-'}`);
+  console.log(`      scope: ${task.scope.join(', ')} | depends: ${task.dependsOn.join(', ') || '-'} | parent: ${task.parent ?? '-'} | source: ${task.source ?? '-'}`);
   console.log(`      acceptance: ${task.acceptance}`);
   console.log(`      verification: ${task.verification}`);
   if (task.note) console.log(`      note: ${task.note}`);
@@ -475,7 +480,7 @@ function printTaskList(tasks) {
   }
   for (const task of tasks) {
     console.log(`${task.id}  ${task.status.padEnd(12)} ${task.role.padEnd(10)} ${task.title}`);
-    console.log(`      scope: ${task.scope.join(', ')} | depends: ${task.dependsOn.join(', ') || '-'}`);
+    console.log(`      scope: ${task.scope.join(', ')} | depends: ${task.dependsOn.join(', ') || '-'} | source: ${task.source ?? '-'}`);
     if (task.parent) console.log(`      parent: ${task.parent}`);
     if (task.children?.length) console.log(`      children: ${task.children.join(', ')} (open ${task.openChildren})`);
     console.log(`      acceptance: ${task.acceptance}`);
@@ -643,6 +648,30 @@ async function dispatch(args) {
     throw new UsageError(`unknown doc subcommand '${subcommand}' (list|show|check|scaffold)`);
   }
 
+  if (command === 'plan') {
+    if (subcommand === 'coverage') {
+      const data = await planCoverage(dirOf(args));
+      const failed = data.totals.uncovered > 0 || data.totals.orphanTasks > 0;
+      return {
+        data,
+        exitCode: options.strict && failed ? 3 : 0,
+        print: () => {
+          for (const report of data.milestones) {
+            console.log(`${report.id}  ${report.covered ?? report.criteria.filter((criterion) => criterion.covered).length}/${report.criteria.length} criteria covered`);
+            for (const criterion of report.criteria) {
+              const mark = criterion.covered ? '✓' : '✗';
+              const who = criterion.tasks.length > 0 ? ` → ${criterion.tasks.join(', ')}` : '';
+              console.log(`  ${mark} exit-${criterion.index} ${criterion.text}${who}`);
+            }
+            if (report.orphans.length > 0) console.log(`  orphans: ${report.orphans.join(', ')}`);
+          }
+          if (data.totals.orphanTasks > 0) console.log(`tasks without Source: ${data.totals.orphanTasks}`);
+        }
+      };
+    }
+    throw new UsageError(`unknown plan subcommand '${subcommand}' (coverage)`);
+  }
+
   if (command === 'milestone') {
     if (subcommand === 'list') {
       const data = { items: await listMilestones(dirOf(args)) };
@@ -745,6 +774,7 @@ async function dispatch(args) {
         dependsOn: options['depends-on'] || [],
         followUpOf: options['follow-up-of'] || null,
         parent: options.parent || null,
+        source: options.source || null,
         id: options.id || null,
         force: Boolean(options.force),
         by: options.by
@@ -802,6 +832,7 @@ async function dispatch(args) {
         priority: options.priority,
         scope: options.scope,
         parent: options.parent,
+        source: options.source,
         by: options.by
       });
       return { data, exitCode: 0, print: () => console.log(`edited ${taskId}: ${data.changed.join(', ')}`) };
