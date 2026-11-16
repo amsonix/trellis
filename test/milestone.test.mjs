@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { closeMilestone, getMilestone, listMilestones, reopenMilestone, setMilestoneStatus } from '../src/core/milestones.mjs';
 import { listAdrs, setAdrStatus } from '../src/core/adr.mjs';
 import { listDocs, showDoc } from '../src/core/docs.mjs';
+import { readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { createAdr } from '../src/core/docs.mjs';
 import { addEvidence } from '../src/core/evidence.mjs';
 import { claimTask, reportTask } from '../src/core/mutations.mjs';
@@ -97,6 +99,24 @@ test('ADRs expose and transition their Status section', async () => {
     );
     ({ items } = await listAdrs(dir));
     assert.equal(items.find((item) => item.file === created.path.split('/').pop()).status, 'superseded');
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('a legacy status line is reported but ignored', async () => {
+  const dir = await makeProject('generic');
+  try {
+    const file = path.join(dir, '.trellis/PROJECT.md');
+    const text = await readFile(file, 'utf8');
+    await writeFile(file, text.replace('---\n', '---\nstatus: draft\n', 1));
+    const { items } = await listDocs(dir);
+    const project = items.find((item) => item.id === 'PROJECT');
+    assert.equal(project.legacyStatus, 'draft');
+    assert.equal(project.status, undefined);
+    const shown = await showDoc(dir, 'PROJECT');
+    assert.equal(shown.data.status, undefined);
+    assert.equal(shown.legacyStatus, 'draft');
   } finally {
     await cleanup(dir);
   }

@@ -74,6 +74,23 @@ test('status reports uncovered criteria for an active milestone', async () => {
   }
 });
 
+test('task derive creates an explicit child that inherits the source', async () => {
+  const dir = await makeProject('generic');
+  try {
+    const result = await execFileAsync(process.execPath, [
+      bin, 'task', 'derive', 'T-001',
+      '--title', 'Boundary', '--scope', 'src/child',
+      '--acceptance', 'boundary handled', '--verification', 'manual',
+      '--kind', 'child', '--by', 'architect:ann', '--json'
+    ], { cwd: dir });
+    const data = JSON.parse(result.stdout).data;
+    assert.equal(data.task.parent, 'T-001');
+    assert.equal(data.task.source, 'ROADMAP#M0/exit-1');
+  } finally {
+    await cleanup(dir);
+  }
+});
+
 test('plan coverage is exposed through the CLI and --strict fails on gaps', async () => {
   const dir = await makeProject('generic');
   try {

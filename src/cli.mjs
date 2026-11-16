@@ -175,7 +175,8 @@ Usage:
                    [--role <role>] [--milestone <M0>] [--depends-on <T-NNN>]
                    [--priority <high|medium|low>] [--follow-up-of <T-NNN>] [--id <T-NNN>]
                    --by <role>:<name> [--dir <dir>]
-  trellis task show <T-NNN> [dir] [--context] [--json]
+  trellis task derive <T-NNN> --title <t> --scope <paths> --acceptance <a> --verification <v> [--kind child|follow-up] --by <role>:<name>
+trellis task show <T-NNN> [dir] [--context] [--json]
 trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dir <dir>]
   trellis task ask <T-NNN> --question <text> --by <role>:<name> [--dir <dir>]
   trellis task answer <Q-NNN> --decision <text> --by human:<name>
@@ -253,7 +254,8 @@ const HELP = {
   'adr:supersede': ['Mark an ADR superseded.', 'trellis adr supersede <number|file> --by <role>:<name> [--note <text>] [dir]'],
   'adr:set-status': ['Set an ADR status explicitly.', 'trellis adr set-status <number|file> <proposed|accepted|rejected|superseded> --by <role>:<name> [dir]'],
   'adr:new': ['Create the next ADR from the template and audit it.', 'trellis adr new --title <decision> [--status proposed|accepted|superseded] --by <role>:<name> [dir] [--json]'],
-  task: ['Task board operations.', 'trellis task <list|show|add|claim|ask|answer|report|recover|cancel> ...'],
+  task: ['Task board operations.', 'trellis task <list|show|derive|add|claim|ask|answer|report|recover|cancel> ...'],
+  'task:derive': ['Create a child or follow-up from an existing task (explicit, audited).', 'trellis task derive <T-NNN> --title <t> --scope <paths> --acceptance <a> --verification <v> [--kind child|follow-up] [--source <ref>] --by <role>:<name>'],
   'task:show': ['Show one task, optionally with its context (read set, parent, children, evidence).', 'trellis task show <T-NNN> [dir] [--context] [--json]'],
   'task:list': ['List the task board.', 'trellis task list [dir] [--status <status>] [--role <role>] [--ready] [--children-of <T-NNN>] [--limit <n>] [--json]'],
   'task:add': ['Validate and append a task row.', 'trellis task add --title <t> --scope <paths> --acceptance <a> --verification <v> --by <role>:<name> [--role <role>] [--milestone <M0>] [--priority high|medium|low] [--depends-on <ids>] [--follow-up-of <T-NNN>] [--parent <T-NNN>] [--source <ref>] [--id <T-NNN>] [--from <json>] [--force]'],
@@ -598,6 +600,30 @@ async function dispatch(args) {
   }
 
   if (command === 'doc') {
+    if (subcommand === 'derive') {
+      const from = args.positionals[0];
+      if (!from) throw new UsageError('task derive needs a source task id');
+      if (!options.title || !options.scope || !options.acceptance || !options.verification || !options.by) {
+        throw new UsageError('task derive needs --title, --scope, --acceptance, --verification and --by');
+      }
+      const kind = options.kind ?? 'child';
+      if (!['child', 'follow-up'].includes(kind)) throw new UsageError('--kind must be child or follow-up');
+      const data = await addTask(dirOf(args, 1), {
+        title: options.title,
+        scope: options.scope,
+        acceptance: options.acceptance,
+        verification: options.verification,
+        priority: options.priority || 'medium',
+        source: options.source || null,
+        ...(kind === 'child' ? { parent: from } : { followUpOf: from }),
+        by: options.by
+      });
+      return {
+        data,
+        exitCode: 0,
+        print: () => console.log(`derived ${data.task.id} from ${from} (${kind})`)
+      };
+    }
     if (subcommand === 'show') {
       const taskId = args.positionals[0];
       if (!taskId) throw new UsageError('task show needs a task id');
@@ -619,6 +645,30 @@ async function dispatch(args) {
             console.log(`${item.id.padEnd(14)} ${state.padEnd(16)} ${item.path}`);
           }
         }
+      };
+    }
+    if (subcommand === 'derive') {
+      const from = args.positionals[0];
+      if (!from) throw new UsageError('task derive needs a source task id');
+      if (!options.title || !options.scope || !options.acceptance || !options.verification || !options.by) {
+        throw new UsageError('task derive needs --title, --scope, --acceptance, --verification and --by');
+      }
+      const kind = options.kind ?? 'child';
+      if (!['child', 'follow-up'].includes(kind)) throw new UsageError('--kind must be child or follow-up');
+      const data = await addTask(dirOf(args, 1), {
+        title: options.title,
+        scope: options.scope,
+        acceptance: options.acceptance,
+        verification: options.verification,
+        priority: options.priority || 'medium',
+        source: options.source || null,
+        ...(kind === 'child' ? { parent: from } : { followUpOf: from }),
+        by: options.by
+      });
+      return {
+        data,
+        exitCode: 0,
+        print: () => console.log(`derived ${data.task.id} from ${from} (${kind})`)
       };
     }
     if (subcommand === 'show') {
@@ -787,6 +837,30 @@ async function dispatch(args) {
         by: options.by
       });
       return { data, exitCode: 0, print: () => console.log(`added ${data.task.id}: ${data.task.title}`) };
+    }
+    if (subcommand === 'derive') {
+      const from = args.positionals[0];
+      if (!from) throw new UsageError('task derive needs a source task id');
+      if (!options.title || !options.scope || !options.acceptance || !options.verification || !options.by) {
+        throw new UsageError('task derive needs --title, --scope, --acceptance, --verification and --by');
+      }
+      const kind = options.kind ?? 'child';
+      if (!['child', 'follow-up'].includes(kind)) throw new UsageError('--kind must be child or follow-up');
+      const data = await addTask(dirOf(args, 1), {
+        title: options.title,
+        scope: options.scope,
+        acceptance: options.acceptance,
+        verification: options.verification,
+        priority: options.priority || 'medium',
+        source: options.source || null,
+        ...(kind === 'child' ? { parent: from } : { followUpOf: from }),
+        by: options.by
+      });
+      return {
+        data,
+        exitCode: 0,
+        print: () => console.log(`derived ${data.task.id} from ${from} (${kind})`)
+      };
     }
     if (subcommand === 'show') {
       const taskId = args.positionals[0];
@@ -960,6 +1034,30 @@ async function dispatch(args) {
           const extra = record.superseded?.length ? `; superseded ${record.superseded.join(', ')}` : '';
           console.log(`added ${record.id} for ${record.taskId} (${record.verdict})${extra}`);
         }
+      };
+    }
+    if (subcommand === 'derive') {
+      const from = args.positionals[0];
+      if (!from) throw new UsageError('task derive needs a source task id');
+      if (!options.title || !options.scope || !options.acceptance || !options.verification || !options.by) {
+        throw new UsageError('task derive needs --title, --scope, --acceptance, --verification and --by');
+      }
+      const kind = options.kind ?? 'child';
+      if (!['child', 'follow-up'].includes(kind)) throw new UsageError('--kind must be child or follow-up');
+      const data = await addTask(dirOf(args, 1), {
+        title: options.title,
+        scope: options.scope,
+        acceptance: options.acceptance,
+        verification: options.verification,
+        priority: options.priority || 'medium',
+        source: options.source || null,
+        ...(kind === 'child' ? { parent: from } : { followUpOf: from }),
+        by: options.by
+      });
+      return {
+        data,
+        exitCode: 0,
+        print: () => console.log(`derived ${data.task.id} from ${from} (${kind})`)
       };
     }
     if (subcommand === 'show') {

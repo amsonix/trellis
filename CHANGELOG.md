@@ -4,6 +4,16 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `task derive <from> --kind child|follow-up`: explicit boundary derivation; a
+  child inherits the parent source, a follow-up does not.
+- `doc list/show` report `legacyStatus` when an old front-matter `status:` is
+  present (still ignored).
+- 253 `node:test` cases.
+
 ## [0.9.30] - 2026-11-16
 
 ### Fixed

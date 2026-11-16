@@ -41,6 +41,7 @@ export async function listDocs(root) {
       required: profile.requiredArtifacts.includes(definition.id),
       optional: profile.optionalArtifacts.includes(definition.id),
       exists: !artifact.missing,
+      legacyStatus: artifact.data?.status ?? null,
       gate: gates[0] ?? null,
       gates
     });
@@ -59,6 +60,7 @@ export async function showDoc(root, id) {
     path: `${META_DIR}/${definition.path}`,
     stage: definition.stage,
     exists: !artifact.missing,
+    legacyStatus: artifact.data?.status ?? null,
     text: artifact.text ?? null,
     data
   };
