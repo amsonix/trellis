@@ -203,6 +203,7 @@ const writeTools = [
         dependsOn: text('Comma-separated task ids.'),
         priority: { type: 'string', enum: ['high', 'medium', 'low'], description: 'Scheduling priority; defaults to medium.' },
         followUpOf: text('Parent task id for execution-time work that must not re-open the plan gates.'),
+        force: { type: 'boolean', description: 'Human only: exceed TRELLIS_MAX_OPEN.' },
         by: text('Actor as role:name.')
       },
       ['title', 'scope', 'acceptance', 'verification', 'by']
@@ -218,6 +219,7 @@ const writeTools = [
         priority: args.priority ?? 'medium',
         dependsOn: args.dependsOn ?? [],
         followUpOf: args.followUpOf ?? null,
+        force: Boolean(args.force),
         by: args.by
       })
   },

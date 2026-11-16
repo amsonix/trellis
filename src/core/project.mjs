@@ -281,6 +281,32 @@ async function buildAttention(root, state, tasks, checks) {
       gate
     });
   }
+  const open = tasks.filter((task) => OPEN_STATUSES.includes(task.status));
+  const maxOpen = backlogLimit();
+  if (maxOpen > 0 && open.length >= Math.ceil(maxOpen * 0.8)) {
+    attention.push({
+      kind: 'backlog',
+      code: 'TASK_BACKLOG_LARGE',
+      message: `${open.length} open task(s) against a limit of ${maxOpen}`,
+      open: open.length,
+      limit: maxOpen
+    });
+  }
+  const staleDays = Number.parseInt(process.env.TRELLIS_STALE_DAYS ?? '14', 10);
+  const stale = open
+    .map((task) => ({ task, days: ageDays(task) }))
+    .filter((item) => item.days !== null && item.days > staleDays)
+    .sort((a, b) => b.days - a.days);
+  if (stale.length > 0) {
+    attention.push({
+      kind: 'backlog',
+      code: 'TASK_BACKLOG_STALE',
+      message: `${stale.length} open task(s) older than ${staleDays}d; oldest ${stale[0].task.id} (${stale[0].days}d)`,
+      oldest: stale[0].task.id,
+      days: stale[0].days,
+      count: stale.length
+    });
+  }
   return attention;
 }
 
@@ -344,15 +370,23 @@ async function nextFrom(root, state, tasks, checks, role = null, { limit = null,
 }
 
 async function computeNext(root, state, tasks, checks, role = null) {
-  const invalid = tasks.filter((task) => task.statusValid === false);
+  const invalid = tasks.filter((task) => task.statusValid === false || task.priorityValid === false);
   if (invalid.length > 0) {
     return {
       kind: 'waiting',
-      attention: invalid.map((task) => ({
-        kind: 'task',
-        code: 'TASK_STATUS_INVALID',
-        message: `task ${task.id} has unknown status '${task.status}'; fix the task board`
-      }))
+      attention: invalid.map((task) =>
+        task.statusValid === false
+          ? {
+              kind: 'task',
+              code: 'TASK_STATUS_INVALID',
+              message: `task ${task.id} has unknown status '${task.status}'; fix the task board`
+            }
+          : {
+              kind: 'task',
+              code: 'TASK_PRIORITY_INVALID',
+              message: `task ${task.id} has unknown priority '${task.priority}'; fix the task board`
+            }
+      )
     };
   }
   const stage = computeStage(state, tasks);
@@ -379,7 +413,16 @@ async function computeNext(root, state, tasks, checks, role = null) {
       return {
         kind: 'tasks',
         source: 'ready',
-        tasks: ready.map(({ id, title, role: taskRole, scope, acceptance, priority }) => ({ id, title, role: taskRole, scope, acceptance, priority })),
+        tasks: ready.map((task) => ({
+          id: task.id,
+          title: task.title,
+          role: task.role,
+          scope: task.scope,
+          acceptance: task.acceptance,
+          priority: task.priority,
+          createdAt: task.createdAt,
+          ageDays: ageDays(task)
+        })),
         ...(staleAttention.length > 0 ? { attention: staleAttention } : {})
       };
     }
@@ -387,7 +430,16 @@ async function computeNext(root, state, tasks, checks, role = null) {
     if (active.length > 0) {
       return {
         kind: 'tasks',
-        tasks: active.map(({ id, title, role: taskRole, scope, acceptance }) => ({ id, title, role: taskRole, scope, acceptance })),
+        tasks: active.map((task) => ({
+          id: task.id,
+          title: task.title,
+          role: task.role,
+          scope: task.scope,
+          acceptance: task.acceptance,
+          priority: task.priority,
+          createdAt: task.createdAt,
+          ageDays: ageDays(task)
+        })),
         note: 'in progress',
         ...(staleAttention.length > 0 ? { attention: staleAttention } : {})
       };
@@ -497,17 +549,22 @@ function selectTaskBatch(tasks, role, { batch, strategy = 'priority' } = {}) {
   const mode = STRATEGIES.includes(strategy) ? strategy : 'priority';
   const unblocks = unblockCounts(tasks);
   const rank = (task) => ({ high: 0, medium: 1, low: 2 }[task.priority] ?? 1);
+  const ageKey = (task) => task.createdAt ?? '0000-00-00';
   const compare = (a, b) => {
     if (mode === 'unblock') {
       const byUnblock = (unblocks.get(b.id) ?? 0) - (unblocks.get(a.id) ?? 0);
       if (byUnblock !== 0) return byUnblock;
     }
     if (mode === 'oldest') {
+      const byAge = ageKey(a).localeCompare(ageKey(b));
+      if (byAge !== 0) return byAge;
       const byId = a.id.localeCompare(b.id, 'en', { numeric: true });
       if (byId !== 0) return byId;
     }
     const byPriority = rank(a) - rank(b);
     if (byPriority !== 0) return byPriority;
+    const byAge = ageKey(a).localeCompare(ageKey(b));
+    if (byAge !== 0) return byAge;
     const byMilestone = String(a.milestone).localeCompare(String(b.milestone), 'en', { numeric: true });
     if (byMilestone !== 0) return byMilestone;
     const byUnblock = (unblocks.get(b.id) ?? 0) - (unblocks.get(a.id) ?? 0);
@@ -522,8 +579,10 @@ function selectTaskBatch(tasks, role, { batch, strategy = 'priority' } = {}) {
       continue;
     }
     const count = unblocks.get(task.id) ?? 0;
+    const days = ageDays(task);
     const why = [
       `${task.priority} priority`,
+      days !== null ? `age ${days}d` : null,
       task.milestone ? `milestone ${task.milestone}` : null,
       count > 0 ? `unblocks ${count}` : null
     ].filter(Boolean).join(', ');
@@ -535,6 +594,8 @@ function selectTaskBatch(tasks, role, { batch, strategy = 'priority' } = {}) {
       acceptance: task.acceptance,
       priority: task.priority,
       milestone: task.milestone,
+      createdAt: task.createdAt,
+      ageDays: ageDays(task),
       unblocks: count,
       why
     });
@@ -543,6 +604,19 @@ function selectTaskBatch(tasks, role, { batch, strategy = 'priority' } = {}) {
 }
 
 const STALE_LEASE_HOURS = 24;
+const OPEN_STATUSES = ['todo', 'ready', 'in_progress', 'review', 'blocked'];
+
+function ageDays(task) {
+  if (!task.createdAt) return null;
+  const stamp = Date.parse(task.createdAt);
+  if (!Number.isFinite(stamp)) return null;
+  return Math.max(0, Math.floor((Date.now() - stamp) / 86400000));
+}
+
+function backlogLimit() {
+  const value = Number.parseInt(process.env.TRELLIS_MAX_OPEN ?? '0', 10);
+  return Number.isInteger(value) && value > 0 ? value : 0;
+}
 const SEVERITY_ORDER = { high: 0, medium: 1, low: 2 };
 
 export async function projectReport(root) {
@@ -921,6 +995,7 @@ export async function addTask(
     priority = 'medium',
     id = null,
     followUpOf = null,
+    force = false,
     by
   } = {}
 ) {
@@ -939,6 +1014,24 @@ export async function addTask(
 
   const state = await loadState(root);
   const { tasks } = await parseTasks(root);
+  const openTasks = tasks.filter((task) => OPEN_STATUSES.includes(task.status));
+  const maxOpen = backlogLimit();
+  if (maxOpen > 0 && openTasks.length >= maxOpen) {
+    if (!force) {
+      throw new RefusedError(
+        'TASK_BACKLOG_FULL',
+        `${openTasks.length} open task(s) (limit ${maxOpen}); close work before adding more`,
+        { open: openTasks.length, limit: maxOpen }
+      );
+    }
+    if (actor.role !== 'human') {
+      throw new RefusedError('TASK_BACKLOG_FORCE_ROLE', 'only a human may exceed TRELLIS_MAX_OPEN', {
+        actor: actor.raw,
+        open: openTasks.length,
+        limit: maxOpen
+      });
+    }
+  }
   const milestones = await milestonesFromRoadmap(root);
   const taskId = id ? String(id).trim() : nextTaskId(tasks);
   if (!/^T-\d+$/.test(taskId)) throw new UsageError(`task id '${taskId}' does not look like T-001`);
@@ -1453,7 +1546,7 @@ export async function finishTask(root, taskId, { run, by, timeoutMs = 30 * 60 * 
   return { taskId, exitCode, log, evidence, task: reported.task };
 }
 
-export async function addTasks(root, items, { by } = {}) {
+export async function addTasks(root, items, { by, force = false } = {}) {
   if (!Array.isArray(items) || items.length === 0) {
     throw new UsageError('task add --from needs a non-empty JSON array');
   }
@@ -1463,7 +1556,7 @@ export async function addTasks(root, items, { by } = {}) {
     if (!item || typeof item !== 'object' || Array.isArray(item)) {
       throw new UsageError('every imported task must be an object');
     }
-    const result = await addTask(root, { ...item, by: item.by ?? by });
+    const result = await addTask(root, { ...item, by: item.by ?? by, force: item.force ?? force });
     added.push(result.task);
   }
   return { tasks: added, count: added.length };

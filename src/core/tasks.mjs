@@ -39,7 +39,9 @@ const HEADER_ALIASES = {
   acceptance: 'acceptance',
   verification: 'verification',
   status: 'status',
-  priority: 'priority'
+  priority: 'priority',
+  created: 'createdAt',
+  createdat: 'createdAt'
 };
 
 function normalizeHeader(value) {
@@ -111,6 +113,8 @@ export async function parseTasks(root) {
       status: ((row[mapping.status]?.trim().toLowerCase() || 'todo').split(/[\s—–:()]+/)[0] || 'todo'),
       statusValid: TASK_STATUSES.includes((row[mapping.status]?.trim().toLowerCase() || 'todo').split(/[\s—–:()]+/)[0] || 'todo'),
       priority: (row[mapping.priority]?.trim().toLowerCase() || 'medium'),
+      priorityValid: TASK_PRIORITIES.includes((row[mapping.priority]?.trim().toLowerCase() || 'medium')),
+      createdAt: row[mapping.createdAt]?.trim() || null,
       row: table.start + 2 + index
     });
   }
@@ -287,7 +291,12 @@ export function readyTasks(tasks, role) {
     .filter((task) => !role || task.role === role)
     .sort((a, b) => {
       const rank = (TASK_PRIORITY_RANK[a.priority] ?? 1) - (TASK_PRIORITY_RANK[b.priority] ?? 1);
-      return rank !== 0 ? rank : a.id.localeCompare(b.id);
+      if (rank !== 0) return rank;
+      // Older first; a missing date is treated as the oldest.
+      const aDate = a.createdAt ?? '0000-00-00';
+      const bDate = b.createdAt ?? '0000-00-00';
+      const byAge = aDate.localeCompare(bDate);
+      return byAge !== 0 ? byAge : a.id.localeCompare(b.id);
     });
 }
 
@@ -330,6 +339,8 @@ export async function appendTask(root, task) {
       `${TASKS_FILE} has no 'priority' column; append it as the last column (Trellis reads by header name; appending keeps positional readers stable)`
     );
   }
+  const hasCreated = headerCells.some((cell) => HEADER_ALIASES[normalizeHeader(cell)] === 'createdAt');
+  if (hasCreated) cells.push(task.createdAt ?? new Date().toISOString().slice(0, 10));
   lines.splice(lastRow + 1, 0, `| ${cells.join(' | ')} |`);
   await writeText(file, lines.join('\n'));
 }

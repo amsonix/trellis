@@ -205,7 +205,10 @@ most recent 200. Set `TRELLIS_STRICT=1` to make `task claim` refuse before `G4`
 instead of only warning. Set `TRELLIS_AGENT` to stamp leases, evidence and audit
 entries with a worker id (attribution, not authentication). Set
 `TRELLIS_MAX_LEASES=2` to cap how many leases one actor may hold; `next --limit N`
-returns at most N tasks in a batch.
+returns at most N tasks in a batch. `TRELLIS_MAX_OPEN=40` caps open tasks: at the
+cap `task add` refuses unless a human passes `--force`. `TRELLIS_STALE_DAYS=14`
+sets when an open task is reported as backlog-stale. `next` orders equal-priority
+tasks by the optional `Created` column (older first) and returns `ageDays`.
 
 `trellis scope suggest` reads commits mentioning a task (`git log --grep`) and
 proposes a file-level write scope. By default it only reads; `--apply --by

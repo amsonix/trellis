@@ -230,7 +230,7 @@ const HELP = {
   'adr:new': ['Create the next ADR from the template and audit it.', 'trellis adr new --title <decision> [--status proposed|accepted|superseded] --by <role>:<name> [dir] [--json]'],
   task: ['Task board operations.', 'trellis task <list|add|claim|ask|answer|report|recover|cancel> ...'],
   'task:list': ['List the task board.', 'trellis task list [dir] [--status <status>] [--role <role>] [--ready] [--limit <n>] [--json]'],
-  'task:add': ['Validate and append a task row.', 'trellis task add --title <t> --scope <paths> --acceptance <a> --verification <v> --by <role>:<name> [--role <role>] [--milestone <M0>] [--priority high|medium|low] [--depends-on <ids>] [--follow-up-of <T-NNN>] [--id <T-NNN>] [--from <json>]'],
+  'task:add': ['Validate and append a task row.', 'trellis task add --title <t> --scope <paths> --acceptance <a> --verification <v> --by <role>:<name> [--role <role>] [--milestone <M0>] [--priority high|medium|low] [--depends-on <ids>] [--follow-up-of <T-NNN>] [--id <T-NNN>] [--from <json>] [--force]'],
   'task:claim': ['Claim a task (creates the lease) or take over an orphaned claim.', 'trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>]'],
   'task:ask': ['Ask one blocking question; only a human answers it.', 'trellis task ask <T-NNN> --question <text> --by <role>:<name>'],
   'task:answer': ['Answer an open question as a human.', 'trellis task answer <Q-NNN> --decision <text> --by human:<name>'],
@@ -610,7 +610,7 @@ async function dispatch(args) {
         } catch (error) {
           throw new UsageError(`cannot read task JSON from ${options.from}: ${error.message}`);
         }
-        const data = await addTasks(dir, items, { by: options.by });
+        const data = await addTasks(dir, items, { by: options.by, force: Boolean(options.force) });
         return { data, exitCode: 0, print: () => console.log(`imported ${data.count} task(s)`) };
       }
       if (!options.title) throw new UsageError('task add needs --title');
@@ -629,6 +629,7 @@ async function dispatch(args) {
         dependsOn: options['depends-on'] || [],
         followUpOf: options['follow-up-of'] || null,
         id: options.id || null,
+        force: Boolean(options.force),
         by: options.by
       });
       return { data, exitCode: 0, print: () => console.log(`added ${data.task.id}: ${data.task.title}`) };

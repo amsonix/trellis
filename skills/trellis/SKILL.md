@@ -24,7 +24,8 @@ If `trellis` is not on `PATH` but the repository is checked out, use
 1. `trellis brief --role <your-role> --json` — the current gate, what to read,
    what to write, and what you must not do.
 2. `trellis status --json` — where the project is.
-3. `trellis next --role <your-role> --json` — the one action allowed now.
+3. `trellis next --batch <n> --role <your-role> --json` — the only allowed
+   candidate set.
 4. Read the artifacts named by `brief` before touching anything.
 
 If `next` and the user's request disagree, say so and ask. Do not silently
@@ -52,6 +53,10 @@ If the scope overlaps an open task, pass `--depends-on T-NNN` instead of
 widening it. `--milestone` defaults to the first milestone. Ask one question only
 when the scope or the acceptance is genuinely unknown.
 
+Before adding, check the backlog (`trellis status` / `task list --ready`). If
+`TRELLIS_MAX_OPEN` is set, `task add` refuses at the limit; only a human may pass
+`--force`.
+
 For a bug, record the failing reproduction with `--verdict fail`, fix it, have a
 reviewer or verifier retract the failing record with a reason, then add the
 passing evidence. The retracted record stays in the ledger; the producing role
@@ -59,13 +64,30 @@ cannot retract its own failure.
 
 ## Running a batch
 
-Call `trellis next --batch <n> --json`. If `needsUser` is false, the `tasks`
-array is already priority-ordered, scope-disjoint and carries a `why` for each
-entry. Claim them one by one (`task claim`), do the work, record evidence and
-`report --state done`. Do not pick tasks by title or by reading the whole board.
-If `next` returns a gate, work is not allowed yet; the `candidate` is a preview.
-If it
-is true, stop and surface `reason`; do not invent work to keep going.
+Call `trellis next --batch <n> --role <your-role> --json`. The returned
+`tasks` array is the **only** candidate set: priority/age ordered,
+scope-disjoint, each with a `why`.
+
+The selection contract:
+
+1. Claim only tasks from `next.tasks`; default to the first claimable one.
+2. One claim at a time unless you are running parallel lanes; `--batch` is a
+   candidate set, not a reservation.
+3. If a claim fails, do **not** open the board and pick another task:
+   - `LEASE_CONFLICT` / `TASK_LEASE_HELD_BY_OTHER` → try the next candidate in
+     the same batch; if all fail, stop and report.
+   - `TASK_BLOCKED_BY_DEPENDENCY` / `TASK_ROLE` / `LEASE_LIMIT` → re-run `next`
+     with the right role or after releasing; do not guess.
+   - `TASK_STATUS_INVALID` / `TASK_PRIORITY_INVALID` → stop; the board is broken.
+4. After each `report --state done` (or `task finish`), call `next` again. Never
+   reuse an old candidate list.
+5. `kind: "gate"` or `kind: "waiting"` → stop and surface `reason`; do not
+   bypass with `task list`. `candidate` is a preview, not permission.
+6. `task list` is for diagnosis and backlog review only. It is never a
+   selection input.
+
+If `batchShortfall > 0`, work with what is available; do not fill the gap from
+the board.
 
 While doing a task you may discover follow-up work inside the same milestone:
 add it with `--follow-up-of <T-NNN>`. That does not re-open the plan gates.

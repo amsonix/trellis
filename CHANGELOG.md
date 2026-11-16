@@ -4,6 +4,21 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Optional `Created` date column. `next` treats a missing date as oldest, sorts
+  equal-priority tasks by age and returns `ageDays`; `why` includes the age.
+- `TRELLIS_MAX_OPEN` caps open tasks (`TASK_BACKLOG_FULL`); only a human may
+  `--force`. `TRELLIS_STALE_DAYS` drives `TASK_BACKLOG_STALE`; `status` also
+  reports `TASK_BACKLOG_LARGE`.
+- An invalid priority is `TASK_PRIORITY_INVALID` and blocks `next` instead of
+  being ranked as `medium`.
+- The agent skill now states the selection contract: only `next.tasks` may be
+  claimed, claim failures re-run `next`, and `task list` is diagnostic only.
+- 234 `node:test` cases.
+
 ## [0.9.23] - 2026-11-14
 
 ### Added

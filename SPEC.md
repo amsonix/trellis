@@ -179,11 +179,18 @@ Rules:
    parallel declaration, and a dependency is only for real ordering, never for
    serializing directory overlap.
 10. `Priority` is `high`, `medium` or `low`; a missing column or cell means
-    `medium`.
-11. `next` sorts ready tasks by priority (`high`, `medium`, `low`), then by id.
-12. `done` requires at least one `pass` evidence item for the task and no
+    `medium`. An unknown value is `TASK_PRIORITY_INVALID`: `next` refuses to
+    rank the board instead of silently treating it as `medium`.
+11. `Created` is an optional date column (`YYYY-MM-DD`). `next` sorts ready
+    tasks by priority, then by age (older first; a missing date is treated as
+    the oldest), then by id, and returns `ageDays`. `TRELLIS_STALE_DAYS`
+    (default 14) drives `TASK_BACKLOG_STALE`.
+12. `TRELLIS_MAX_OPEN` (default 0 = unlimited) caps open tasks
+    (`todo/ready/in_progress/review/blocked`). At the cap, `task add` refuses
+    with `TASK_BACKLOG_FULL`; only a human may pass `--force`.
+13. `done` requires at least one `pass` evidence item for the task and no
     `fail` evidence. `inconclusive` is not a pass.
-13. New work — a requirement, a bug report, test feedback — is added with
+14. New work — a requirement, a bug report, test feedback — is added with
     `task add`, which validates rules 1–9 before appending the row and records
     `task.added` with the actor. Overlapping scope without a dependency is
     refused, so the caller must declare the dependency rather than widen the
@@ -346,6 +353,12 @@ when a batch is ready to run, or `needsUser: true` with a `reason` when a gate,
 a task review, a stale approval, a blocked task or a failing check needs a
 decision. A runtime may run every `tasks` batch unattended and must stop on
 `needsUser: true`.
+
+The `tasks` array is the only candidate set for a runtime. It must not select a
+task by reading the board or by recency: claim only from `next.tasks`, and on a
+claim failure re-run `next` rather than switching to `task list`. `task list`
+is a diagnostic and backlog view, never a selection input. `--batch` is a
+candidate set, not a reservation; `claim` is the lock.
 
 ## 11. Checks and severity
 
