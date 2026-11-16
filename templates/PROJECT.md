@@ -3,7 +3,6 @@ id: PROJECT
 project: {{PROJECT_NAME}}
 profile: {{PROFILE}}
 stage: intake
-status: draft
 owners: [human]
 version: 1
 created: {{DATE}}

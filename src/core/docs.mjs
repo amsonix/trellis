@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { ARTIFACTS, checkArtifact, readArtifact } from './artifacts.mjs';
+import { GATE_DEPENDENCIES, staleGates } from './gates.mjs';
 import { META_DIR } from './constants.mjs';
 import { RefusedError, UsageError } from './errors.mjs';
 import { TEMPLATE_DIR, TEMPLATE_MAP } from './project.mjs';
@@ -22,9 +23,11 @@ function requireArtifact(id) {
 export async function listDocs(root) {
   const state = await loadState(root);
   const profile = getProfile(state.project.profile);
+  const stale = (await staleGates(root, state)).map((item) => item.gate);
   const items = [];
   for (const definition of Object.values(ARTIFACTS)) {
     const artifact = await readArtifact(root, definition.id);
+    const gateId = Object.keys(GATE_DEPENDENCIES).find((id) => GATE_DEPENDENCIES[id].includes(definition.id)) ?? null;
     items.push({
       id: definition.id,
       title: definition.title,
@@ -33,7 +36,9 @@ export async function listDocs(root) {
       required: profile.requiredArtifacts.includes(definition.id),
       optional: profile.optionalArtifacts.includes(definition.id),
       exists: !artifact.missing,
-      status: artifact.data?.status ?? null
+      gate: gateId
+        ? { id: gateId, status: state.gates?.[gateId]?.status ?? 'pending', stale: stale.includes(gateId) }
+        : null
     });
   }
   return { items };
@@ -42,6 +47,8 @@ export async function listDocs(root) {
 export async function showDoc(root, id) {
   const definition = requireArtifact(id);
   const artifact = await readArtifact(root, id);
+  const data = artifact.data ? { ...artifact.data } : null;
+  if (data) delete data.status;
   return {
     id,
     title: definition.title,
@@ -49,7 +56,7 @@ export async function showDoc(root, id) {
     stage: definition.stage,
     exists: !artifact.missing,
     text: artifact.text ?? null,
-    data: artifact.data ?? null
+    data
   };
 }
 

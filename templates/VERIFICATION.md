@@ -2,7 +2,6 @@
 id: VERIFICATION
 project: {{PROJECT_NAME}}
 stage: plan
-status: draft
 owners: [verifier]
 version: 1
 created: {{DATE}}

@@ -2,7 +2,6 @@
 id: TASKS
 project: {{PROJECT_NAME}}
 stage: plan
-status: draft
 owners: [coordinator]
 version: 1
 created: {{DATE}}

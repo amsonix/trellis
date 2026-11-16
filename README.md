@@ -332,6 +332,10 @@ trellis doc show <ID> [dir] [--json]
 trellis doc check <ID> [dir] [--json]
 trellis doc scaffold <ID> --by <role>:<name> [dir]
 trellis adr new --title <decision> [--status proposed|accepted|superseded] --by <role>:<name>
+trellis adr list [dir] [--json]
+trellis adr accept <number|file> --by <role>:<name>
+trellis milestone list [dir] [--json]
+trellis milestone close <M0> --by <role>:<name> [--note <text>]
 trellis task show <T-NNN> [dir] [--context] [--json]
 trellis task list [dir] [--status <s>] [--role <r>] [--ready] [--limit <n>]
 trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> [--note <text>] [--by <role>:<name>]

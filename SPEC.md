@@ -120,12 +120,29 @@ Every artifact starts with YAML front-matter:
 id: ARCHITECTURE
 project: my-project
 stage: architecture
-status: draft | review | approved
 owners: [architect]
 version: 1
 created: 2026-11-03
 ---
 ```
+
+Artifacts have no independent `status` field. Whether an artifact is approved is
+projected from its gate: `doc list` reports the gate id, its state and whether its
+digest is stale. A hand-written `status:` is ignored.
+
+A milestone's declared state is a line inside its ROADMAP section:
+
+```markdown
+## M2 Conversion
+
+**Status:** planned | active | done (date, actor) — note
+```
+
+`report` computes `computed` (empty/todo/in_progress/done from tasks) and reads
+`declared`; they are never merged. `MILESTONE_READY` (computed done, not declared)
+and `MILESTONE_MISMATCH` (declared done, tasks open) are attention items.
+`milestone close` requires all tasks closed, writes the declared line and audits
+`milestone.closed`; only a human or coordinator may do it.
 
 Then a Markdown body with level-2 sections. The required sections are:
 

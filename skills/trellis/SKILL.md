@@ -104,6 +104,12 @@ Before reporting a parent `done`, check `openChildren` from `task list` or
 `next`; `TASK_OPEN_CHILDREN` is a refusal, not a warning. To abandon a parent
 and its children together, a human uses `task cancel --cascade`.
 
+Milestones are not closed by task completion. When `status` shows
+`MILESTONE_READY`, a human or coordinator checks the exit criteria and runs
+`trellis milestone close M2 --by ... --note "..."`. Do not mark a milestone done
+because its task count reached zero. A document's approval comes from its gate:
+use `trellis doc list` (gate state), not a `status:` line in the file.
+
 ## The rules
 
 1. **A stage is not a suggestion.** Write only the artifacts the current stage

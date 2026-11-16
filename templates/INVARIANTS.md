@@ -2,7 +2,6 @@
 id: INVARIANTS
 project: {{PROJECT_NAME}}
 stage: architecture
-status: draft
 owners: [architect]
 version: 1
 created: {{DATE}}

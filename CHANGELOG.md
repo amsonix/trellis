@@ -4,6 +4,20 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Artifacts no longer carry a `status` field; `doc list` projects the gate id,
+  gate state and digest staleness instead. A handwritten `status` is ignored.
+- Milestones have a declared `**Status:** planned|active|done` line, separate
+  from the computed task-based status; `MILESTONE_READY` and
+  `MILESTONE_MISMATCH` surface disagreement. `milestone close/reopen` writes the
+  declared line and audits it.
+- ADR `## Status` is parsed and transitionable: `adr list/status/accept/reject/
+  supersede/set-status`; superseded is terminal.
+- 247 `node:test` cases.
+
 ## [0.9.26] - 2026-11-16
 
 ### Added

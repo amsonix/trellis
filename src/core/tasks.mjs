@@ -159,12 +159,22 @@ export async function milestonesFromRoadmap(root) {
   const sections = splitSections(text);
   return sections
     .filter((section) => /^m\d+\b/.test(section.key) || /^m\d+\b/.test(normalizeHeading(section.title)))
-    .map((section) => ({
-      id: section.title.split(/\s+/)[0],
-      title: section.title,
-      key: section.key,
-      content: section.content
-    }));
+    .map((section) => {
+      const statusLine = section.content
+        .split('\n')
+        .map((line) => line.trim())
+        .find((line) => /^\*\*Status:\*\*/i.test(line));
+      const declared = statusLine
+        ? statusLine.replace(/^\*\*Status:\*\*/i, '').trim().split(/[\s(—–-]+/)[0].toLowerCase()
+        : 'planned';
+      return {
+        id: section.title.split(/\s+/)[0],
+        title: section.title,
+        key: section.key,
+        content: section.content,
+        declared
+      };
+    });
 }
 
 export function validateTasks(tasks, { milestones = [] } = {}) {

@@ -2,7 +2,6 @@
 id: RESEARCH
 project: {{PROJECT_NAME}}
 stage: discovery
-status: draft
 owners: [architect]
 version: 1
 created: {{DATE}}

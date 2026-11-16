@@ -2,7 +2,6 @@
 id: ROADMAP
 project: {{PROJECT_NAME}}
 stage: plan
-status: draft
 owners: [architect]
 version: 1
 created: {{DATE}}
@@ -11,6 +10,8 @@ created: {{DATE}}
 # Roadmap
 
 ## M0 Foundation
+
+**Status:** planned
 
 **Goal:** the repository builds, tests and documents a first vertical slice.
 
@@ -22,6 +23,8 @@ Exit criteria:
 **Non-goals:** deployment beyond the development environment.
 
 ## M1 First useful slice
+
+**Status:** planned
 
 **Goal:** one user can complete the core task end to end.
 

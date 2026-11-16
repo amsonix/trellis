@@ -58,10 +58,13 @@ test('report aggregates milestones from the task board', async () => {
     assert.deepEqual(report.milestones[0], {
       id: 'M0',
       title: 'M0 Foundation',
-      status: 'done',
+      computed: 'done',
+      declared: 'planned',
+      ready: true,
+      mismatch: false,
       tasks: { done: 1, total: 1 }
     });
-    assert.equal(report.milestones[1].status, 'empty');
+    assert.equal(report.milestones[1].computed, 'empty');
   } finally {
     await cleanup(dir);
   }

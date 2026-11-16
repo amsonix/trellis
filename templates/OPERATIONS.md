@@ -2,7 +2,6 @@
 id: OPERATIONS
 project: {{PROJECT_NAME}}
 stage: releasing
-status: draft
 owners: [operator]
 version: 1
 created: {{DATE}}

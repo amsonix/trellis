@@ -6,6 +6,8 @@ import { PROTOCOL_VERSION, TASK_STATUSES } from './core/constants.mjs';
 import { ProtocolError, RefusedError, UsageError, UnavailableError } from './core/errors.mjs';
 import { summarize } from './core/checks.mjs';
 import { listDocs, showDoc, checkDoc, scaffoldDoc, createAdr } from './core/docs.mjs';
+import { closeMilestone, getMilestone, listMilestones, reopenMilestone } from './core/milestones.mjs';
+import { listAdrs, setAdrStatus } from './core/adr.mjs';
 import { loadState } from './core/store.mjs';
 import {
   initProject,
@@ -133,7 +135,7 @@ function parseArgv(argv) {
 
   const command = positionals.shift() ?? null;
   let subcommand = null;
-  if (['task', 'evidence', 'lease', 'guard', 'profile', 'scope', 'doc', 'adr'].includes(command)) {
+  if (['task', 'evidence', 'lease', 'guard', 'profile', 'scope', 'doc', 'adr', 'milestone'].includes(command)) {
     subcommand = positionals.shift() ?? null;
   }
   return { command, subcommand, positionals, options };
@@ -186,6 +188,9 @@ trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dir <dir>]
   trellis doc check <ID> [dir] [--json]
   trellis doc scaffold <ID> --by <role>:<name> [dir]
   trellis adr new --title <decision> [--status proposed|accepted|superseded] --by <role>:<name> [dir] [--json]
+  trellis adr list [dir] [--json]
+  trellis milestone list [dir] [--json]
+  trellis milestone close <M0> --by <role>:<name> [--note <text>] [dir]
   trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit>
                               --verdict <pass|fail|inconclusive> --by <role>:<name> [--dir <dir>]
   trellis evidence retract <EV-id> --by <role>:<name> --reason <text> [--dir <dir>]
@@ -230,7 +235,18 @@ const HELP = {
   'doc:show': ['Print one document (or its path/metadata with --json).', 'trellis doc show <ID> [dir] [--json]'],
   'doc:check': ['Run the structural checks for one document.', 'trellis doc check <ID> [dir] [--json]'],
   'doc:scaffold': ['Create a missing document from its template (never overwrites).', 'trellis doc scaffold <ID> --by <role>:<name> [dir] [--json]'],
-  adr: ['Architecture decision records.', 'trellis adr <new> ...'],
+  milestone: ['Milestone declared status (computed vs declared).', 'trellis milestone <list|status|close|reopen> ...'],
+  'milestone:list': ['List milestones with computed and declared status.', 'trellis milestone list [dir] [--json]'],
+  'milestone:status': ['Show one milestone.', 'trellis milestone status <M0> [dir] [--json]'],
+  'milestone:close': ['Declare a milestone done (all tasks closed).', 'trellis milestone close <M0> --by <role>:<name> [--note <text>] [dir]'],
+  'milestone:reopen': ['Reopen a declared milestone.', 'trellis milestone reopen <M0> --by <role>:<name> [--note <text>] [dir]'],
+  adr: ['Architecture decision records.', 'trellis adr <new|list|status|accept|reject|supersede|set-status> ...'],
+  'adr:list': ['List ADRs with their Status section.', 'trellis adr list [dir] [--json]'],
+  'adr:status': ['Show one ADR status.', 'trellis adr status <number|file> [dir] [--json]'],
+  'adr:accept': ['Mark an ADR accepted.', 'trellis adr accept <number|file> --by <role>:<name> [--note <text>] [dir]'],
+  'adr:reject': ['Mark an ADR rejected.', 'trellis adr reject <number|file> --by <role>:<name> [--note <text>] [dir]'],
+  'adr:supersede': ['Mark an ADR superseded.', 'trellis adr supersede <number|file> --by <role>:<name> [--note <text>] [dir]'],
+  'adr:set-status': ['Set an ADR status explicitly.', 'trellis adr set-status <number|file> <proposed|accepted|rejected|superseded> --by <role>:<name> [dir]'],
   'adr:new': ['Create the next ADR from the template and audit it.', 'trellis adr new --title <decision> [--status proposed|accepted|superseded] --by <role>:<name> [dir] [--json]'],
   task: ['Task board operations.', 'trellis task <list|show|add|claim|ask|answer|report|recover|cancel> ...'],
   'task:show': ['Show one task, optionally with its context (read set, parent, children, evidence).', 'trellis task show <T-NNN> [dir] [--context] [--json]'],
@@ -343,7 +359,7 @@ function printReport(data) {
     console.log('Milestones:');
     for (const milestone of data.milestones) {
       console.log(
-        `  ${milestone.title.padEnd(28)} ${milestone.status.padEnd(12)} ${milestone.tasks.done}/${milestone.tasks.total} tasks`
+        `  ${milestone.title.padEnd(28)} ${milestone.computed.padEnd(12)} declared:${String(milestone.declared).padEnd(8)} ${milestone.tasks.done}/${milestone.tasks.total} tasks`
       );
     }
   }
@@ -590,8 +606,12 @@ async function dispatch(args) {
         exitCode: 0,
         print: () => {
           for (const item of data.items) {
-            const state = item.exists ? (item.status ?? 'present') : 'missing';
-            console.log(`${item.id.padEnd(14)} ${state.padEnd(10)} ${item.path}`);
+            const state = !item.exists
+              ? 'missing'
+              : item.gate
+                ? `${item.gate.status}${item.gate.stale ? ' (stale)' : ''}`
+                : 'present';
+            console.log(`${item.id.padEnd(14)} ${state.padEnd(16)} ${item.path}`);
           }
         }
       };
@@ -623,6 +643,37 @@ async function dispatch(args) {
     throw new UsageError(`unknown doc subcommand '${subcommand}' (list|show|check|scaffold)`);
   }
 
+  if (command === 'milestone') {
+    if (subcommand === 'list') {
+      const data = { items: await listMilestones(dirOf(args)) };
+      return {
+        data,
+        exitCode: 0,
+        print: () => {
+          for (const item of data.items) {
+            console.log(`${item.id.padEnd(4)} computed:${item.computed.padEnd(12)} declared:${item.declared.padEnd(8)} ${item.tasks.done}/${item.tasks.total}`);
+          }
+        }
+      };
+    }
+    if (subcommand === 'status') {
+      const id = args.positionals[0];
+      if (!id) throw new UsageError('milestone status needs a milestone id');
+      const data = await getMilestone(dirOf(args, 1), id);
+      return { data, exitCode: 0, print: () => console.log(`${data.id}: computed ${data.computed}, declared ${data.declared}`) };
+    }
+    if (subcommand === 'close' || subcommand === 'reopen') {
+      const id = args.positionals[0];
+      if (!id) throw new UsageError(`milestone ${subcommand} needs a milestone id`);
+      if (!options.by) throw new UsageError(`milestone ${subcommand} needs --by <role>:<name>`);
+      const data = subcommand === 'close'
+        ? await closeMilestone(dirOf(args, 1), id, { by: options.by, note: options.note ?? null })
+        : await reopenMilestone(dirOf(args, 1), id, { by: options.by, note: options.note ?? null });
+      return { data, exitCode: 0, print: () => console.log(`${id}: declared ${data.milestone.declared}`) };
+    }
+    throw new UsageError(`unknown milestone subcommand '${subcommand}' (list|status|close|reopen)`);
+  }
+
   if (command === 'adr') {
     if (subcommand === 'new') {
       const data = await createAdr(dirOf(args), {
@@ -632,7 +683,35 @@ async function dispatch(args) {
       });
       return { data, exitCode: 0, print: () => console.log(`created ${data.path}: ${data.title} (${data.status})`) };
     }
-    throw new UsageError(`unknown adr subcommand '${subcommand}' (new)`);
+    if (subcommand === 'list') {
+      const data = await listAdrs(dirOf(args));
+      return {
+        data,
+        exitCode: 0,
+        print: () => {
+          for (const item of data.items) console.log(`${item.file.padEnd(48)} ${item.status}`);
+        }
+      };
+    }
+    if (subcommand === 'status') {
+      const target = args.positionals[0];
+      if (!target) throw new UsageError('adr status needs a number or file');
+      const data = await listAdrs(dirOf(args, 1));
+      const item = data.items.find((entry) => entry.file.startsWith(`${target}-`) || entry.file === target);
+      if (!item) throw new RefusedError('ADR_UNKNOWN', `no ADR '${target}'`, { adr: target });
+      return { data: item, exitCode: 0, print: () => console.log(`${item.file}: ${item.status}`) };
+    }
+    const fixed = { accept: 'accepted', reject: 'rejected', supersede: 'superseded' }[subcommand];
+    if (subcommand === 'accept' || subcommand === 'reject' || subcommand === 'supersede' || subcommand === 'set-status') {
+      const target = args.positionals[0];
+      if (!target) throw new UsageError(`adr ${subcommand} needs a number or file`);
+      const status = fixed ?? args.positionals[1];
+      if (!status) throw new UsageError('adr set-status needs a status');
+      if (!options.by) throw new UsageError(`adr ${subcommand} needs --by <role>:<name>`);
+      const data = await setAdrStatus(dirOf(args, subcommand === 'set-status' ? 2 : 1), target, status, { by: options.by, note: options.note ?? null });
+      return { data, exitCode: 0, print: () => console.log(`${data.file}: ${data.status}`) };
+    }
+    throw new UsageError(`unknown adr subcommand '${subcommand}' (new|list|status|accept|reject|supersede|set-status)`);
   }
 
   if (command === 'task') {
