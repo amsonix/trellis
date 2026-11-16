@@ -4,6 +4,18 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- A task created with `--parent` inherits the parent's `Source` when it has
+  none; `--follow-up-of` does not inherit. Attaching an existing task to a
+  sourced parent also inherits.
+- Coverage resolves `Source` through the parent chain, so source-less children
+  of a sourced parent are not orphans; `task show` exposes `effectiveSource`.
+- `--source -` explicitly clears a source.
+- 250 `node:test` cases.
+
 ## [0.9.28] - 2026-11-16
 
 ### Added

@@ -23,7 +23,7 @@ import {
 import { addEvidence, verifyTaskEvidence, requirePassingEvidence, listEvidence } from './evidence.mjs';
 import { acquireLease, releaseLease, leaseStatus, leaseConflicts } from './lease.mjs';
 import { milestoneProgress as computeMilestoneProgress } from './milestones.mjs';
-import { coverageFor } from './coverage.mjs';
+import { coverageFor, sourceMap } from './coverage.mjs';
 import { defaultState, loadState, saveState, appendAudit } from './store.mjs';
 import { RefusedError, UnavailableError, UsageError } from './errors.mjs';
 import { nowIso, parseActor, parseScope, isSafeDomain, assertMaxLength, writeText, covers, overlaps, normalizeSource } from './util.mjs';
@@ -335,7 +335,8 @@ async function buildAttention(root, state, tasks, checks) {
       });
     }
   }
-  for (const task of tasks.filter((item) => item.status === 'in_progress' && !item.source)) {
+  const taskSources = sourceMap(tasks);
+  for (const task of tasks.filter((item) => item.status === 'in_progress' && !taskSources.get(item.id))) {
     attention.push({
       kind: 'task',
       code: 'TASK_SOURCE_MISSING',
@@ -1172,6 +1173,8 @@ export async function addTask(
     }
     resolvedMilestone = containment.milestone;
   }
+  const explicitSource = source && String(source).trim() !== '-' ? normalizeSource(source) : null;
+  const effectiveSource = explicitSource ?? containment?.source ?? null;
 
   if (followUpOf) {
     parent = tasks.find((task) => task.id === followUpOf);
@@ -1221,7 +1224,7 @@ export async function addTask(
     status: 'todo',
     priority: normalizedPriority,
     parent: containment?.id ?? null,
-    source: source ? normalizeSource(source) : null
+    source: effectiveSource
   };
 
   const checks = validateTasks([...tasks, task], { milestones });
@@ -1281,6 +1284,7 @@ export async function editTask(root, taskId, { title, acceptance, verification, 
     fields.scope = domains.join(', ');
   }
   let parentField;
+  let parentSource = null;
   if (parent !== undefined) {
     const raw = String(parent).trim();
     if (!raw || raw === '-') {
@@ -1295,14 +1299,18 @@ export async function editTask(root, taskId, { title, acceptance, verification, 
       const held = (await leaseStatus(root)).find((lease) => lease.taskId === raw);
       if (held) throw new RefusedError('PARENT_LEASE_HELD', `${raw} holds a lease; release it first`, { parent: raw, lease: held.id });
       parentField = raw;
+      parentSource = candidate.source ?? null;
     }
     fields.parent = parentField ?? '-';
   }
   let sourceField;
   if (source !== undefined) {
     const raw = String(source).trim();
-    sourceField = raw ? normalizeSource(raw) : null;
+    sourceField = raw && raw !== '-' ? normalizeSource(raw) : null;
     fields.source = sourceField ?? '-';
+  } else if (parent !== undefined && parentField && !task.source && parentSource) {
+    sourceField = parentSource;
+    fields.source = sourceField;
   }
   if (priority !== undefined) {
     const normalized = String(priority).trim().toLowerCase();
@@ -1323,7 +1331,7 @@ export async function editTask(root, taskId, { title, acceptance, verification, 
     ...task,
     ...(fields.scope ? { scope: parseScope(fields.scope) } : {}),
     ...(parent !== undefined ? { parent: parentField } : {}),
-    ...(source !== undefined ? { source: sourceField } : {}),
+    ...(sourceField !== undefined ? { source: sourceField } : {}),
     ...(fields.title ? { title: fields.title } : {}),
     ...(fields.acceptance ? { acceptance: fields.acceptance } : {}),
     ...(fields.verification ? { verification: fields.verification } : {}),
@@ -1380,6 +1388,7 @@ export async function taskShow(root, taskId, { context = false } = {}) {
   });
   const base = {
     task: { ...task, ageDays: ageDays(task) },
+    effectiveSource: sourceMap(tasks).get(taskId) ?? null,
     parent: parent ? summary(parent) : null,
     children: children.map(summary),
     openChildren: children.filter((item) => !['done', 'canceled'].includes(item.status)).length
