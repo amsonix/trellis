@@ -1,4 +1,4 @@
-export const PROTOCOL_VERSION = '0.9.24';
+export const PROTOCOL_VERSION = '0.9.25';
 export const SCHEMA_VERSION = 3;
 export const META_DIR = '.trellis';
 
