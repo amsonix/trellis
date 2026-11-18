@@ -148,6 +148,16 @@ delegate one task per child instead of doing them sequentially:
    `lease reap` or `task recover` only for a crashed holder. Re-run `next` rather
    than picking a replacement from the board.
 
+If a child uses a worktree, remove it after the work lands:
+
+```bash
+git worktree remove .trellis/worktrees/<T-NNN>
+git worktree prune
+```
+
+Never remove a tree with uncommitted work, and delete the branch only after it
+is merged. `task finish` warns `WORKTREE_REMAINS` for the conventional path.
+
 See `examples/host-orchestrator.md` for the full prompt template and DSH
 mapping. Trellis itself has no execution engine and never spawns an agent.
 

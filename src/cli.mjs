@@ -1018,7 +1018,14 @@ async function dispatch(args) {
       const taskId = args.positionals[0];
       if (!taskId) throw new UsageError('task finish needs a task id');
       const data = await finishTask(dir, taskId, { run: options.run, by: options.by });
-      return { data, exitCode: 0, print: () => console.log(`finished ${taskId} (exit 0); evidence ${data.evidence.id}; log ${data.log}`) };
+      return {
+        data,
+        exitCode: 0,
+        print: () => {
+          console.log(`finished ${taskId} (exit 0); evidence ${data.evidence.id}; log ${data.log}`);
+          for (const warning of data.warnings ?? []) console.log(`  warning ${warning.code}: ${warning.message}`);
+        }
+      };
     }
     if (subcommand === 'cancel') {
       if (!options.reason) throw new UsageError('task cancel needs --reason "<why>"');
@@ -1051,7 +1058,10 @@ async function dispatch(args) {
       return {
         data,
         exitCode: 0,
-        print: () => console.log(data.dryRun ? `would move ${taskId} -> ${data.task.status}` : `${taskId}: ${data.task.status}`)
+        print: () => {
+          console.log(data.dryRun ? `would move ${taskId} -> ${data.task.status}` : `${taskId}: ${data.task.status}`);
+          for (const warning of data.warnings ?? []) console.log(`  warning ${warning.code}: ${warning.message}`);
+        }
       };
     }
     throw new UsageError(`unknown task subcommand '${subcommand}' (list|claim|report)`);

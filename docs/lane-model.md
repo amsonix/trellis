@@ -56,6 +56,28 @@ board: link it (as above) or pass `--dir "$MAIN"` to every command. Never run
 Add `.trellis/worktrees/` to `.gitignore`. The lease is still the source of
 truth: a worktree does not by itself grant write permission.
 
+### Cleanup is part of the recipe
+
+A worktree is a full checkout; leaving one per finished task grows the disk
+without bound. Remove it after the work has landed:
+
+```bash
+cd "$MAIN"
+git worktree remove .trellis/worktrees/T-144   # refuses if the tree is dirty
+git worktree prune                              # drop stale metadata
+git branch -d lane/T-144                        # only after the branch is merged
+```
+
+If `git worktree remove` refuses, the tree has uncommitted work: commit it,
+land it, or make the discard an explicit human decision (`--force`). Do not put
+`git worktree remove --force` in a trap; it can destroy work that was never
+recorded.
+
+`trellis task report done` / `task finish` emits `WORKTREE_REMAINS` when the
+conventional path `.trellis/worktrees/<task>` still exists. Custom worktree
+paths are not detected; list them with `git worktree list` and check disk usage
+with `du -sh .trellis/worktrees/*`.
+
 ## Failure modes this model keeps
 
 - A lease held by a lane that died: recover with `lease reap` (audited, human

@@ -1756,6 +1756,19 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
       });
     }
     evidence = await requirePassingEvidence(root, taskId);
+    try {
+      const worktree = await fs.stat(path.join(root, META_DIR, 'worktrees', taskId));
+      if (worktree.isDirectory()) {
+        warnings.push({
+          code: 'WORKTREE_REMAINS',
+          message: `worktree .trellis/worktrees/${taskId} still exists; remove it after landing`,
+          path: `.trellis/worktrees/${taskId}`,
+          cleanup: `git worktree remove .trellis/worktrees/${taskId}`
+        });
+      }
+    } catch {
+      // no conventional worktree
+    }
     if (!dryRun) {
       const released = await releaseLease(root, taskId, actor?.raw ?? null);
       if (released) {
@@ -1843,7 +1856,7 @@ export async function finishTask(root, taskId, { run, by, timeoutMs = 30 * 60 * 
     });
   }
   const reported = await reportTask(root, taskId, { state: 'done', by });
-  return { taskId, exitCode, log, evidence, task: reported.task };
+  return { taskId, exitCode, log, evidence, task: reported.task, warnings: reported.warnings ?? [] };
 }
 
 export async function addTasks(root, items, { by, force = false } = {}) {
