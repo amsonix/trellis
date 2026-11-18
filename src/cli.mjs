@@ -101,6 +101,40 @@ const VALUE_OPTIONS = new Set([
 
 const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready', 'cascade', 'context', 'strict', 'panel']);
 
+// A flag is only accepted where it means something. Every other flag is a
+// usage error, so `task add --dry-run` cannot silently write a task.
+const GLOBAL_FLAGS = new Set(['json', 'help', 'version']);
+const FLAG_SCOPES = {
+  status: ['panel'],
+  report: [],
+  compact: ['dry-run'],
+  gate: ['approve', 'waive'],
+  guard: ['observe', 'staged'],
+  scope: ['apply'],
+  export: ['a2a'],
+  'a2a:serve': ['no-cancel'],
+  'task:add': ['force'],
+  'task:report': ['dry-run'],
+  'task:list': ['ready'],
+  'task:cancel': ['cascade'],
+  'task:show': ['context'],
+  next: ['context'],
+  'plan:coverage': ['strict'],
+  restore: ['force']
+};
+
+function validateFlags(command, subcommand, options) {
+  if (!command) return;
+  const key = subcommand ? `${command}:${subcommand}` : command;
+  const allowed = new Set([...GLOBAL_FLAGS, ...(FLAG_SCOPES[key] ?? FLAG_SCOPES[command] ?? [])]);
+  for (const name of Object.keys(options)) {
+    if (!FLAG_OPTIONS.has(name)) continue;
+    if (!allowed.has(name)) {
+      throw new UsageError(`trellis ${command}${subcommand ? ` ${subcommand}` : ''} does not take --${name}`);
+    }
+  }
+}
+
 function parseArgv(argv) {
   const positionals = [];
   const options = {};
@@ -141,6 +175,7 @@ function parseArgv(argv) {
   if (['task', 'evidence', 'lease', 'guard', 'profile', 'scope', 'doc', 'adr', 'milestone', 'plan'].includes(command)) {
     subcommand = positionals.shift() ?? null;
   }
+  validateFlags(command, subcommand, options);
   return { command, subcommand, positionals, options };
 }
 

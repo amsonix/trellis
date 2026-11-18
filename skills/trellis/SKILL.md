@@ -28,6 +28,9 @@ If `trellis` is not on `PATH` but the repository is checked out, use
    candidate set.
 4. Read the artifacts named by `brief` before touching anything.
 
+Flags are command-scoped: do not assume `--dry-run` or `--force` exists on a
+new command; an unknown combination is a USAGE error.
+
 If `next` and the user's request disagree, say so and ask. Do not silently
 switch stages or skip a gate.
 

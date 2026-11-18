@@ -4,6 +4,16 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Flags are scoped to the command that understands them. `task add --dry-run`
+  now fails with `USAGE: trellis task add does not take --dry-run` and writes
+  nothing; `task report --observe` is refused instead of running the transition.
+  Global flags remain `--json`, `--help`, `--version`.
+- 260 `node:test` cases.
+
 ## [0.9.33] - 2026-11-18
 
 ### Added
