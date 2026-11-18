@@ -4,6 +4,17 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `status --panel`: one boxed panel for stage, gates, task counts, checks,
+  leases, attention and next. Width is measured in display columns (CJK counts
+  as two), markdown decoration is stripped, and `--json` wins when both flags
+  are present.
+- `help status` now lists its options.
+- 257 `node:test` cases.
+
 ## [0.9.32] - 2026-11-18
 
 ### Documentation

@@ -10,6 +10,7 @@ import { closeMilestone, getMilestone, listMilestones, reopenMilestone } from '.
 import { planCoverage, sourceMap } from './core/coverage.mjs';
 import { listAdrs, setAdrStatus } from './core/adr.mjs';
 import { loadState } from './core/store.mjs';
+import { renderStatusPanel } from './core/text.mjs';
 import {
   initProject,
   projectStatus,
@@ -98,7 +99,7 @@ const VALUE_OPTIONS = new Set([
   'strategy'
 ]);
 
-const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready', 'cascade', 'context', 'strict']);
+const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready', 'cascade', 'context', 'strict', 'panel']);
 
 function parseArgv(argv) {
   const positionals = [];
@@ -163,7 +164,7 @@ Usage:
       (works on an existing project; creates <project>/.trellis/ and, once,
        the agent skill .agents/skills/trellis/SKILL.md; never overwrites;
        profile defaults to generic, name defaults to the directory name)
-  trellis status [dir] [--json]
+  trellis status [dir] [--panel] [--json]
   trellis check [dir] [--stage <stage>] [--json]
   trellis next [dir] [--role <role>] [--limit <n>] [--batch <n>] [--strategy priority|unblock|oldest] [--json]
   trellis brief [dir] [--role <role>] [--json]
@@ -226,9 +227,17 @@ Exit codes:
 }
 
 
+const HELP_DETAILS = {
+  status: [
+    '--panel    render one boxed panel instead of the plain listing',
+    '--json     print the machine envelope; wins over --panel',
+    '--dir      project directory (default: cwd)'
+  ]
+};
+
 const HELP = {
   init: ['Create .trellis/ in a new or existing project.', 'trellis init [project-dir] [--profile <p>] [--name <n>]'],
-  status: ['Where the project is: stage, gates, task counts, attention.', 'trellis status [dir] [--json]'],
+  status: ['Where the project is: stage, gates, task counts, attention.', 'trellis status [dir] [--panel] [--json]'],
   check: ['Run the structural checks, optionally for one stage.', 'trellis check [dir] [--stage <stage>] [--json]'],
   next: ['The one action allowed now (tasks batch, gate, or stop reason).', 'trellis next [dir] [--role <role>] [--limit <n>] [--batch <n>] [--strategy priority|unblock|oldest] [--json]'],
   brief: ['The gate brief: read set, write set, prohibitions, next commands.', 'trellis brief [dir] [--role <role>] [--json]'],
@@ -303,7 +312,9 @@ function helpFor(subject = null, sub = null) {
   const extra = subs.length
     ? `\n\nSubcommands: ${subs.join(', ')}\n  try: trellis help ${subject} ${subs[0]}`
     : '';
-  return `${entry[0]}\n\nUsage:\n  ${entry[1]}${extra}`;
+  const details = HELP_DETAILS[key] ?? HELP_DETAILS[subject];
+  const options = details ? `\n\nOptions:\n  ${details.join('\n  ')}` : '';
+  return `${entry[0]}\n\nUsage:\n  ${entry[1]}${options}${extra}`;
 }
 
 function printInit(data) {
@@ -547,7 +558,7 @@ async function dispatch(args) {
 
   if (command === 'status') {
     const data = await projectStatus(dirOf(args));
-    return { data, exitCode: 0, print: () => printStatus(data) };
+    return { data, exitCode: 0, print: () => (options.panel ? console.log(renderStatusPanel(data)) : printStatus(data)) };
   }
 
   if (command === 'check') {

@@ -307,7 +307,7 @@ writing a new ADR, does.
 
 ```text
 trellis init [project-dir] [--profile <generic|web-app|library|cli>] [--name <name>]
-trellis status [dir] [--json]
+trellis status [dir] [--panel] [--json]
 trellis check [dir] [--stage <stage>] [--json]
 trellis next [dir] [--role <role>] [--limit <n>] [--json]
 trellis brief [dir] [--role <role>] [--json]
