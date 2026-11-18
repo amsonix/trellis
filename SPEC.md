@@ -427,12 +427,18 @@ A profile selects required/optional artifacts and the gates that apply.
 
 `--profile` is optional; the default is `generic`.
 
+`RESEARCH` is optional in every profile: not every project needs discovery.
+`gate G1 --approve` still fails when `RESEARCH.md` is missing
+(`RESEARCH_REQUIRED_OR_WAIVE`); a human either writes it or records an explicit
+decision with `gate G1 --waive --reason "..."`. A waiver satisfies G1 for stage
+progression but does not create research content.
+
 | Profile | Required artifacts | Optional |
 |---|---|---|
 | `generic` | `PROJECT`, `ARCHITECTURE`, `ROADMAP`, `TASKS`, `VERIFICATION` | `RESEARCH`, `OPERATIONS`, `GLOSSARY`, `INVARIANTS` |
-| `web-app` | `PROJECT`, `RESEARCH`, `ARCHITECTURE`, `ROADMAP`, `TASKS`, `VERIFICATION`, `OPERATIONS` | `GLOSSARY`, `INVARIANTS` |
-| `library` | `PROJECT`, `RESEARCH`, `ARCHITECTURE`, `ROADMAP`, `TASKS`, `VERIFICATION` | `OPERATIONS`, `GLOSSARY`, `INVARIANTS` |
-| `cli` | same as `library` | `OPERATIONS`, `GLOSSARY`, `INVARIANTS` |
+| `web-app` | `PROJECT`, `ARCHITECTURE`, `ROADMAP`, `TASKS`, `VERIFICATION`, `OPERATIONS` | `RESEARCH`, `GLOSSARY`, `INVARIANTS` |
+| `library` | `PROJECT`, `ARCHITECTURE`, `ROADMAP`, `TASKS`, `VERIFICATION` | `RESEARCH`, `OPERATIONS`, `GLOSSARY`, `INVARIANTS` |
+| `cli` | same as `library` | `RESEARCH`, `OPERATIONS`, `GLOSSARY`, `INVARIANTS` |
 
 A profile is data, not code. Add a profile by adding an entry in
 `src/core/profiles.mjs`; add a template only when the profile needs a new

@@ -21,6 +21,10 @@ If `trellis` is not on `PATH` but the repository is checked out, use
    before claiming it. Narrow with `trellis scope suggest --task T-NNN --apply
    --by <coordinator>:<name>` when the suggestion is a file inside the current
    scope. Do not add a dependency just because two tasks share a directory.
+If G1 is not needed (the domain is already understood), ask the human to run
+`trellis gate G1 --waive --by human:<name> --reason "..."`; do not create an
+empty `RESEARCH.md` and do not approve the gate yourself.
+
 1. `trellis brief --role <your-role> --json` — the current gate, what to read,
    what to write, and what you must not do.
 2. `trellis status --json` — where the project is.

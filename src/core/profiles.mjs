@@ -13,24 +13,24 @@ export const PROFILES = {
     id: 'web-app',
     title: 'Web application',
     description: 'A user-facing application with deployment and operations concerns.',
-    requiredArtifacts: ['PROJECT', 'RESEARCH', 'ARCHITECTURE', 'ROADMAP', 'TASKS', 'VERIFICATION', 'OPERATIONS'],
-    optionalArtifacts: ['GLOSSARY', 'INVARIANTS'],
+    requiredArtifacts: ['PROJECT', 'ARCHITECTURE', 'ROADMAP', 'TASKS', 'VERIFICATION', 'OPERATIONS'],
+    optionalArtifacts: ['RESEARCH', 'GLOSSARY', 'INVARIANTS'],
     gates: ['G0', 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7']
   },
   library: {
     id: 'library',
     title: 'Library or SDK',
     description: 'A reusable package with an API, compatibility and release concerns.',
-    requiredArtifacts: ['PROJECT', 'RESEARCH', 'ARCHITECTURE', 'ROADMAP', 'TASKS', 'VERIFICATION'],
-    optionalArtifacts: ['OPERATIONS', 'GLOSSARY', 'INVARIANTS'],
+    requiredArtifacts: ['PROJECT', 'ARCHITECTURE', 'ROADMAP', 'TASKS', 'VERIFICATION'],
+    optionalArtifacts: ['RESEARCH', 'OPERATIONS', 'GLOSSARY', 'INVARIANTS'],
     gates: ['G0', 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7']
   },
   cli: {
     id: 'cli',
     title: 'Command-line tool',
     description: 'A developer-facing tool with UX, compatibility and release concerns.',
-    requiredArtifacts: ['PROJECT', 'RESEARCH', 'ARCHITECTURE', 'ROADMAP', 'TASKS', 'VERIFICATION'],
-    optionalArtifacts: ['OPERATIONS', 'GLOSSARY', 'INVARIANTS'],
+    requiredArtifacts: ['PROJECT', 'ARCHITECTURE', 'ROADMAP', 'TASKS', 'VERIFICATION'],
+    optionalArtifacts: ['RESEARCH', 'OPERATIONS', 'GLOSSARY', 'INVARIANTS'],
     gates: ['G0', 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7']
   }
 };

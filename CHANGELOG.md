@@ -4,6 +4,15 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- `RESEARCH` is optional in every profile. G1 no longer passes on an empty
+  research file: `gate G1 --approve` fails with `RESEARCH_REQUIRED_OR_WAIVE`,
+  and a human records the decision with `gate G1 --waive --reason "..."`.
+- 261 `node:test` cases.
+
 ## [0.9.34] - 2026-11-18
 
 ### Fixed

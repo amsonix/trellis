@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { GATE_DEFS, PROJECT_GATES, META_DIR } from './constants.mjs';
 import { makeCheck, summarize } from './checks.mjs';
-import { checkArtifact, ARTIFACTS } from './artifacts.mjs';
+import { checkArtifact, readArtifact, ARTIFACTS } from './artifacts.mjs';
 import { validateTasks, milestonesFromRoadmap, taskById, parseTasks } from './tasks.mjs';
 import { verifyTaskEvidence } from './evidence.mjs';
 import { coverageFor } from './coverage.mjs';
@@ -232,6 +232,20 @@ export async function gateChecks(root, gateId, { profile, state, tasks, taskId =
 
   for (const artifactId of definition.artifacts ?? []) {
     checks.push(...(await checkArtifact(root, artifactId, profile)));
+  }
+
+  if (gateId === 'G1') {
+    const research = await readArtifact(root, 'RESEARCH');
+    if (research.missing) {
+      checks.push(
+        makeCheck(
+          'RESEARCH_REQUIRED_OR_WAIVE',
+          'fail',
+          'RESEARCH.md is missing; write it or waive G1 with --reason "why no research is needed"',
+          { gate: 'G1', artifact: 'RESEARCH' }
+        )
+      );
+    }
   }
 
   if (gateId === 'G3') {
