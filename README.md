@@ -251,7 +251,9 @@ threats Trellis does not handle are in
 
 The lane model that inspired `--paths`, `lease reap` and the evidence tree
 fields is documented in [`docs/lane-model.md`](docs/lane-model.md), including
-the worktree recipe Trellis does not wrap.
+the worktree recipe Trellis does not wrap. Host-side delegation to subagents is
+specified in [`examples/host-orchestrator.md`](examples/host-orchestrator.md):
+Trellis returns the batch, the host spawns one child per task.
 
 Spec Kit users can capture a `tasks.md` checklist through
 [`examples/spec-kit/`](examples/spec-kit/): Spec Kit keeps the spec and the plan,

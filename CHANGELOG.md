@@ -4,6 +4,16 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.32] - 2026-11-18
+
+### Documentation
+
+- The skill now states the delegation contract: a host with subagents spawns one
+  child per `next.tasks` entry, the parent does not claim, and each child uses a
+  unique actor.
+- `examples/host-orchestrator.md`: prompt template, DSH mapping and failure
+  handling for a delegating host. The `examples/` directory is packaged.
+
 ## [0.9.31] - 2026-11-16
 
 ### Added

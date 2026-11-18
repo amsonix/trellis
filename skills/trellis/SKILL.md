@@ -98,6 +98,27 @@ The selection contract:
 If `batchShortfall > 0`, work with what is available; do not fill the gap from
 the board.
 
+### Delegating a batch
+
+When the host supports subagents and `next --batch` returns more than one task,
+delegate one task per child instead of doing them sequentially:
+
+1. The parent **does not claim**. It passes each child:
+   - one task id and that task's `read` list
+   - the same project directory
+   - a unique `--by` actor (`executor:lane-<id>`)
+   - the instruction to claim, work, record evidence and report done, then stop
+2. The parent never reports a child's task done, never edits the board to retry,
+   and never starts more children than the returned batch.
+3. If the host has no subagent primitive, run sequentially; do not fake
+   parallelism by claiming several tasks in one agent.
+4. On a child failure: leave the evidence/state as the child left it. Use
+   `lease reap` or `task recover` only for a crashed holder. Re-run `next` rather
+   than picking a replacement from the board.
+
+See `examples/host-orchestrator.md` for the full prompt template and DSH
+mapping. Trellis itself has no execution engine and never spawns an agent.
+
 While doing a task you may discover work that is *part of* it: add it with
 `--parent <T-NNN>`. Containment means the parent cannot be marked done until
 the child is done or canceled, and the child must stay inside the parent's
