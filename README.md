@@ -50,6 +50,9 @@ node bin/trellis.mjs init /tmp/demo
 # Optional: choose a profile or a display name
 node bin/trellis.mjs init /tmp/demo --profile web-app --name demo
 
+# Top-down bootstrap: no sample task; task add is refused until G2 is approved
+node bin/trellis.mjs init /tmp/demo --empty-tasks
+
 # Inspect it
 node bin/trellis.mjs status --dir /tmp/demo
 node bin/trellis.mjs check --dir /tmp/demo

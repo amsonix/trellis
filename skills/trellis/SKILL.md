@@ -15,16 +15,39 @@ The CLI is the interface; prefer `--json` and read the envelope.
 If `trellis` is not on `PATH` but the repository is checked out, use
 `node <repo>/bin/trellis.mjs` instead.
 
+## Bootstrapping a new project
+
+When the user describes a new project or feature, do not start from the task
+board and do not create every artifact at once. Work top-down, one gate at a
+time:
+
+1. `trellis init . --name <name> --empty-tasks`. The empty board refuses
+   `task add` until G2 is approved, which is deliberate.
+2. Write only the current gate's artifact:
+   - G0: `PROJECT.md`
+   - G1: `RESEARCH.md` (or ask the human to waive G1 when research is not needed)
+   - G2: `ARCHITECTURE.md` + ADRs
+3. After each layer, run `trellis doc check <ARTIFACT>` and **stop**. Ask the
+   human to approve the gate (`trellis gate G0 --approve --by human:<name>`).
+   Do not write the next layer until that gate is passed or waived.
+4. At G3, write `ROADMAP.md` and `VERIFICATION.md` first. Then add tasks from
+   the ROADMAP exit criteria, with `--milestone` and `--source`, and run
+   `trellis plan coverage --strict`. Only then ask for G3.
+5. After G4, use `next` for execution. A new requirement after G4 becomes a
+   task; before G3 it belongs in PROJECT/ROADMAP, not TASKS.
+
+If G1 is not needed (the domain is already understood), ask the human to run
+`trellis gate G1 --waive --by human:<name> --reason "..."`; do not create an
+empty `RESEARCH.md` and do not approve the gate yourself.
+
+If the project already exists, skip `init` and start at `brief`/`next`.
+
 ## Before any write
 
 0. If a task's scope is a directory, run `trellis scope suggest --task T-NNN`
    before claiming it. Narrow with `trellis scope suggest --task T-NNN --apply
    --by <coordinator>:<name>` when the suggestion is a file inside the current
    scope. Do not add a dependency just because two tasks share a directory.
-If G1 is not needed (the domain is already understood), ask the human to run
-`trellis gate G1 --waive --by human:<name> --reason "..."`; do not create an
-empty `RESEARCH.md` and do not approve the gate yourself.
-
 1. `trellis brief --role <your-role> --json` — the current gate, what to read,
    what to write, and what you must not do.
 2. `trellis status --json` — where the project is.
@@ -48,8 +71,9 @@ CLI.
 
 ## Capturing new work
 
-When the user gives you a requirement, a bug report or test feedback, put it on
-the task board instead of only discussing it:
+After G3, when the user gives you a requirement, a bug report or test feedback,
+put it on the task board instead of only discussing it. Before G3, it belongs in
+`PROJECT.md` or `ROADMAP.md`, not in `TASKS.md`:
 
 ```bash
 trellis task add --title "<one line>" --scope "<paths>" \

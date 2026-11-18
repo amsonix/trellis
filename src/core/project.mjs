@@ -49,7 +49,7 @@ export const TEMPLATE_MAP = {
 
 export { listProfiles };
 
-export async function initProject({ dir, name = null, profile: profileId = 'generic' }) {
+export async function initProject({ dir, name = null, profile: profileId = 'generic', emptyTasks = false }) {
   const root = path.resolve(dir);
   const profile = getProfile(profileId);
   const projectName = name || path.basename(root) || 'project';
@@ -89,8 +89,19 @@ export async function initProject({ dir, name = null, profile: profileId = 'gene
     created.push(`${META_DIR}/${destination}`);
   }
 
+  if (emptyTasks) {
+    const tasksFile = path.join(meta, 'docs/TASKS.md');
+    const text = await fs.readFile(tasksFile, 'utf8');
+    await writeText(tasksFile, text.split('\n').filter((line) => !line.startsWith('| T-')).join('\n'));
+  }
   const state = defaultState({ name: projectName, profile: profile.id });
-  appendAudit(state, 'project.init', null, { dir: root, managementDir: meta, profile: profile.id });
+  if (emptyTasks) state.taskBoard = 'gated';
+  appendAudit(state, 'project.init', null, {
+    dir: root,
+    managementDir: meta,
+    profile: profile.id,
+    taskBoard: emptyTasks ? 'gated' : 'open'
+  });
   await saveState(root, state);
 
   // The agent skill is written once, next to .trellis/, and never overwritten.
@@ -1128,6 +1139,15 @@ export async function addTask(
 
   const state = await loadState(root);
   const { tasks } = await parseTasks(root);
+  if (state.taskBoard === 'gated' && !gateSatisfied(state, 'G2') && !gateSatisfied(state, 'G3')) {
+    if (!(force && actor.role === 'human')) {
+      throw new RefusedError(
+        'TASK_BEFORE_PLAN',
+        'this project starts with an empty task board; create tasks after ROADMAP and VERIFICATION, once G2 is approved',
+        { gate: 'G2', taskBoard: 'gated' }
+      );
+    }
+  }
   const openTasks = tasks.filter((task) => OPEN_STATUSES.includes(task.status));
   const maxOpen = backlogLimit();
   if (maxOpen > 0 && openTasks.length >= maxOpen) {

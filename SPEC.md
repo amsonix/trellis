@@ -431,6 +431,11 @@ A profile selects required/optional artifacts and the gates that apply.
 
 `--profile` is optional; the default is `generic`.
 
+`init --empty-tasks` writes no sample task and marks the board `gated`: before
+G2 is passed, `task add` is refused with `TASK_BEFORE_PLAN` (a human may override
+with `--force`). This is the top-down bootstrap: projects are written one gate at
+a time, and tasks are created at G3 from the approved ROADMAP.
+
 `RESEARCH` is optional in every profile: not every project needs discovery.
 `gate G1 --approve` still fails when `RESEARCH.md` is missing
 (`RESEARCH_REQUIRED_OR_WAIVE`); a human either writes it or records an explicit

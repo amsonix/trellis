@@ -4,6 +4,16 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `init --empty-tasks`: no sample task, and a gated board that refuses `task add`
+  before G2 (`TASK_BEFORE_PLAN`); a human may override with `--force`.
+- Skill bootstrap contract: write one gate's artifact at a time, stop for the
+  human gate, and create tasks only at G3 from ROADMAP exit criteria.
+- 265 `node:test` cases.
+
 ## [0.9.36] - 2026-11-18
 
 ### Fixed

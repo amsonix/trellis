@@ -99,11 +99,12 @@ const VALUE_OPTIONS = new Set([
   'strategy'
 ]);
 
-const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready', 'cascade', 'context', 'strict', 'panel']);
+const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready', 'cascade', 'context', 'strict', 'panel', 'empty-tasks']);
 
 // A flag is only accepted where it means something. Every other flag is a
 // usage error, so `task add --dry-run` cannot silently write a task.
 const GLOBAL_FLAGS = new Set(['json', 'help', 'version']);
+const INIT_FLAGS = ['empty-tasks'];
 const FLAG_SCOPES = {
   status: ['panel'],
   report: [],
@@ -120,7 +121,8 @@ const FLAG_SCOPES = {
   'task:show': ['context'],
   next: ['context'],
   'plan:coverage': ['strict'],
-  restore: ['force']
+  restore: ['force'],
+  init: INIT_FLAGS
 };
 
 function validateFlags(command, subcommand, options) {
@@ -271,7 +273,7 @@ const HELP_DETAILS = {
 };
 
 const HELP = {
-  init: ['Create .trellis/ in a new or existing project.', 'trellis init [project-dir] [--profile <p>] [--name <n>]'],
+  init: ['Create .trellis/ in a new or existing project.', 'trellis init [project-dir] [--profile <p>] [--name <n>] [--empty-tasks]'],
   status: ['Where the project is: stage, gates, task counts, attention.', 'trellis status [dir] [--panel] [--json]'],
   check: ['Run the structural checks, optionally for one stage.', 'trellis check [dir] [--stage <stage>] [--json]'],
   next: ['The one action allowed now (tasks batch, gate, or stop reason).', 'trellis next [dir] [--role <role>] [--limit <n>] [--batch <n>] [--strategy priority|unblock|oldest] [--json]'],
@@ -587,7 +589,7 @@ async function dispatch(args) {
 
   if (command === 'init') {
     const dir = path.resolve(args.positionals[0] || options.dir || process.cwd());
-    const data = await initProject({ dir, name: options.name, profile: options.profile || 'generic' });
+    const data = await initProject({ dir, name: options.name, profile: options.profile || 'generic', emptyTasks: Boolean(options['empty-tasks']) });
     return { data, exitCode: 0, print: () => printInit(data) };
   }
 
