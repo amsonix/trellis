@@ -148,6 +148,40 @@ export function getSection(sections, name) {
   return sections.find((section) => section.key === key);
 }
 
+export function splitTableRow(line) {
+  const text = String(line ?? '').trim();
+  const cells = [];
+  let current = '';
+  for (let i = 0; i < text.length; i += 1) {
+    const character = text[i];
+    if (character === '\\') {
+      const next = text[i + 1];
+      if (next === '|') {
+        current += '|';
+        i += 1;
+        continue;
+      }
+      if (next === '\\') {
+        current += '\\';
+        i += 1;
+        continue;
+      }
+      current += '\\';
+      continue;
+    }
+    if (character === '|') {
+      cells.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += character;
+  }
+  cells.push(current.trim());
+  if (cells[0] === '') cells.shift();
+  if (cells.length > 0 && cells[cells.length - 1] === '') cells.pop();
+  return cells;
+}
+
 export function parseMarkdownTable(markdown) {
   const lines = stripHtmlComments(markdown).split(/\r?\n/);
   let start = -1;
@@ -166,13 +200,7 @@ export function parseMarkdownTable(markdown) {
   }
   if (tableLines.length < 2) return null;
 
-  const split = (line) =>
-    line
-      .trim()
-      .replace(/^\|/, '')
-      .replace(/\|$/, '')
-      .split('|')
-      .map((cell) => cell.trim());
+  const split = splitTableRow;
 
   const headers = split(tableLines[0]);
   const separator = tableLines[1];

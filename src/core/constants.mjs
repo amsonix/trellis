@@ -109,7 +109,7 @@ export const TASK_STATUSES = [
 ];
 
 export const TASK_TRANSITIONS = {
-  todo: ['in_progress', 'blocked'],
+  todo: ['in_progress', 'blocked', 'ready'],
   ready: ['in_progress', 'blocked'],
   in_progress: ['review', 'blocked', 'done', 'todo'],
   review: ['done', 'blocked', 'in_progress', 'todo'],

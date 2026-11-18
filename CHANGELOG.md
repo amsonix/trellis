@@ -4,6 +4,17 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Markdown table rows split on unescaped `|` only. `\|` is cell content, so an
+  acceptance containing a pipe no longer shifts status/source columns.
+- A row whose cell count differs from the header is `ROW_MISALIGNED` (fail) in
+  `check`/`doctor` instead of a silently wrong status.
+- `todo -> ready` is a valid transition.
+- 263 `node:test` cases.
+
 ## [0.9.35] - 2026-11-18
 
 ### Changed

@@ -106,7 +106,11 @@ Rules:
    later ones, never the reverse. Re-approval is the only way to clear it; a waiver does not go
    stale because it is an explicit human decision. The digest hashes normalized
    content, so line-ending and trailing-whitespace edits do not stale a gate.
-8. The `TASKS` digest covers the task *structure* — id, milestone, title, role,
+8. Table rows split on unescaped `|` only; `\|` is cell content (GFM), so
+   acceptance or title text may contain a pipe. A row whose cell count differs
+   from the header is `ROW_MISALIGNED` (fail) rather than a silently shifted
+   status; `todo -> ready` is a valid transition.
+9. The `TASKS` digest covers the task *structure* — id, milestone, title, role,
    scope, dependencies, acceptance, verification — not the status column.
    Claiming or finishing a task does not make the plan gates stale; adding or
    reshaping a task does.

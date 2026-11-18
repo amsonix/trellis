@@ -12,6 +12,7 @@ import {
   splitSections,
   normalizeHeading,
   normalizeSource,
+  splitTableRow,
   writeText
 } from './util.mjs';
 
@@ -61,12 +62,7 @@ function parseDepends(value) {
 }
 
 function splitRow(line) {
-  return line
-    .trim()
-    .replace(/^\|/, '')
-    .replace(/\|$/, '')
-    .split('|')
-    .map((cell) => cell.trim());
+  return splitTableRow(line);
 }
 
 export async function parseTasks(root) {
@@ -105,6 +101,7 @@ export async function parseTasks(root) {
     if (row[0].startsWith('<!--')) continue;
     const id = row[mapping.id]?.trim();
     if (!id) continue;
+    const rowMisaligned = row.length !== table.headers.length;
     tasks.push({
       id,
       milestone: row[mapping.milestone]?.trim() ?? '',
@@ -119,6 +116,9 @@ export async function parseTasks(root) {
       priority: (row[mapping.priority]?.trim().toLowerCase() || 'medium'),
       priorityValid: TASK_PRIORITIES.includes((row[mapping.priority]?.trim().toLowerCase() || 'medium')),
       createdAt: row[mapping.createdAt]?.trim() || null,
+      rowMisaligned,
+      rowCells: row.length,
+      expectedCells: table.headers.length,
       parent: (() => {
         const raw = row[mapping.parent]?.trim();
         return raw && raw !== '-' ? raw : null;
@@ -273,6 +273,14 @@ export function validateTasks(tasks, { milestones = [] } = {}) {
     }
     if (!ROLES.includes(task.role)) {
       add('TASK_ROLE_INVALID', 'fail', `task ${task.id} has unknown role '${task.role}'`, { task: task.id });
+    }
+    if (task.rowMisaligned) {
+      add(
+        'ROW_MISALIGNED',
+        'fail',
+        `task ${task.id} row has ${task.rowCells} cells; the header has ${task.expectedCells}`,
+        { task: task.id, cells: task.rowCells, expected: task.expectedCells }
+      );
     }
     if (!TASK_STATUSES.includes(task.status)) {
       add('TASK_STATUS_INVALID', 'fail', `task ${task.id} has unknown status '${task.status}'`, { task: task.id });
