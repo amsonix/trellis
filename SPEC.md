@@ -271,7 +271,7 @@ over (`task.taken_over`) without rewriting the status, and
 {
   "id": "EV-...",
   "taskId": "T-001",
-  "kind": "test | benchmark | review | approval | log | screenshot | doc",
+  "kind": "test | benchmark | review | approval | log | screenshot | doc | checkpoint",
   "uri": "relative/path | https://... | commit-sha",
   "sha256": "optional, computed for an existing local file",
   "verdict": "pass | fail | inconclusive",
@@ -301,6 +301,12 @@ Rules:
 - A task cannot be `done` without a `pass` and with any `fail`.
 - A gate cannot be approved on a task whose evidence does not verify.
 - Evidence is not a claim in a report; it is a checkable record.
+- A `checkpoint` is evidence with `verdict: inconclusive`; it records what is
+  done and what remains without changing the task state (`task checkpoint`).
+  It never satisfies a `done` report. `next` returns the last evidence,
+  checkpoint and lease for an `in_progress` task. `TRELLIS_TASK_STALE_HOURS`
+  (default 24) drives `TASK_STALE` when an `in_progress` task has no newer
+  evidence.
 - A record can be **retracted** by a human, reviewer or verifier with a written
   reason. The record stays in the ledger marked `retracted` and no longer counts
   toward verification; the producing role cannot retract its own failure. This

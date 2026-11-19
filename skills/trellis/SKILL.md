@@ -148,6 +148,19 @@ delegate one task per child instead of doing them sequentially:
    `lease reap` or `task recover` only for a crashed holder. Re-run `next` rather
    than picking a replacement from the board.
 
+If you must end a turn with the task still `in_progress`, record what is done
+and what remains before stopping:
+
+```bash
+trellis task checkpoint <T-NNN> --note "done: parser; next: error path" \
+  --uri <path> --by <actor>
+```
+
+Never leave an `in_progress` task with no checkpoint and no blocking question.
+`next` returns the last checkpoint/evidence for an active task, and `status`
+raises `TASK_STALE` after `TRELLIS_TASK_STALE_HOURS` (default 24) without new
+evidence.
+
 If a child uses a worktree, remove it after the work lands:
 
 ```bash

@@ -4,6 +4,19 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `task checkpoint <T> --note "<done; next>" [--uri ...]`: appends a `checkpoint`
+  evidence record (`inconclusive`) without changing the task state.
+- `next` includes `lastEvidence`, `lastCheckpoint` and `lease` for active tasks.
+- `status` reports `TASK_STALE` when an `in_progress` task has no new evidence
+  for `TRELLIS_TASK_STALE_HOURS` (default 24).
+- Skill: an agent that stops mid-task must checkpoint or ask; never leave an
+  `in_progress` task silent.
+- 269 `node:test` cases.
+
 ## [0.9.38] - 2026-11-18
 
 ### Added

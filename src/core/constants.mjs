@@ -118,7 +118,7 @@ export const TASK_TRANSITIONS = {
 };
 
 export const EVIDENCE_VERDICTS = ['pass', 'fail', 'inconclusive'];
-export const EVIDENCE_KINDS = ['test', 'benchmark', 'review', 'approval', 'log', 'screenshot', 'doc'];
+export const EVIDENCE_KINDS = ['test', 'benchmark', 'review', 'approval', 'log', 'screenshot', 'doc', 'checkpoint'];
 
 export const SEVERITIES = ['pass', 'warn', 'fail', 'unavailable'];
 

@@ -37,7 +37,8 @@
         "approval",
         "log",
         "screenshot",
-        "doc"
+        "doc",
+        "checkpoint"
       ]
     },
     "uri": {

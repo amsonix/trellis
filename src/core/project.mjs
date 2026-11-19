@@ -253,7 +253,23 @@ async function buildAttention(root, state, tasks, checks) {
       attention.push({ kind: 'check', code: check.code, message: check.message, artifact: check.artifact ?? null, task: check.task ?? null });
     }
   }
+  const staleHours = Number(process.env.TRELLIS_TASK_STALE_HOURS ?? 24);
+  const staleMs = (Number.isFinite(staleHours) && staleHours > 0 ? staleHours : 24) * 3600 * 1000;
+  const heldLeases = (await leaseStatus(root)).filter((lease) => lease.state === 'held');
   for (const task of tasks) {
+    if (task.status === 'in_progress') {
+      const records = (await listEvidence(root, task.id)).filter((record) => !record.retracted);
+      const lease = heldLeases.find((item) => item.taskId === task.id);
+      const since = Date.parse(records.at(-1)?.producedAt ?? lease?.createdAt ?? task.createdAt ?? '');
+      if (Number.isFinite(since) && Date.now() - since > staleMs) {
+        attention.push({
+          kind: 'task',
+          code: 'TASK_STALE',
+          message: `${task.id} has no new evidence for ${Math.floor((Date.now() - since) / 3600000)}h`,
+          task: task.id
+        });
+      }
+    }
     if (task.status === 'blocked') {
       const note = state.taskNotes?.[task.id]?.note;
       attention.push({
@@ -461,6 +477,22 @@ async function nextFrom(root, state, tasks, checks, role = null, { limit = null,
   return { ...result, needsUser, reason: needsUser ? stopReason(result) : null };
 }
 
+async function taskActivity(root, task, leases) {
+  const records = (await listEvidence(root, task.id)).filter((record) => !record.retracted);
+  const last = records.at(-1) ?? null;
+  const checkpoint = [...records].reverse().find((record) => record.kind === 'checkpoint') ?? null;
+  const lease = leases.find((item) => item.taskId === task.id) ?? null;
+  return {
+    lastEvidence: last
+      ? { id: last.id, kind: last.kind, verdict: last.verdict, at: last.producedAt, uri: last.uri, note: last.note }
+      : null,
+    lastCheckpoint: checkpoint
+      ? { id: checkpoint.id, at: checkpoint.producedAt, note: checkpoint.note, uri: checkpoint.uri }
+      : null,
+    lease: lease ? { id: lease.id, actor: lease.actor, at: lease.createdAt } : null
+  };
+}
+
 async function computeNext(root, state, tasks, checks, role = null) {
   const invalid = tasks.filter((task) => task.statusValid === false || task.priorityValid === false);
   if (invalid.length > 0) {
@@ -526,23 +558,26 @@ async function computeNext(root, state, tasks, checks, role = null) {
     }
     const active = tasks.filter((task) => task.status === 'in_progress' && (!role || task.role === role));
     if (active.length > 0) {
+      const activeLeases = (await leaseStatus(root)).filter((lease) => lease.state === 'held');
+      const summaries = await Promise.all(active.map(async (task) => ({
+        id: task.id,
+        title: task.title,
+        role: task.role,
+        scope: task.scope,
+        acceptance: task.acceptance,
+        priority: task.priority,
+        createdAt: task.createdAt,
+        ageDays: ageDays(task),
+        parent: task.parent ?? null,
+        source: task.source ?? null,
+        openChildren: tasks.filter(
+          (item) => item.parent === task.id && !['done', 'canceled'].includes(item.status)
+        ).length,
+        ...(await taskActivity(root, task, activeLeases))
+      })));
       return {
         kind: 'tasks',
-        tasks: active.map((task) => ({
-          id: task.id,
-          title: task.title,
-          role: task.role,
-          scope: task.scope,
-          acceptance: task.acceptance,
-          priority: task.priority,
-          createdAt: task.createdAt,
-          ageDays: ageDays(task),
-          parent: task.parent ?? null,
-          source: task.source ?? null,
-          openChildren: tasks.filter(
-            (item) => item.parent === task.id && !['done', 'canceled'].includes(item.status)
-          ).length
-        })),
+        tasks: summaries,
         note: 'in progress',
         ...(staleAttention.length > 0 ? { attention: staleAttention } : {})
       };
@@ -1873,6 +1908,27 @@ export async function addTasks(root, items, { by, force = false } = {}) {
     added.push(result.task);
   }
   return { tasks: added, count: added.length };
+}
+
+export async function checkpointTask(root, taskId, { note, uri = null, by, proves = null } = {}) {
+  if (!note) throw new UsageError('task checkpoint needs --note "<what is done and what remains>"');
+  if (!by) throw new UsageError('task checkpoint needs --by <role>:<name>');
+  const { tasks } = await parseTasks(root);
+  const task = taskById(tasks, taskId);
+  if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
+  if (['done', 'canceled'].includes(task.status)) {
+    throw new RefusedError('TASK_CHECKPOINT_CLOSED', `task ${taskId} is ${task.status}; reopen it before checkpointing`, { task: taskId, status: task.status });
+  }
+  const evidence = await addTaskEvidence(root, {
+    taskId,
+    kind: 'checkpoint',
+    uri: uri || `checkpoint:${taskId}`,
+    verdict: 'inconclusive',
+    by,
+    note,
+    proves
+  });
+  return { taskId, status: task.status, evidence };
 }
 
 export async function addTaskEvidence(root, input) {

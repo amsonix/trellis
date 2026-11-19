@@ -19,6 +19,7 @@ import {
   projectReport,
   verifyTask,
   evidenceFor,
+  checkpointTask,
   taskShow,
   listProfiles
 } from '../core/project.mjs';
@@ -304,6 +305,25 @@ const writeTools = [
     ),
     run: (args) =>
       claimTask(dirOf(args), args.task, { by: args.by, paths: args.paths ?? null, dryRun: Boolean(args.dryRun) })
+  },
+  {
+    name: 'trellis_task_checkpoint',
+    description: 'Record progress without changing task state (checkpoint evidence).',
+    inputSchema: object(
+      {
+        dir: dirProp,
+        task: text('Task id.'),
+        note: text('What is done and what remains.'),
+        uri: text('Optional file path or reference.'),
+        by: text('Actor as role:name.')
+      },
+      ['task', 'note', 'by']
+    ),
+    run: (args) => checkpointTask(dirOf(args), args.task, {
+      note: args.note,
+      uri: args.uri ?? null,
+      by: args.by
+    })
   },
   {
     name: 'trellis_task_report',
