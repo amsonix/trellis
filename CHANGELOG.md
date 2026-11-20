@@ -4,6 +4,14 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.40] - 2026-11-20
+
+### Changed
+
+- `in_progress` can no longer go directly to `done`: `task finish` ends at
+  `pending`, and only a human `task decide --decision accept` sets `done` after
+  checking evidence.
+
 ## [0.9.39] - 2026-11-20
 
 ### Added
@@ -14,9 +22,6 @@ All notable changes to this project are recorded here. The format follows
   requires passing evidence.
 - `status` reports `TASK_PENDING`; `next` does not return pending work as a
   candidate; `task ask` now moves the task to pending.
-- `in_progress` can no longer go directly to `done`: `task finish` ends at
-  `pending`, and only a human `task decide --decision accept` sets `done` after
-  checking evidence.
 - `review` and `blocked` are legacy: readable and migratable out, refused for
   new transitions with `TASK_STATE_LEGACY`.
 - 271 `node:test` cases.
