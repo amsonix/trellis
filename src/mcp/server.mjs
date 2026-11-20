@@ -334,7 +334,7 @@ const writeTools = [
         task: text('Task id.'),
         state: text('todo, ready, in_progress, review, blocked or done.'),
         by: text('Actor as role:name.'),
-        note: text('Short note or the one question when blocked.'),
+        note: text('Short note, conclusion, or the one question when blocked.'),
         dryRun: { type: 'boolean', description: 'Validate the transition without writing.' }
       },
       ['task', 'state']
@@ -443,11 +443,12 @@ const writeTools = [
         dir: dirProp,
         task: text('Task id.'),
         run: text('Command to run in the project root.'),
-        by: text('Producer as role:name.')
+        by: text('Producer as role:name.'),
+        note: text('Conclusion or decision to keep for later tasks.')
       },
       ['task', 'run', 'by']
     ),
-    run: (args) => finishTask(dirOf(args), args.task, { run: args.run, by: args.by })
+    run: (args) => finishTask(dirOf(args), args.task, { run: args.run, by: args.by, note: args.note ?? null })
   },
   {
     name: 'trellis_task_cancel',

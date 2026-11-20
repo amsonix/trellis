@@ -301,6 +301,11 @@ Rules:
 - A task cannot be `done` without a `pass` and with any `fail`.
 - A gate cannot be approved on a task whose evidence does not verify.
 - Evidence is not a claim in a report; it is a checkable record.
+- `task show` exposes `related`: completed tasks with the same effective
+  `Source` (or, when there is none, the same milestone with overlapping scope),
+  with their last note/evidence. `next` carries the same field for ready tasks.
+  A `done` report/`task finish` accepts `--note` and stores the conclusion for
+  those later tasks; this is a read view, not new state.
 - A `checkpoint` is evidence with `verdict: inconclusive`; it records what is
   done and what remains without changing the task state (`task checkpoint`).
   It never satisfies a `done` report. `next` returns the last evidence,

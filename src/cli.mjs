@@ -221,7 +221,7 @@ trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dir <dir>]
   trellis task answer <Q-NNN> --decision <text> --by human:<name>
   trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
   trellis task cancel <T-NNN> --by human:<name> --reason <text>
-  trellis task finish <T-NNN> --run <command> --by <role>:<name>
+  trellis task finish <T-NNN> --run <command> [--note <conclusion>] --by <role>:<name>
   trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--scope <paths>] [--priority <p>] --by <role>:<name>
   trellis task list [dir] [--status <s>] [--role <r>] [--ready] [--limit <n>] [--dir <dir>]
   trellis task checkpoint <T-NNN> --note "<done; next>" [--uri <path>] [--by <role>:<name>] [dir]
@@ -314,7 +314,7 @@ const HELP = {
   'task:report': ['Report a task state; done requires passing evidence.', 'trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dry-run]'],
   'task:recover': ['Return an in_progress task with no lease to ready or todo.', 'trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]'],
   'task:cancel': ['Cancel work that is no longer needed; canceled tasks do not satisfy dependencies.', 'trellis task cancel <T-NNN> --by human:<name> --reason <text> [--cascade]'],
-  'task:finish': ['Run the verification command, record the evidence and mark the task done.', 'trellis task finish <T-NNN> --run <command> --by <role>:<name>'],
+  'task:finish': ['Run the verification command, record the evidence and mark the task done.', 'trellis task finish <T-NNN> --run <command> [--note <conclusion>] --by <role>:<name>'],
   'task:edit': ['Edit a task field through the board validator (adds an audit record).', 'trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--scope <paths>] [--parent <T-NNN>] [--source <ref>] [--priority <p>] --by <role>:<name>'],
   evidence: ['Evidence log operations.', 'trellis evidence <add|list|retract> ...'],
   'evidence:add': ['Record evidence for a task.', 'trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] [--supersedes <EV,...>] --by <role>:<name>'],
@@ -1020,7 +1020,7 @@ async function dispatch(args) {
       if (!options.by) throw new UsageError('task finish needs --by <role>:<name>');
       const taskId = args.positionals[0];
       if (!taskId) throw new UsageError('task finish needs a task id');
-      const data = await finishTask(dir, taskId, { run: options.run, by: options.by });
+      const data = await finishTask(dir, taskId, { run: options.run, by: options.by, note: options.note || null });
       return {
         data,
         exitCode: 0,

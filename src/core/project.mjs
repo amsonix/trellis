@@ -493,6 +493,32 @@ async function taskActivity(root, task, leases) {
   };
 }
 
+async function relatedConclusions(root, state, tasks, task) {
+  const sources = sourceMap(tasks);
+  const target = sources.get(task.id) ?? null;
+  const candidates = tasks.filter((item) => {
+    if (item.id === task.id || !['done', 'canceled'].includes(item.status)) return false;
+    if (target) return sources.get(item.id) === target;
+    return item.milestone === task.milestone && item.scope.some((domain) => task.scope.some((other) => overlaps(domain, other)));
+  });
+  const related = [];
+  for (const item of candidates.slice(0, 5)) {
+    const records = (await listEvidence(root, item.id)).filter((record) => !record.retracted);
+    const last = records.at(-1) ?? null;
+    related.push({
+      id: item.id,
+      title: item.title,
+      status: item.status,
+      source: sources.get(item.id) ?? null,
+      note: state.taskNotes?.[item.id]?.note ?? last?.note ?? null,
+      evidence: last
+        ? { kind: last.kind, verdict: last.verdict, at: last.producedAt, uri: last.uri, note: last.note }
+        : null
+    });
+  }
+  return related;
+}
+
 async function computeNext(root, state, tasks, checks, role = null) {
   const invalid = tasks.filter((task) => task.statusValid === false || task.priorityValid === false);
   if (invalid.length > 0) {
@@ -534,10 +560,7 @@ async function computeNext(root, state, tasks, checks, role = null) {
   if (gateSatisfied(state, 'G4') && !gateSatisfied(state, 'G6') && stage === 'executing') {
     const { ready, excluded } = await leaseBlockedReady(root, tasks, role);
     if (ready.length > 0) {
-      return {
-        kind: 'tasks',
-        source: 'ready',
-        tasks: ready.map((task) => ({
+      const readySummaries = await Promise.all(ready.map(async (task) => ({
           id: task.id,
           title: task.title,
           role: task.role,
@@ -550,8 +573,13 @@ async function computeNext(root, state, tasks, checks, role = null) {
           source: task.source ?? null,
           openChildren: tasks.filter(
             (item) => item.parent === task.id && !['done', 'canceled'].includes(item.status)
-          ).length
-        })),
+          ).length,
+          related: await relatedConclusions(root, state, tasks, task)
+        })));
+      return {
+        kind: 'tasks',
+        source: 'ready',
+        tasks: readySummaries,
         ...(staleAttention.length > 0 ? { attention: staleAttention } : {}),
         ...(excluded.length > 0 ? { excluded } : {})
       };
@@ -1478,6 +1506,8 @@ export async function taskShow(root, taskId, { context = false } = {}) {
   const base = {
     task: { ...task, ageDays: ageDays(task) },
     effectiveSource: sourceMap(tasks).get(taskId) ?? null,
+    note: state.taskNotes?.[taskId]?.note ?? null,
+    related: await relatedConclusions(root, state, tasks, task),
     parent: parent ? summary(parent) : null,
     children: children.map(summary),
     openChildren: children.filter((item) => !['done', 'canceled'].includes(item.status)).length
@@ -1827,7 +1857,7 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
   return { task: { ...task, status: newStatus }, evidence, warnings };
 }
 
-export async function finishTask(root, taskId, { run, by, timeoutMs = 30 * 60 * 1000 } = {}) {
+export async function finishTask(root, taskId, { run, by, note = null, timeoutMs = 30 * 60 * 1000 } = {}) {
   if (!taskId) throw new UsageError('task finish needs a task id');
   if (!run) throw new UsageError('task finish needs --run "<command>"');
   if (!by) throw new UsageError('task finish needs --by <role>:<name>');
@@ -1890,7 +1920,7 @@ export async function finishTask(root, taskId, { run, by, timeoutMs = 30 * 60 * 
       evidence: evidence.id
     });
   }
-  const reported = await reportTask(root, taskId, { state: 'done', by });
+  const reported = await reportTask(root, taskId, { state: 'done', by, note });
   return { taskId, exitCode, log, evidence, task: reported.task, warnings: reported.warnings ?? [] };
 }
 

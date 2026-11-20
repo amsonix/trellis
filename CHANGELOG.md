@@ -4,6 +4,19 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `task show` and `next` expose `related`: earlier completed tasks with the same
+  effective `Source` (or same milestone + overlapping scope), including their
+  last note/evidence.
+- `task finish --note` records a conclusion for later tasks; `done` reports
+  already stored notes.
+- Skill: read `related` before claiming; do not repeat a prior pitfall, and
+  explain a deliberate departure.
+- 270 `node:test` cases.
+
 ## [0.9.40] - 2026-11-20
 
 ### Documentation
