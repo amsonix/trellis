@@ -148,8 +148,8 @@ delegate one task per child instead of doing them sequentially:
    `lease reap` or `task recover` only for a crashed holder. Re-run `next` rather
    than picking a replacement from the board.
 
-Before claiming, read `related` from `task show --context` (or the `next`
-summary). It lists completed tasks that covered the same `Source` or milestone.
+Before claiming, read `related` from `task show --context`, the `next` summary,
+or the `claim` response. It lists completed tasks that covered the same `Source` or milestone.
 Treat their `note`/evidence as prior conclusions: do not repeat a known pitfall;
 if you deliberately depart from one, say why in the checkpoint or final note.
 

@@ -495,7 +495,12 @@ function printNext(data) {
     if (data.checks.length > 0) printChecks({ checks: data.checks, summary: summarize(data.checks) });
   } else if (data.kind === 'tasks') {
     console.log('next tasks:');
-    for (const task of data.tasks) console.log(`  ${task.id} ${task.title} (${task.role})`);
+    for (const task of data.tasks) {
+      console.log(`  ${task.id} ${task.title} (${task.role})`);
+      for (const prior of (task.related ?? []).slice(0, 3)) {
+        console.log(`    related ${prior.id}: ${prior.note ?? prior.title} [${prior.status}]`);
+      }
+    }
   } else {
     console.log('waiting: no gate or task is actionable');
     for (const item of data.attention ?? []) console.log(`  - [${item.code}] ${item.message}`);
@@ -982,6 +987,7 @@ async function dispatch(args) {
         print: () => {
           if (data.dryRun) {
             console.log(`would claim ${taskId} for ${data.lease.domains.join(', ')}`);
+            for (const prior of data.related ?? []) console.log(`  prior ${prior.id}: ${prior.note ?? prior.title}`);
             return;
           }
           if (data.takenOver) {
@@ -992,6 +998,7 @@ async function dispatch(args) {
           } else {
             console.log(`claimed ${taskId}; lease ${data.lease.id} on ${data.lease.domains.join(', ')}`);
           }
+          for (const prior of data.related ?? []) console.log(`  prior ${prior.id}: ${prior.note ?? prior.title}`);
         }
       };
     }

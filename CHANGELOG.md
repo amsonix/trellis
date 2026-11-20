@@ -4,6 +4,15 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `claim` returns `related` prior conclusions and the CLI prints them, so an
+  agent sees them at the moment it starts work even if it did not call
+  `task show`. `related` is computed by Trellis; it is never an input field.
+- 271 `node:test` cases.
+
 ## [0.9.41] - 2026-11-20
 
 ### Added

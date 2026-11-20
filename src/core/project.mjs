@@ -441,7 +441,9 @@ async function nextFrom(root, state, tasks, checks, role = null, { limit = null,
   const result = await computeNext(root, state, tasks, checks, role);
   if (result.kind === 'tasks' && result.source === 'ready' && Number.isInteger(batch) && batch > 0) {
     const skip = new Set((result.excluded ?? []).map((item) => item.id));
-    result.tasks = selectTaskBatch(tasks, role, { batch, strategy, excludeIds: skip });
+    const summaries = new Map((result.tasks ?? []).map((item) => [item.id, item]));
+    result.tasks = selectTaskBatch(tasks, role, { batch, strategy, excludeIds: skip })
+      .map((item) => ({ ...(summaries.get(item.id) ?? {}), ...item }));
     result.batch = result.tasks.length;
     result.batchRequested = batch;
     result.batchShortfall = Math.max(0, batch - result.tasks.length);
@@ -1165,7 +1167,12 @@ export async function claimTask(root, taskId, { by, paths, dryRun = false } = {}
     appendAudit(state, 'task.claimed', actor, { task: taskId, lease: lease.id });
   }
   await saveState(root, state);
-  return { task: { ...task, status: 'in_progress' }, lease, takenOver };
+  return {
+    task: { ...task, status: 'in_progress' },
+    lease,
+    takenOver,
+    related: await relatedConclusions(root, state, tasks, task)
+  };
 }
 
 export async function addTask(
