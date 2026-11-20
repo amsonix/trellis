@@ -31,7 +31,8 @@
     "SPEC.md",
     "AGENTS.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "ARCHITECTURE.md"
   ],
   "scripts": {
     "test": "node --test",

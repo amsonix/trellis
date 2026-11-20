@@ -4,6 +4,14 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Documentation
+
+- `ARCHITECTURE.md`: canonical four-plane map, canonical objects, three task
+  relations, three document hard links, invariants and the cleanup backlog.
+- 269 `node:test` cases (no behavior change).
+
 ## [0.9.39] - 2026-11-20
 
 ### Added
