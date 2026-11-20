@@ -130,7 +130,7 @@ ledger for approval and coordination. Do not duplicate either into a database.
 | Control | `doc list/show/check/scaffold`, `adr ...`, `gate`, `milestone ...` |
 | Planning | `task add/edit/derive`, `plan coverage`, `next` |
 | Execution | `task claim/checkpoint/finish/report/ask/answer/recover/cancel`, `evidence ...`, `lease ...` |
-| Interface | `status [--panel] [--json]`, `report`, `brief`, `check`, `export` |
+| Interface | `status [--panel] [--json]`, `report`, `brief`, `check` |
 
 Views are not sources:
 
