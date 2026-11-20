@@ -9,11 +9,11 @@ import { cleanup, makeProject } from './helpers.mjs';
 test('a blocked task can return to todo or ready', async () => {
   const dir = await makeProject('generic');
   try {
-    await reportTask(dir, 'T-001', { state: 'blocked', by: 'executor:w1' });
+    await reportTask(dir, 'T-001', { state: 'pending', reason: 'waiting for a decision', by: 'executor:w1' });
     await reportTask(dir, 'T-001', { state: 'todo', by: 'coordinator:kim' });
     assert.equal((await parseTasks(dir)).tasks[0].status, 'todo');
 
-    await reportTask(dir, 'T-001', { state: 'blocked', by: 'executor:w1' });
+    await reportTask(dir, 'T-001', { state: 'pending', reason: 'waiting for a decision', by: 'executor:w1' });
     await reportTask(dir, 'T-001', { state: 'ready', by: 'coordinator:kim' });
     assert.equal((await parseTasks(dir)).tasks[0].status, 'ready');
   } finally {

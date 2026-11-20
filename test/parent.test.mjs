@@ -90,7 +90,7 @@ test('parent creation enforces lease, scope, state and depth', async () => {
   try {
     await claimTask(dir, 'T-001', { by: 'executor:w1' });
     await assert.rejects(() => child(dir), (error) => error.code === 'PARENT_LEASE_HELD');
-    await reportTask(dir, 'T-001', { state: 'review', by: 'executor:w1' });
+    await reportTask(dir, 'T-001', { state: 'pending', reason: 'integration review', by: 'executor:w1' });
     await releaseLease(dir, 'T-001', 'executor:w1');
 
     await assert.rejects(() => child(dir, { scope: 'docs/out' }), (error) => error.code === 'TASK_PARENT_SCOPE');

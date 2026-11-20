@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TASK_TRANSITIONS, GATE_DEFS, ROLES, PROJECT_GATES, META_DIR, TASK_PRIORITIES } from './constants.mjs';
+import { TASK_TRANSITIONS, LEGACY_TASK_STATUSES, GATE_DEFS, ROLES, PROJECT_GATES, META_DIR, TASK_PRIORITIES } from './constants.mjs';
 import { makeCheck, summarize, hasBlocking, exitCodeFor } from './checks.mjs';
 import { getProfile, listProfiles } from './profiles.mjs';
 import { checkAllArtifacts, readArtifact, ARTIFACTS } from './artifacts.mjs';
@@ -183,7 +183,7 @@ export async function runChecks(root, stage = null) {
         );
       }
     }
-    const started = parsed.tasks.filter((task) => ['in_progress', 'review', 'done'].includes(task.status));
+    const started = parsed.tasks.filter((task) => ['in_progress', 'pending', 'review', 'done'].includes(task.status));
     if (started.length > 0 && !gateSatisfied(state, 'G4')) {
       checks.push(
         makeCheck(
@@ -231,7 +231,7 @@ export async function runChecks(root, stage = null) {
 }
 
 function taskCounts(tasks) {
-  const counts = { total: tasks.length, todo: 0, ready: 0, in_progress: 0, review: 0, blocked: 0, done: 0, canceled: 0 };
+  const counts = { total: tasks.length, todo: 0, ready: 0, in_progress: 0, pending: 0, review: 0, blocked: 0, done: 0, canceled: 0 };
   for (const task of tasks) counts[task.status] = (counts[task.status] ?? 0) + 1;
   return counts;
 }
@@ -254,25 +254,22 @@ async function buildAttention(root, state, tasks, checks) {
     }
   }
   for (const task of tasks) {
-    if (task.status === 'blocked') {
-      const note = state.taskNotes?.[task.id]?.note;
+    if (task.status === 'pending') {
+      const pending = state.taskPendings?.[task.id];
       attention.push({
         kind: 'task',
-        code: 'TASK_BLOCKED',
-        message: `${task.id} is blocked${note ? `: ${note}` : ''}`,
+        code: 'TASK_PENDING',
+        message: `${task.id} is pending a decision${pending?.reason ? `: ${pending.reason}` : ''}`,
         task: task.id
       });
     }
-    if (task.status === 'review') {
-      const evidence = await verifyTaskEvidence(root, task.id);
-      if (evidence.some((check) => check.severity === 'fail')) {
-        attention.push({
-          kind: 'task',
-          code: 'TASK_REVIEW_WITHOUT_EVIDENCE',
-          message: `${task.id} is in review but its evidence does not pass`,
-          task: task.id
-        });
-      }
+    if (LEGACY_TASK_STATUSES.includes(task.status)) {
+      attention.push({
+        kind: 'task',
+        code: 'TASK_STATE_LEGACY',
+        message: `${task.id} uses legacy status '${task.status}'; move it to pending or done`,
+        task: task.id
+      });
     }
   }
   const pendingTaskGate = tasks.find((task) => ['review', 'done'].includes(task.status) && !taskGateSatisfied(state, task.id));
@@ -548,7 +545,7 @@ async function computeNext(root, state, tasks, checks, role = null) {
       };
     }
     if (stale.length > 0) return staleGateResult(stale[0], tasks, role);
-    const reviewed = tasks.find((task) => ['review', 'done'].includes(task.status) && !taskGateSatisfied(state, task.id));
+    const reviewed = tasks.find((task) => task.status === 'done' && !taskGateSatisfied(state, task.id));
     if (reviewed) {
       return {
         kind: 'gate',
@@ -563,7 +560,7 @@ async function computeNext(root, state, tasks, checks, role = null) {
 
   // A done task still needs its per-task review before integration.
   if (gateSatisfied(state, 'G4') && !gateSatisfied(state, 'G6')) {
-    const reviewed = tasks.find((task) => ['review', 'done'].includes(task.status) && !taskGateSatisfied(state, task.id));
+    const reviewed = tasks.find((task) => task.status === 'done' && !taskGateSatisfied(state, task.id));
     if (reviewed) {
       return {
         kind: 'gate',
@@ -731,7 +728,7 @@ function selectTaskBatch(tasks, role, { batch, strategy = 'priority', excludeIds
 }
 
 const STALE_LEASE_HOURS = 24;
-const OPEN_STATUSES = ['todo', 'ready', 'in_progress', 'review', 'blocked'];
+const OPEN_STATUSES = ['todo', 'ready', 'in_progress', 'pending', 'review', 'blocked'];
 
 function ageDays(task) {
   if (!task.createdAt) return null;
@@ -784,14 +781,23 @@ export async function projectReport(root) {
     });
   }
 
-  for (const task of tasks.filter((item) => item.status === 'blocked')) {
-    const note = state.taskNotes?.[task.id]?.note;
+  for (const task of tasks.filter((item) => item.status === 'pending')) {
+    const pending = state.taskPendings?.[task.id];
     gaps.push({
       kind: 'task',
       severity: 'medium',
-      code: 'TASK_BLOCKED',
-      message: `${task.id} is blocked${note ? `: ${note}` : ''}`,
-      action: `trellis brief --role ${task.role}`
+      code: 'TASK_PENDING',
+      message: `${task.id} is pending a decision${pending?.reason ? `: ${pending.reason}` : ''}`,
+      action: `trellis task decide ${task.id} --decision accept|rework|cancel --by human:<name>`
+    });
+  }
+  for (const task of tasks.filter((item) => LEGACY_TASK_STATUSES.includes(item.status))) {
+    gaps.push({
+      kind: 'task',
+      severity: 'low',
+      code: 'TASK_STATE_LEGACY',
+      message: `${task.id} uses legacy status '${task.status}'`,
+      action: `trellis task report ${task.id} --state pending --reason "migrate legacy status"`
     });
   }
 
@@ -1033,6 +1039,8 @@ export async function claimTask(root, taskId, { by, paths, dryRun = false } = {}
         { task: taskId }
       );
     }
+  } else if (task.status === 'pending') {
+    throw new RefusedError('TASK_PENDING_DECISION', `task ${taskId} is pending a human decision`, { task: taskId });
   } else if (!['todo', 'ready'].includes(task.status)) {
     throw new RefusedError('TASK_NOT_CLAIMABLE', `task ${taskId} is '${task.status}', not todo/ready`, { task: taskId });
   }
@@ -1442,6 +1450,7 @@ export async function taskShow(root, taskId, { context = false } = {}) {
   });
   const base = {
     task: { ...task, ageDays: ageDays(task) },
+    pending: state.taskPendings?.[taskId] ?? null,
     effectiveSource: sourceMap(tasks).get(taskId) ?? null,
     parent: parent ? summary(parent) : null,
     children: children.map(summary),
@@ -1640,12 +1649,24 @@ export async function askTask(root, taskId, { question, by }) {
     answeredAt: null
   };
   state.questions[id] = record;
-  await updateTaskStatus(root, taskId, 'blocked');
+  const held = (await leaseStatus(root)).find((lease) => lease.taskId === taskId);
+  if (held) await releaseLease(root, taskId, actor.raw);
+  await updateTaskStatus(root, taskId, 'pending');
+  state.taskPendings = state.taskPendings ?? {};
+  state.taskPendings[taskId] = {
+    reason: record.question,
+    questionId: id,
+    requestedBy: actor.raw,
+    requestedAt: record.askedAt,
+    decision: null,
+    decidedBy: null,
+    decidedAt: null
+  };
   state.taskNotes = state.taskNotes ?? {};
-  state.taskNotes[taskId] = { note: record.question, at: record.askedAt, by: actor.raw, state: 'blocked' };
+  state.taskNotes[taskId] = { note: record.question, at: record.askedAt, by: actor.raw, state: 'pending' };
   appendAudit(state, 'task.question', actor, { task: taskId, question: id });
   await saveState(root, state);
-  return { question: record, task: { ...task, status: 'blocked' } };
+  return { question: record, task: { ...task, status: 'pending' } };
 }
 
 export async function answerTask(root, questionId, { decision, by }) {
@@ -1676,13 +1697,19 @@ export async function answerTask(root, questionId, { decision, by }) {
   record.answer = String(decision).trim();
   record.answeredBy = actor.raw;
   record.answeredAt = nowIso();
+  if (state.taskPendings?.[record.taskId]) {
+    state.taskPendings[record.taskId].decision = 'answered';
+    state.taskPendings[record.taskId].decidedBy = actor.raw;
+    state.taskPendings[record.taskId].decidedAt = record.answeredAt;
+    state.taskPendings[record.taskId].note = record.answer;
+  }
   await updateTaskStatus(root, record.taskId, record.previousStatus);
   appendAudit(state, 'task.answered', actor, { task: record.taskId, question: questionId });
   await saveState(root, state);
   return { question: record, task: { id: record.taskId, status: record.previousStatus } };
 }
 
-export async function reportTask(root, taskId, { state: newStatus, note = null, by, dryRun = false } = {}) {
+export async function reportTask(root, taskId, { state: newStatus, note = null, reason = null, by, dryRun = false } = {}) {
   if (!newStatus) throw new UsageError('task report needs --state <status>');
   const actor = by ? parseActor(by) : null;
   const state = await loadState(root);
@@ -1691,6 +1718,56 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
   if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
   if (task.status === newStatus) {
     return { task, idempotent: true };
+  }
+  if (LEGACY_TASK_STATUSES.includes(newStatus)) {
+    throw new RefusedError(
+      'TASK_STATE_LEGACY',
+      `'${newStatus}' is legacy; use 'pending' with --reason for a decision`,
+      { task: taskId, status: newStatus }
+    );
+  }
+  if (newStatus === 'pending') {
+    if (!reason || String(reason).trim() === '') {
+      throw new UsageError('moving a task to pending needs --reason "<what decision is needed>"');
+    }
+    if (!by) throw new UsageError('moving a task to pending needs --by <role>:<name>');
+    const allowedPending = TASK_TRANSITIONS[task.status] ?? [];
+    if (!allowedPending.includes('pending')) {
+      throw new RefusedError('TASK_TRANSITION', `task ${taskId} cannot go from '${task.status}' to 'pending'`, {
+        task: taskId,
+        from: task.status,
+        to: 'pending',
+        allowed: allowedPending
+      });
+    }
+    if (dryRun) {
+      return { task: { ...task, status: 'pending' }, pending: { reason: String(reason).trim(), dryRun: true } };
+    }
+    const heldPending = (await leaseStatus(root)).find((lease) => lease.taskId === taskId);
+    if (heldPending && actor && heldPending.actor !== actor.raw) {
+      throw new RefusedError('TASK_LEASE_HELD_BY_OTHER', `task ${taskId} is leased by ${heldPending.actor}`, {
+        task: taskId,
+        lease: heldPending.id,
+        actor: heldPending.actor
+      });
+    }
+    if (heldPending) await releaseLease(root, taskId, actor?.raw ?? null);
+    await updateTaskStatus(root, taskId, 'pending');
+    state.taskPendings = state.taskPendings ?? {};
+    state.taskPendings[taskId] = {
+      reason: String(reason).trim(),
+      requestedBy: actor?.raw ?? by,
+      requestedAt: nowIso(),
+      decision: null,
+      decidedBy: null,
+      decidedAt: null
+    };
+    appendAudit(state, 'task.pending', actor, { task: taskId, reason: String(reason).trim() });
+    await saveState(root, state);
+    return { task: { ...task, status: 'pending' }, pending: state.taskPendings[taskId] };
+  }
+  if (task.status === 'pending' && newStatus === 'done') {
+    throw new RefusedError('TASK_PENDING_DECISION', `task ${taskId} needs a human decision before done`, { task: taskId });
   }
   const heldLease = (await leaseStatus(root)).find((lease) => lease.taskId === taskId);
   if (heldLease && actor && heldLease.actor !== actor.raw && newStatus === 'blocked') {
@@ -1857,6 +1934,52 @@ export async function finishTask(root, taskId, { run, by, timeoutMs = 30 * 60 * 
   }
   const reported = await reportTask(root, taskId, { state: 'done', by });
   return { taskId, exitCode, log, evidence, task: reported.task, warnings: reported.warnings ?? [] };
+}
+
+export async function decideTask(root, taskId, { decision, note = null, by } = {}) {
+  if (!taskId) throw new UsageError('task decide needs a task id');
+  if (!['accept', 'rework', 'cancel'].includes(decision)) {
+    throw new UsageError('task decide needs --decision accept|rework|cancel');
+  }
+  if (!by) throw new UsageError('task decide needs --by human:<name>');
+  const actor = parseActor(by);
+  if (actor.role !== 'human') {
+    throw new RefusedError('TASK_DECIDE_ROLE', `${actor.raw} cannot decide a pending task; only a human can`, {
+      actor: actor.raw
+    });
+  }
+  const state = await loadState(root);
+  const { tasks } = await parseTasks(root);
+  const task = taskById(tasks, taskId);
+  if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
+  if (task.status !== 'pending') {
+    throw new RefusedError('TASK_NOT_PENDING', `task ${taskId} is '${task.status}', not pending`, {
+      task: taskId,
+      status: task.status
+    });
+  }
+  let evidence = null;
+  let nextStatus;
+  if (decision === 'accept') {
+    evidence = await requirePassingEvidence(root, taskId);
+    nextStatus = 'done';
+  } else if (decision === 'rework') {
+    nextStatus = 'ready';
+  } else {
+    nextStatus = 'canceled';
+  }
+  await updateTaskStatus(root, taskId, nextStatus);
+  state.taskPendings = state.taskPendings ?? {};
+  state.taskPendings[taskId] = {
+    ...(state.taskPendings[taskId] ?? { reason: null, requestedBy: null, requestedAt: null }),
+    decision,
+    decidedBy: actor.raw,
+    decidedAt: nowIso(),
+    note: note === null ? null : String(note).trim()
+  };
+  appendAudit(state, 'task.decided', actor, { task: taskId, decision, note, status: nextStatus });
+  await saveState(root, state);
+  return { task: { ...task, status: nextStatus }, decision, evidence };
 }
 
 export async function addTasks(root, items, { by, force = false } = {}) {

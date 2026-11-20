@@ -81,7 +81,7 @@ The stage is derived, not stored as an independent field:
 | `G2` Architecture | architecture | architect, human | `ARCHITECTURE` | missing/empty sections; no containers table with `Container`, `Responsibility`, `Interface` |
 | `G3` Plan | plan | human | `ROADMAP`, `TASKS`, `VERIFICATION` | missing milestone exit criteria; no task table; missing verification sections |
 | `G4` Ready | ready | coordinator, human | — | empty task table; invalid role/status/scope/acceptance/verification; unknown dependency; cycle; concurrent tasks sharing a write domain |
-| `G5` Task review | executing | reviewer | — | task not `review`/`done`; no passing evidence; failing evidence; inconclusive evidence is not a pass |
+| `G5` Task review | executing | reviewer | — | task not `pending`/`done`; no passing evidence; failing evidence; inconclusive evidence is not a pass |
 | `G6` Integration | integrating | verifier, human | `VERIFICATION` | any task not `done`; any task without passing evidence |
 | `G7` Release | releasing | human, operator | `OPERATIONS` (when the profile requires it) | missing/empty deploy/rollback/monitoring/runbook sections |
 
@@ -186,8 +186,10 @@ Rules:
 2. `Milestone` must match a `## M...` section in `ROADMAP.md`.
 3. `Role` is one of `human`, `coordinator`, `architect`, `executor`, `reviewer`,
    `verifier`, `operator`.
-4. `Status` is one of `todo`, `ready`, `in_progress`, `review`, `blocked`,
-   `done`.
+4. `Status` is one of `todo`, `ready`, `in_progress`, `pending`, `done`.
+   `review` and `blocked` are **legacy**: they remain readable for old boards
+   and may only move out (to `pending`/`done`/`in_progress`); new transitions
+   into them are `TASK_STATE_LEGACY`.
 5. `Scope` is a comma-separated list of path prefixes. A path is in scope when
    it equals a prefix or starts with `prefix/`. `-` is not allowed. A prefix
    must be relative: `..`, `*`, a leading `/` and backslashes are rejected.
@@ -207,7 +209,7 @@ Rules:
     the oldest), then by id, and returns `ageDays`. `TRELLIS_STALE_DAYS`
     (default 14) drives `TASK_BACKLOG_STALE`.
 12. `TRELLIS_MAX_OPEN` (default 0 = unlimited) caps open tasks
-    (`todo/ready/in_progress/review/blocked`). At the cap, `task add` refuses
+    (`todo/ready/in_progress/pending`). At the cap, `task add` refuses
     with `TASK_BACKLOG_FULL`; only a human may pass `--force`.
 13. `Parent` is an optional containment link, distinct from `dependsOn`. A
     child must be inside its parent's scope, may not be parented to a
@@ -231,11 +233,19 @@ Rules:
     make G3/G4 stale — their digests are refreshed and the change is audited as
     `task.followUp` — so a runtime can keep the loop running inside the approved
     plan. Anything else is a normal `task add` and stales the plan gates.
-15. A **question** (`task ask`) blocks the task and records the question with
-    the status it had before. Only a human may answer (`task answer`); the answer
-    is recorded in the ledger and the task returns to its previous status. An
-    open question appears in `next` as `needsUser: true` and in `report` as
-    `pendingQuestions`; a task with an open question cannot be claimed.
+15. A **question** (`task ask`) moves the task to `pending` and records the
+    question with the status it had before. Only a human may answer
+    (`task answer`); the answer is recorded and the task returns to its previous
+    status. An open question appears in `next` as `needsUser: true` and in
+    `report` as `pendingQuestions`; a pending task cannot be claimed.
+16. **`pending`** is the only waiting state. Enter it with
+    `task report --state pending --reason "<what decision is needed>"`; the
+    task's lease is released. A human resolves it with
+    `task decide <T> --decision accept|rework|cancel`:
+    `accept` requires passing evidence and sets `done`; `rework` sets `ready`;
+    `cancel` sets `canceled`. Agents cannot decide or claim a pending task
+    (`TASK_PENDING_DECISION`). `status` raises `TASK_PENDING`; `next` does not
+    return pending work as a candidate.
 16. `scope suggest` reads commits whose message contains the task id as an
     exact token and proposes file-level paths inside its current scope. It only edits the board with `--apply --by
     <role>:<name>`, and only to narrow.
@@ -243,13 +253,16 @@ Rules:
 Allowed status transitions:
 
 ```text
-todo        → in_progress | blocked
-ready       → in_progress | blocked
-in_progress → review | blocked | done
-review      → done | blocked
-blocked    → in_progress | review | done
-done        → (terminal)
+todo        → in_progress | ready | pending
+ready       → in_progress | pending
+in_progress → done | pending | todo
+pending     → done | ready | in_progress | todo
+review      → pending | done | in_progress | todo        (legacy out only)
+blocked     → pending | in_progress | todo | ready       (legacy out only)
+done        → in_progress | todo                        (audited reopen)
 ```
+
+`task report --state review|blocked` is refused with `TASK_STATE_LEGACY`.
 
 `task claim` sets `in_progress` and acquires a lease over the task's scope.
 `task report --state done` verifies evidence and releases the lease.

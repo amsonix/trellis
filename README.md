@@ -134,7 +134,7 @@ the project is opened, so the agent starts from `status` and `next` instead of
 guessing the stage.
 
 The skill carries the rules that matter: claim a task before writing its scope,
-record passing evidence before a `done` report, ask one question when blocked,
+record passing evidence before a `done` report, move a decision request to `pending`,
 and never approve a gate for work you produced. The same brief is available from
 the CLI: `trellis brief --role <role>`.
 
@@ -272,8 +272,9 @@ lifecycle for runtimes that speak it:
 | Trellis | A2A |
 |---|---|
 | `todo`, `ready` | `submitted` |
-| `in_progress`, `review` | `working` |
-| `blocked` | `input-required` |
+| `in_progress` | `working` |
+| `pending` | `input-required` |
+| `review`, `blocked` | legacy; migrate to `pending` |
 | `done` | `completed` |
 
 The full Trellis status, role, scope, dependencies, acceptance and verification
@@ -344,7 +345,8 @@ trellis milestone close <M0> --by <role>:<name> [--note <text>]
 trellis plan coverage [dir] [--strict] [--json]
 trellis task show <T-NNN> [dir] [--context] [--json]
 trellis task list [dir] [--status <s>] [--role <r>] [--ready] [--limit <n>]
-trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> [--note <text>] [--by <role>:<name>]
+trellis task report <T-NNN> --state <todo|ready|in_progress|pending|done> [--reason <text>] [--note <text>] [--by <role>:<name>]
+trellis task decide <T-NNN> --decision accept|rework|cancel --by human:<name>
 
 trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> \
                               --verdict <pass|fail|inconclusive> --by <role>:<name>

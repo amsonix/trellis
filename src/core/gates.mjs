@@ -275,9 +275,9 @@ export async function gateChecks(root, gateId, { profile, state, tasks, taskId =
     if (!task) {
       checks.push(makeCheck('TASK_UNKNOWN', 'fail', `task ${taskId} is not on the task board`, { stage: 'executing', task: taskId }));
     } else {
-      if (!['review', 'done'].includes(task.status)) {
+      if (!['pending', 'review', 'done'].includes(task.status)) {
         checks.push(
-          makeCheck('TASK_NOT_READY_FOR_REVIEW', 'fail', `task ${taskId} is '${task.status}', not 'review'`, {
+          makeCheck('TASK_NOT_READY_FOR_REVIEW', 'fail', `task ${taskId} is '${task.status}', not 'pending'`, {
             stage: 'executing',
             task: taskId
           })

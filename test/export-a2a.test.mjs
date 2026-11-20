@@ -31,7 +31,7 @@ test('the export keeps the Trellis fields under metadata', async () => {
     assert.equal(data.tasks[0].artifacts.length, 1);
     assert.equal(data.tasks[0].artifacts[0].parts[0].text.includes('pass'), true);
 
-    await reportTask(dir, 'T-001', { state: 'blocked', note: 'waiting for a key', by: 'executor:w1' });
+    await reportTask(dir, 'T-001', { state: 'pending', reason: 'waiting for a key', by: 'executor:w1' });
     data = await exportA2A(dir);
     assert.equal(data.tasks[0].status.state, 'input-required');
   } finally {

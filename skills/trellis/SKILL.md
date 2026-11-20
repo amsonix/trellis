@@ -58,6 +58,10 @@ If the project already exists, skip `init` and start at `brief`/`next`.
 Flags are command-scoped: do not assume `--dry-run` or `--force` exists on a
 new command; an unknown combination is a USAGE error.
 
+If a task is complete or blocked and you need a human decision, move it to
+`pending` with a reason; do not leave it `in_progress` and do not use `review` or
+`blocked` (legacy). The human resolves it with `task decide`; agents cannot.
+
 If `next` and the user's request disagree, say so and ask. Do not silently
 switch stages or skip a gate.
 
@@ -215,7 +219,8 @@ trellis task answer <Q-NNN> --decision <text> --by human:<name>
 trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
 trellis task cancel <T-NNN> --by human:<name> --reason <text>
 trellis task finish <T-NNN> --run <command> --by <role>:<name>
-trellis task report <T-NNN> --state <todo|ready|in_progress|review|blocked|done> --by <role>:<name>
+trellis task report <T-NNN> --state <todo|ready|in_progress|pending|done> [--reason <text>] --by <role>:<name>
+trellis task decide <T-NNN> --decision accept|rework|cancel --by human:<name>
 
 trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] --by <role>:<name>
 trellis evidence list [--task <T-NNN>] [--json]

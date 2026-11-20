@@ -20,6 +20,7 @@ import {
   projectReport,
   verifyTask,
   evidenceFor,
+  decideTask,
   taskShow,
   listProfiles
 } from './core/project.mjs';
@@ -308,7 +309,8 @@ const HELP = {
   'task:claim': ['Claim a task (creates the lease) or take over an orphaned claim.', 'trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dry-run]'],
   'task:ask': ['Ask one blocking question; only a human answers it.', 'trellis task ask <T-NNN> --question <text> --by <role>:<name>'],
   'task:answer': ['Answer an open question as a human.', 'trellis task answer <Q-NNN> --decision <text> --by human:<name>'],
-  'task:report': ['Report a task state; done requires passing evidence.', 'trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dry-run]'],
+  'task:report': ['Report a task state; done requires passing evidence; pending needs --reason.', 'trellis task report <T-NNN> --state <status> [--reason <text>] [--note <text>] [--by <role>:<name>] [--dry-run]'],
+  'task:decide': ['Resolve a pending task as a human.', 'trellis task decide <T-NNN> --decision accept|rework|cancel [--note <text>] --by human:<name>'],
   'task:recover': ['Return an in_progress task with no lease to ready or todo.', 'trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]'],
   'task:cancel': ['Cancel work that is no longer needed; canceled tasks do not satisfy dependencies.', 'trellis task cancel <T-NNN> --by human:<name> --reason <text> [--cascade]'],
   'task:finish': ['Run the verification command, record the evidence and mark the task done.', 'trellis task finish <T-NNN> --run <command> --by <role>:<name>'],
@@ -455,7 +457,7 @@ function printStatus(data) {
     const stale = gate.stale ? ' [STALE]' : '';
     console.log(`  ${gate.id} ${gate.title.padEnd(14)} ${gateSymbol(gate.status)}${who}${stale}`);
   }
-  console.log(`Tasks:   ${data.tasks.total} total | todo ${data.tasks.todo} | in_progress ${data.tasks.in_progress} | review ${data.tasks.review} | blocked ${data.tasks.blocked} | done ${data.tasks.done}`);
+  console.log(`Tasks:   ${data.tasks.total} total | todo ${data.tasks.todo} | in_progress ${data.tasks.in_progress} | pending ${data.tasks.pending} | review ${data.tasks.review} | blocked ${data.tasks.blocked} | done ${data.tasks.done}`);
   if (data.attention.length > 0) {
     console.log('Attention:');
     for (const item of data.attention.slice(0, 12)) console.log(`  - [${item.code}] ${item.message}`);
@@ -1045,6 +1047,21 @@ async function dispatch(args) {
       });
       return { data, exitCode: 0, print: () => console.log(`recovered ${taskId} to ${data.task.status}`) };
     }
+    if (subcommand === 'decide') {
+      const taskId = args.positionals[0];
+      if (!taskId) throw new UsageError('task decide needs a task id');
+      if (!options.decision) throw new UsageError('task decide needs --decision accept|rework|cancel');
+      const data = await decideTask(dir, taskId, {
+        decision: options.decision,
+        note: options.note || null,
+        by: options.by
+      });
+      return {
+        data,
+        exitCode: 0,
+        print: () => console.log(`${taskId}: ${data.task.status} (${data.decision})`)
+      };
+    }
     if (subcommand === 'report') {
       const taskId = args.positionals[0];
       if (!taskId) throw new UsageError('task report needs a task id');
@@ -1052,6 +1069,7 @@ async function dispatch(args) {
       const data = await reportTask(dir, taskId, {
         state: options.state,
         note: options.note || null,
+        reason: options.reason || null,
         by: options.by || null,
         dryRun: Boolean(options['dry-run'])
       });

@@ -15,6 +15,7 @@ export const A2A_STATES = {
   ready: 'submitted',
   in_progress: 'working',
   review: 'working',
+  pending: 'input-required',
   blocked: 'input-required',
   done: 'completed',
   canceled: 'canceled'

@@ -44,7 +44,7 @@ test('a question blocks the task and surfaces as needing the user', async () => 
 
     await assert.rejects(
       () => claimTask(dir, 'T-001', { by: 'executor:w1' }),
-      (error) => error.code === 'TASK_NOT_CLAIMABLE'
+      (error) => error.code === 'TASK_PENDING_DECISION'
     );
 
     const report = await projectReport(dir);

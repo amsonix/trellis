@@ -19,6 +19,7 @@ import {
   projectReport,
   verifyTask,
   evidenceFor,
+  decideTask,
   taskShow,
   listProfiles
 } from '../core/project.mjs';
@@ -312,8 +313,9 @@ const writeTools = [
       {
         dir: dirProp,
         task: text('Task id.'),
-        state: text('todo, ready, in_progress, review, blocked or done.'),
+        state: text('todo, ready, in_progress, pending or done.'),
         by: text('Actor as role:name.'),
+        reason: text('Why the task is pending; required for pending.'),
         note: text('Short note or the one question when blocked.'),
         dryRun: { type: 'boolean', description: 'Validate the transition without writing.' }
       },
@@ -322,6 +324,7 @@ const writeTools = [
     run: (args) =>
       reportTask(dirOf(args), args.task, {
         state: args.state,
+        reason: args.reason ?? null,
         note: args.note ?? null,
         by: args.by ?? null,
         dryRun: Boolean(args.dryRun)
@@ -413,6 +416,25 @@ const writeTools = [
         priority: args.priority,
         by: args.by
       })
+  },
+  {
+    name: 'trellis_task_decide',
+    description: 'Resolve a pending task as a human: accept, rework or cancel.',
+    inputSchema: object(
+      {
+        dir: dirProp,
+        task: text('Task id.'),
+        decision: text('accept, rework or cancel.'),
+        by: text('Actor as human:name.'),
+        note: text('Optional decision note.')
+      },
+      ['task', 'decision', 'by']
+    ),
+    run: (args) => decideTask(dirOf(args), args.task, {
+      decision: args.decision,
+      note: args.note ?? null,
+      by: args.by
+    })
   },
   {
     name: 'trellis_task_finish',

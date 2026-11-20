@@ -4,6 +4,20 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `pending`: the single waiting state for a human decision. Enter with
+  `task report --state pending --reason ...`; the lease is released. A human
+  resolves it with `task decide --decision accept|rework|cancel`; `accept`
+  requires passing evidence.
+- `status` reports `TASK_PENDING`; `next` does not return pending work as a
+  candidate; `task ask` now moves the task to pending.
+- `review` and `blocked` are legacy: readable and migratable out, refused for
+  new transitions with `TASK_STATE_LEGACY`.
+- 271 `node:test` cases.
+
 ## [0.9.38] - 2026-11-18
 
 ### Added

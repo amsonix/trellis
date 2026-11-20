@@ -25,9 +25,9 @@ test('a blocked task is reported with its note', async () => {
   const dir = await makeProject('generic');
   try {
     await claimTask(dir, 'T-001', { by: 'executor:w1' });
-    await reportTask(dir, 'T-001', { state: 'blocked', note: 'waiting for the API key', by: 'executor:w1' });
+    await reportTask(dir, 'T-001', { state: 'pending', reason: 'waiting for the API key', by: 'executor:w1' });
     const report = await projectReport(dir);
-    const gap = report.gaps.find((item) => item.code === 'TASK_BLOCKED');
+    const gap = report.gaps.find((item) => item.code === 'TASK_PENDING');
     assert.ok(gap);
     assert.match(gap.message, /waiting for the API key/);
   } finally {

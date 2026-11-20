@@ -28,11 +28,11 @@ test('a third party cannot push a leased task into blocked', async () => {
   try {
     await claimTask(dir, 'T-001', { by: 'executor:w1' });
     await assert.rejects(
-      () => reportTask(dir, 'T-001', { state: 'blocked', by: 'coordinator:kim' }),
+      () => reportTask(dir, 'T-001', { state: 'pending', reason: 'waiting for a key', by: 'coordinator:kim' }),
       (error) => error.code === 'TASK_LEASE_HELD_BY_OTHER'
     );
-    await reportTask(dir, 'T-001', { state: 'blocked', by: 'executor:w1' });
-    assert.equal((await parseTasks(dir)).tasks[0].status, 'blocked');
+    await reportTask(dir, 'T-001', { state: 'pending', reason: 'waiting for a key', by: 'executor:w1' });
+    assert.equal((await parseTasks(dir)).tasks[0].status, 'pending');
   } finally {
     await cleanup(dir);
   }

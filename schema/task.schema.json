@@ -68,6 +68,7 @@
         "todo",
         "ready",
         "in_progress",
+        "pending",
         "review",
         "blocked",
         "done",
