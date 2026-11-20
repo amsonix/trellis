@@ -20,7 +20,6 @@ import {
   projectReport,
   verifyTask,
   evidenceFor,
-  checkpointTask,
   taskShow,
   listProfiles
 } from './core/project.mjs';
@@ -221,10 +220,9 @@ trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dir <dir>]
   trellis task answer <Q-NNN> --decision <text> --by human:<name>
   trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
   trellis task cancel <T-NNN> --by human:<name> --reason <text>
-  trellis task finish <T-NNN> --run <command> [--note <conclusion>] --by <role>:<name>
+  trellis task finish <T-NNN> --run <command> --by <role>:<name>
   trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--scope <paths>] [--priority <p>] --by <role>:<name>
   trellis task list [dir] [--status <s>] [--role <r>] [--ready] [--limit <n>] [--dir <dir>]
-  trellis task checkpoint <T-NNN> --note "<done; next>" [--uri <path>] [--by <role>:<name>] [dir]
   trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dir <dir>]
   trellis doc list [dir] [--json]
   trellis doc show <ID> [dir] [--json]
@@ -302,7 +300,7 @@ const HELP = {
   'adr:supersede': ['Mark an ADR superseded.', 'trellis adr supersede <number|file> --by <role>:<name> [--note <text>] [dir]'],
   'adr:set-status': ['Set an ADR status explicitly.', 'trellis adr set-status <number|file> <proposed|accepted|rejected|superseded> --by <role>:<name> [dir]'],
   'adr:new': ['Create the next ADR from the template and audit it.', 'trellis adr new --title <decision> [--status proposed|accepted|superseded] --by <role>:<name> [dir] [--json]'],
-  task: ['Task board operations.', 'trellis task <list|show|derive|add|claim|ask|answer|checkpoint|report|recover|cancel> ...'],
+  task: ['Task board operations.', 'trellis task <list|show|derive|add|claim|ask|answer|report|recover|cancel> ...'],
   'task:derive': ['Create a child or follow-up from an existing task (explicit, audited).', 'trellis task derive <T-NNN> --title <t> --scope <paths> --acceptance <a> --verification <v> [--kind child|follow-up] [--source <ref>] --by <role>:<name>'],
   'task:show': ['Show one task, optionally with its context (read set, parent, children, evidence).', 'trellis task show <T-NNN> [dir] [--context] [--json]'],
   'task:list': ['List the task board.', 'trellis task list [dir] [--status <status>] [--role <role>] [--ready] [--children-of <T-NNN>] [--limit <n>] [--json]'],
@@ -310,11 +308,10 @@ const HELP = {
   'task:claim': ['Claim a task (creates the lease) or take over an orphaned claim.', 'trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dry-run]'],
   'task:ask': ['Ask one blocking question; only a human answers it.', 'trellis task ask <T-NNN> --question <text> --by <role>:<name>'],
   'task:answer': ['Answer an open question as a human.', 'trellis task answer <Q-NNN> --decision <text> --by human:<name>'],
-  'task:checkpoint': ['Record progress without changing state (work_wip evidence).', 'trellis task checkpoint <T-NNN> --note "<done; next>" [--uri <path>] [--by <role>:<name>]'],
   'task:report': ['Report a task state; done requires passing evidence.', 'trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dry-run]'],
   'task:recover': ['Return an in_progress task with no lease to ready or todo.', 'trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]'],
   'task:cancel': ['Cancel work that is no longer needed; canceled tasks do not satisfy dependencies.', 'trellis task cancel <T-NNN> --by human:<name> --reason <text> [--cascade]'],
-  'task:finish': ['Run the verification command, record the evidence and mark the task done.', 'trellis task finish <T-NNN> --run <command> [--note <conclusion>] --by <role>:<name>'],
+  'task:finish': ['Run the verification command, record the evidence and mark the task done.', 'trellis task finish <T-NNN> --run <command> --by <role>:<name>'],
   'task:edit': ['Edit a task field through the board validator (adds an audit record).', 'trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--scope <paths>] [--parent <T-NNN>] [--source <ref>] [--priority <p>] --by <role>:<name>'],
   evidence: ['Evidence log operations.', 'trellis evidence <add|list|retract> ...'],
   'evidence:add': ['Record evidence for a task.', 'trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] [--supersedes <EV,...>] --by <role>:<name>'],
@@ -495,12 +492,7 @@ function printNext(data) {
     if (data.checks.length > 0) printChecks({ checks: data.checks, summary: summarize(data.checks) });
   } else if (data.kind === 'tasks') {
     console.log('next tasks:');
-    for (const task of data.tasks) {
-      console.log(`  ${task.id} ${task.title} (${task.role})`);
-      for (const prior of (task.related ?? []).slice(0, 3)) {
-        console.log(`    related ${prior.id}: ${prior.note ?? prior.title} [${prior.status}]`);
-      }
-    }
+    for (const task of data.tasks) console.log(`  ${task.id} ${task.title} (${task.role})`);
   } else {
     console.log('waiting: no gate or task is actionable');
     for (const item of data.attention ?? []) console.log(`  - [${item.code}] ${item.message}`);
@@ -987,7 +979,6 @@ async function dispatch(args) {
         print: () => {
           if (data.dryRun) {
             console.log(`would claim ${taskId} for ${data.lease.domains.join(', ')}`);
-            for (const prior of data.related ?? []) console.log(`  prior ${prior.id}: ${prior.note ?? prior.title}`);
             return;
           }
           if (data.takenOver) {
@@ -998,7 +989,6 @@ async function dispatch(args) {
           } else {
             console.log(`claimed ${taskId}; lease ${data.lease.id} on ${data.lease.domains.join(', ')}`);
           }
-          for (const prior of data.related ?? []) console.log(`  prior ${prior.id}: ${prior.note ?? prior.title}`);
         }
       };
     }
@@ -1027,7 +1017,7 @@ async function dispatch(args) {
       if (!options.by) throw new UsageError('task finish needs --by <role>:<name>');
       const taskId = args.positionals[0];
       if (!taskId) throw new UsageError('task finish needs a task id');
-      const data = await finishTask(dir, taskId, { run: options.run, by: options.by, note: options.note || null });
+      const data = await finishTask(dir, taskId, { run: options.run, by: options.by });
       return {
         data,
         exitCode: 0,
@@ -1054,20 +1044,6 @@ async function dispatch(args) {
         reason: options.reason
       });
       return { data, exitCode: 0, print: () => console.log(`recovered ${taskId} to ${data.task.status}`) };
-    }
-    if (subcommand === 'checkpoint') {
-      const taskId = args.positionals[0];
-      if (!taskId) throw new UsageError('task checkpoint needs a task id');
-      const data = await checkpointTask(dirOf(args, 1), taskId, {
-        note: options.note,
-        uri: options.uri || null,
-        by: options.by
-      });
-      return {
-        data,
-        exitCode: 0,
-        print: () => console.log(`checkpoint ${taskId}: ${data.evidence.id} (${data.status})`)
-      };
     }
     if (subcommand === 'report') {
       const taskId = args.positionals[0];

@@ -1,9 +1,7 @@
 # AGENTS.md — working on Trellis
 
 This repository is the reference implementation of the protocol in
-[`SPEC.md`](SPEC.md). The system map (planes, objects, invariants and cleanup
-backlog) is [`ARCHITECTURE.md`](ARCHITECTURE.md). Read both before changing a
-rule or moving a module.
+[`SPEC.md`](SPEC.md). Read the spec before changing a rule.
 
 ## The one rule that matters
 

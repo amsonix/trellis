@@ -4,49 +4,6 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
-
-### Fixed
-
-- `claim` returns `related` prior conclusions and the CLI prints them, so an
-  agent sees them at the moment it starts work even if it did not call
-  `task show`. `related` is computed by Trellis; it is never an input field.
-- 271 `node:test` cases.
-
-## [0.9.41] - 2026-11-20
-
-### Added
-
-- `task show` and `next` expose `related`: earlier completed tasks with the same
-  effective `Source` (or same milestone + overlapping scope), including their
-  last note/evidence.
-- `task finish --note` records a conclusion for later tasks; `done` reports
-  already stored notes.
-- Skill: read `related` before claiming; do not repeat a prior pitfall, and
-  explain a deliberate departure.
-- 270 `node:test` cases.
-
-## [0.9.40] - 2026-11-20
-
-### Documentation
-
-- `ARCHITECTURE.md`: canonical four-plane map, canonical objects, three task
-  relations, three document hard links, invariants and the cleanup backlog.
-- 269 `node:test` cases (no behavior change).
-
-## [0.9.39] - 2026-11-20
-
-### Added
-
-- `task checkpoint <T> --note "<done; next>" [--uri ...]`: appends a `checkpoint`
-  evidence record (`inconclusive`) without changing the task state.
-- `next` includes `lastEvidence`, `lastCheckpoint` and `lease` for active tasks.
-- `status` reports `TASK_STALE` when an `in_progress` task has no new evidence
-  for `TRELLIS_TASK_STALE_HOURS` (default 24).
-- Skill: an agent that stops mid-task must checkpoint or ask; never leave an
-  `in_progress` task silent.
-- 269 `node:test` cases.
-
 ## [0.9.38] - 2026-11-18
 
 ### Added
@@ -840,6 +797,3 @@ All notable changes to this project are recorded here. The format follows
 [0.9.36]: https://github.com/amsonix/trellis/releases/tag/v0.9.36
 [0.9.37]: https://github.com/amsonix/trellis/releases/tag/v0.9.37
 [0.9.38]: https://github.com/amsonix/trellis/releases/tag/v0.9.38
-[0.9.39]: https://github.com/amsonix/trellis/releases/tag/v0.9.39
-[0.9.40]: https://github.com/amsonix/trellis/releases/tag/v0.9.40
-[0.9.41]: https://github.com/amsonix/trellis/releases/tag/v0.9.41

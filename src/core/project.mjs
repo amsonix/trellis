@@ -253,23 +253,7 @@ async function buildAttention(root, state, tasks, checks) {
       attention.push({ kind: 'check', code: check.code, message: check.message, artifact: check.artifact ?? null, task: check.task ?? null });
     }
   }
-  const staleHours = Number(process.env.TRELLIS_TASK_STALE_HOURS ?? 24);
-  const staleMs = (Number.isFinite(staleHours) && staleHours > 0 ? staleHours : 24) * 3600 * 1000;
-  const heldLeases = (await leaseStatus(root)).filter((lease) => lease.state === 'held');
   for (const task of tasks) {
-    if (task.status === 'in_progress') {
-      const records = (await listEvidence(root, task.id)).filter((record) => !record.retracted);
-      const lease = heldLeases.find((item) => item.taskId === task.id);
-      const since = Date.parse(records.at(-1)?.producedAt ?? lease?.createdAt ?? task.createdAt ?? '');
-      if (Number.isFinite(since) && Date.now() - since > staleMs) {
-        attention.push({
-          kind: 'task',
-          code: 'TASK_STALE',
-          message: `${task.id} has no new evidence for ${Math.floor((Date.now() - since) / 3600000)}h`,
-          task: task.id
-        });
-      }
-    }
     if (task.status === 'blocked') {
       const note = state.taskNotes?.[task.id]?.note;
       attention.push({
@@ -441,9 +425,7 @@ async function nextFrom(root, state, tasks, checks, role = null, { limit = null,
   const result = await computeNext(root, state, tasks, checks, role);
   if (result.kind === 'tasks' && result.source === 'ready' && Number.isInteger(batch) && batch > 0) {
     const skip = new Set((result.excluded ?? []).map((item) => item.id));
-    const summaries = new Map((result.tasks ?? []).map((item) => [item.id, item]));
-    result.tasks = selectTaskBatch(tasks, role, { batch, strategy, excludeIds: skip })
-      .map((item) => ({ ...(summaries.get(item.id) ?? {}), ...item }));
+    result.tasks = selectTaskBatch(tasks, role, { batch, strategy, excludeIds: skip });
     result.batch = result.tasks.length;
     result.batchRequested = batch;
     result.batchShortfall = Math.max(0, batch - result.tasks.length);
@@ -477,48 +459,6 @@ async function nextFrom(root, state, tasks, checks, role = null, { limit = null,
     }
   }
   return { ...result, needsUser, reason: needsUser ? stopReason(result) : null };
-}
-
-async function taskActivity(root, task, leases) {
-  const records = (await listEvidence(root, task.id)).filter((record) => !record.retracted);
-  const last = records.at(-1) ?? null;
-  const checkpoint = [...records].reverse().find((record) => record.kind === 'checkpoint') ?? null;
-  const lease = leases.find((item) => item.taskId === task.id) ?? null;
-  return {
-    lastEvidence: last
-      ? { id: last.id, kind: last.kind, verdict: last.verdict, at: last.producedAt, uri: last.uri, note: last.note }
-      : null,
-    lastCheckpoint: checkpoint
-      ? { id: checkpoint.id, at: checkpoint.producedAt, note: checkpoint.note, uri: checkpoint.uri }
-      : null,
-    lease: lease ? { id: lease.id, actor: lease.actor, at: lease.createdAt } : null
-  };
-}
-
-async function relatedConclusions(root, state, tasks, task) {
-  const sources = sourceMap(tasks);
-  const target = sources.get(task.id) ?? null;
-  const candidates = tasks.filter((item) => {
-    if (item.id === task.id || !['done', 'canceled'].includes(item.status)) return false;
-    if (target) return sources.get(item.id) === target;
-    return item.milestone === task.milestone && item.scope.some((domain) => task.scope.some((other) => overlaps(domain, other)));
-  });
-  const related = [];
-  for (const item of candidates.slice(0, 5)) {
-    const records = (await listEvidence(root, item.id)).filter((record) => !record.retracted);
-    const last = records.at(-1) ?? null;
-    related.push({
-      id: item.id,
-      title: item.title,
-      status: item.status,
-      source: sources.get(item.id) ?? null,
-      note: state.taskNotes?.[item.id]?.note ?? last?.note ?? null,
-      evidence: last
-        ? { kind: last.kind, verdict: last.verdict, at: last.producedAt, uri: last.uri, note: last.note }
-        : null
-    });
-  }
-  return related;
 }
 
 async function computeNext(root, state, tasks, checks, role = null) {
@@ -562,7 +502,10 @@ async function computeNext(root, state, tasks, checks, role = null) {
   if (gateSatisfied(state, 'G4') && !gateSatisfied(state, 'G6') && stage === 'executing') {
     const { ready, excluded } = await leaseBlockedReady(root, tasks, role);
     if (ready.length > 0) {
-      const readySummaries = await Promise.all(ready.map(async (task) => ({
+      return {
+        kind: 'tasks',
+        source: 'ready',
+        tasks: ready.map((task) => ({
           id: task.id,
           title: task.title,
           role: task.role,
@@ -575,39 +518,31 @@ async function computeNext(root, state, tasks, checks, role = null) {
           source: task.source ?? null,
           openChildren: tasks.filter(
             (item) => item.parent === task.id && !['done', 'canceled'].includes(item.status)
-          ).length,
-          related: await relatedConclusions(root, state, tasks, task)
-        })));
-      return {
-        kind: 'tasks',
-        source: 'ready',
-        tasks: readySummaries,
+          ).length
+        })),
         ...(staleAttention.length > 0 ? { attention: staleAttention } : {}),
         ...(excluded.length > 0 ? { excluded } : {})
       };
     }
     const active = tasks.filter((task) => task.status === 'in_progress' && (!role || task.role === role));
     if (active.length > 0) {
-      const activeLeases = (await leaseStatus(root)).filter((lease) => lease.state === 'held');
-      const summaries = await Promise.all(active.map(async (task) => ({
-        id: task.id,
-        title: task.title,
-        role: task.role,
-        scope: task.scope,
-        acceptance: task.acceptance,
-        priority: task.priority,
-        createdAt: task.createdAt,
-        ageDays: ageDays(task),
-        parent: task.parent ?? null,
-        source: task.source ?? null,
-        openChildren: tasks.filter(
-          (item) => item.parent === task.id && !['done', 'canceled'].includes(item.status)
-        ).length,
-        ...(await taskActivity(root, task, activeLeases))
-      })));
       return {
         kind: 'tasks',
-        tasks: summaries,
+        tasks: active.map((task) => ({
+          id: task.id,
+          title: task.title,
+          role: task.role,
+          scope: task.scope,
+          acceptance: task.acceptance,
+          priority: task.priority,
+          createdAt: task.createdAt,
+          ageDays: ageDays(task),
+          parent: task.parent ?? null,
+          source: task.source ?? null,
+          openChildren: tasks.filter(
+            (item) => item.parent === task.id && !['done', 'canceled'].includes(item.status)
+          ).length
+        })),
         note: 'in progress',
         ...(staleAttention.length > 0 ? { attention: staleAttention } : {})
       };
@@ -1167,12 +1102,7 @@ export async function claimTask(root, taskId, { by, paths, dryRun = false } = {}
     appendAudit(state, 'task.claimed', actor, { task: taskId, lease: lease.id });
   }
   await saveState(root, state);
-  return {
-    task: { ...task, status: 'in_progress' },
-    lease,
-    takenOver,
-    related: await relatedConclusions(root, state, tasks, task)
-  };
+  return { task: { ...task, status: 'in_progress' }, lease, takenOver };
 }
 
 export async function addTask(
@@ -1513,8 +1443,6 @@ export async function taskShow(root, taskId, { context = false } = {}) {
   const base = {
     task: { ...task, ageDays: ageDays(task) },
     effectiveSource: sourceMap(tasks).get(taskId) ?? null,
-    note: state.taskNotes?.[taskId]?.note ?? null,
-    related: await relatedConclusions(root, state, tasks, task),
     parent: parent ? summary(parent) : null,
     children: children.map(summary),
     openChildren: children.filter((item) => !['done', 'canceled'].includes(item.status)).length
@@ -1864,7 +1792,7 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
   return { task: { ...task, status: newStatus }, evidence, warnings };
 }
 
-export async function finishTask(root, taskId, { run, by, note = null, timeoutMs = 30 * 60 * 1000 } = {}) {
+export async function finishTask(root, taskId, { run, by, timeoutMs = 30 * 60 * 1000 } = {}) {
   if (!taskId) throw new UsageError('task finish needs a task id');
   if (!run) throw new UsageError('task finish needs --run "<command>"');
   if (!by) throw new UsageError('task finish needs --by <role>:<name>');
@@ -1927,7 +1855,7 @@ export async function finishTask(root, taskId, { run, by, note = null, timeoutMs
       evidence: evidence.id
     });
   }
-  const reported = await reportTask(root, taskId, { state: 'done', by, note });
+  const reported = await reportTask(root, taskId, { state: 'done', by });
   return { taskId, exitCode, log, evidence, task: reported.task, warnings: reported.warnings ?? [] };
 }
 
@@ -1945,27 +1873,6 @@ export async function addTasks(root, items, { by, force = false } = {}) {
     added.push(result.task);
   }
   return { tasks: added, count: added.length };
-}
-
-export async function checkpointTask(root, taskId, { note, uri = null, by, proves = null } = {}) {
-  if (!note) throw new UsageError('task checkpoint needs --note "<what is done and what remains>"');
-  if (!by) throw new UsageError('task checkpoint needs --by <role>:<name>');
-  const { tasks } = await parseTasks(root);
-  const task = taskById(tasks, taskId);
-  if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
-  if (['done', 'canceled'].includes(task.status)) {
-    throw new RefusedError('TASK_CHECKPOINT_CLOSED', `task ${taskId} is ${task.status}; reopen it before checkpointing`, { task: taskId, status: task.status });
-  }
-  const evidence = await addTaskEvidence(root, {
-    taskId,
-    kind: 'checkpoint',
-    uri: uri || `checkpoint:${taskId}`,
-    verdict: 'inconclusive',
-    by,
-    note,
-    proves
-  });
-  return { taskId, status: task.status, evidence };
 }
 
 export async function addTaskEvidence(root, input) {

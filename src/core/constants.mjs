@@ -1,4 +1,4 @@
-export const PROTOCOL_VERSION = '0.9.41';
+export const PROTOCOL_VERSION = '0.9.38';
 export const SCHEMA_VERSION = 3;
 export const META_DIR = '.trellis';
 
@@ -118,7 +118,7 @@ export const TASK_TRANSITIONS = {
 };
 
 export const EVIDENCE_VERDICTS = ['pass', 'fail', 'inconclusive'];
-export const EVIDENCE_KINDS = ['test', 'benchmark', 'review', 'approval', 'log', 'screenshot', 'doc', 'checkpoint'];
+export const EVIDENCE_KINDS = ['test', 'benchmark', 'review', 'approval', 'log', 'screenshot', 'doc'];
 
 export const SEVERITIES = ['pass', 'warn', 'fail', 'unavailable'];
 

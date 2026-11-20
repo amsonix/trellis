@@ -19,7 +19,6 @@ import {
   projectReport,
   verifyTask,
   evidenceFor,
-  checkpointTask,
   taskShow,
   listProfiles
 } from '../core/project.mjs';
@@ -307,25 +306,6 @@ const writeTools = [
       claimTask(dirOf(args), args.task, { by: args.by, paths: args.paths ?? null, dryRun: Boolean(args.dryRun) })
   },
   {
-    name: 'trellis_task_checkpoint',
-    description: 'Record progress without changing task state (checkpoint evidence).',
-    inputSchema: object(
-      {
-        dir: dirProp,
-        task: text('Task id.'),
-        note: text('What is done and what remains.'),
-        uri: text('Optional file path or reference.'),
-        by: text('Actor as role:name.')
-      },
-      ['task', 'note', 'by']
-    ),
-    run: (args) => checkpointTask(dirOf(args), args.task, {
-      note: args.note,
-      uri: args.uri ?? null,
-      by: args.by
-    })
-  },
-  {
     name: 'trellis_task_report',
     description: 'Report a task state change. done requires passing evidence.',
     inputSchema: object(
@@ -334,7 +314,7 @@ const writeTools = [
         task: text('Task id.'),
         state: text('todo, ready, in_progress, review, blocked or done.'),
         by: text('Actor as role:name.'),
-        note: text('Short note, conclusion, or the one question when blocked.'),
+        note: text('Short note or the one question when blocked.'),
         dryRun: { type: 'boolean', description: 'Validate the transition without writing.' }
       },
       ['task', 'state']
@@ -443,12 +423,11 @@ const writeTools = [
         dir: dirProp,
         task: text('Task id.'),
         run: text('Command to run in the project root.'),
-        by: text('Producer as role:name.'),
-        note: text('Conclusion or decision to keep for later tasks.')
+        by: text('Producer as role:name.')
       },
       ['task', 'run', 'by']
     ),
-    run: (args) => finishTask(dirOf(args), args.task, { run: args.run, by: args.by, note: args.note ?? null })
+    run: (args) => finishTask(dirOf(args), args.task, { run: args.run, by: args.by })
   },
   {
     name: 'trellis_task_cancel',
