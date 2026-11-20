@@ -439,7 +439,7 @@ const writeTools = [
   {
     name: 'trellis_task_finish',
     description:
-      'Run a verification command, record its output as evidence and mark the task done when it exits 0. A non-zero exit records failing evidence and refuses done.',
+      'Run a verification command, record its output as evidence and move the task to pending when it exits 0. A non-zero exit records failing evidence and refuses done.',
     inputSchema: object(
       {
         dir: dirProp,

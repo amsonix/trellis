@@ -4,7 +4,7 @@ import { appendFile } from 'node:fs/promises';
 import path from 'node:path';
 import { approveGate } from '../src/core/gates.mjs';
 import { addTaskEvidence, claimTask, nextAction, reportTask } from '../src/core/project.mjs';
-import { cleanup, makeProject } from './helpers.mjs';
+import { cleanup, makeProject , completeTask } from './helpers.mjs';
 
 async function approvePlanning(dir) {
   for (const [gate, by] of [
@@ -50,7 +50,7 @@ test('a done task waiting for review needs the user', async () => {
     await approvePlanning(dir);
     await claimTask(dir, 'T-001', { by: 'executor:w1' });
     await addTaskEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'npm test', verdict: 'pass', by: 'executor:w1' });
-    await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+    await completeTask(dir, 'T-001', { by: 'executor:w1' });
 
     const next = await nextAction(dir);
     assert.equal(next.kind, 'gate');

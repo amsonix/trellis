@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { approveGate, claimTask, reportTask, addTaskEvidence, projectStatus, nextAction, runChecks } from '../src/core/project.mjs';
-import { cleanup, makeProject, appendTask } from './helpers.mjs';
+import { cleanup, makeProject, appendTask , completeTask } from './helpers.mjs';
 
 test('G5 cannot be approved before G4', async () => {
   const dir = await makeProject('generic');
   try {
     await claimTask(dir, 'T-001', { by: 'executor:w1' });
     await addTaskEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'npm test', verdict: 'pass', by: 'executor:w1' });
-    await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+    await completeTask(dir, 'T-001', { by: 'executor:w1' });
 
     await assert.rejects(
       () => approveGate(dir, 'G5', { by: 'reviewer:rita', taskId: 'T-001' }),
@@ -29,7 +29,7 @@ test('work started before G4 is reported as a warning', async () => {
     assert.ok(before.checks.some((check) => check.code === 'TASK_BEFORE_PLAN' && check.severity === 'warn'));
 
     await addTaskEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'npm test', verdict: 'pass', by: 'executor:w1' });
-    await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+    await completeTask(dir, 'T-001', { by: 'executor:w1' });
     await approveProjectGates(dir, 'G4');
 
     const after = await runChecks(dir);
@@ -116,7 +116,7 @@ test('the whole lifecycle reaches maintained', async () => {
       verdict: 'pass',
       by: 'verifier:ci'
     });
-    await reportTask(dir, 'T-001', { state: 'done' });
+    await completeTask(dir, 'T-001', { by: 'executor:worker-1' });
     await approveGate(dir, 'G5', { taskId: 'T-001', by: 'reviewer:alice' });
     await approveGate(dir, 'G6', { by: 'verifier:ci' });
     await approveGate(dir, 'G7', { by: 'human:alice' });
@@ -158,7 +158,7 @@ test('G6 is blocked until every task has passed G5', async () => {
       verdict: 'pass',
       by: 'verifier:ci'
     });
-    await reportTask(dir, 'T-001', { state: 'done' });
+    await completeTask(dir, 'T-001', { by: 'executor:worker-1' });
     await assert.rejects(
       () => approveGate(dir, 'G6', { by: 'verifier:ci' }),
       (error) => error.code === 'GATE_BLOCKED' && error.details.checks.some((check) => check.code === 'TASK_REVIEW_MISSING')

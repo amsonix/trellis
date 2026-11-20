@@ -6,7 +6,8 @@ import {
   reportTask
 } from '../src/core/project.mjs';
 import { retractEvidence, verifyTaskEvidence } from '../src/core/evidence.mjs';
-import { cleanup, makeProject } from './helpers.mjs';
+import { cleanup, makeProject, completeTask } from './helpers.mjs';
+import { decideTask } from '../src/core/project.mjs';
 
 async function failing(dir) {
   await claimTask(dir, 'T-001', { by: 'executor:w1' });
@@ -17,8 +18,9 @@ test('a retracted failure no longer blocks done', async () => {
   const dir = await makeProject('generic');
   try {
     const record = await failing(dir);
+    await reportTask(dir, 'T-001', { state: 'pending', reason: 'ready for acceptance', by: 'executor:w1' });
     await assert.rejects(
-      () => reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' }),
+      () => decideTask(dir, 'T-001', { decision: 'accept', by: 'human:alice' }),
       (error) => error.code === 'EVIDENCE_REQUIRED'
     );
 
@@ -26,7 +28,7 @@ test('a retracted failure no longer blocks done', async () => {
     assert.equal((await verifyTaskEvidence(dir, 'T-001')).some((check) => check.code === 'EVIDENCE_FAIL'), false);
 
     await addTaskEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'npm test', verdict: 'pass', by: 'executor:w1' });
-    const done = await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+    const done = await completeTask(dir, 'T-001', { by: 'executor:w1' });
     assert.equal(done.task.status, 'done');
   } finally {
     await cleanup(dir);

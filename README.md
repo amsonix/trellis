@@ -330,7 +330,7 @@ trellis task ask <T-NNN> --question <text> --by <role>:<name>
 trellis task answer <Q-NNN> --decision <text> --by human:<name>
 trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
 trellis task cancel <T-NNN> --by human:<name> --reason <text>
-trellis task finish <T-NNN> --run <command> --by <role>:<name>
+trellis task finish <T-NNN> --run <command> --by <role>:<name>   # ends at pending
 trellis task edit <T-NNN> [--acceptance <a>] [--depends-on <list>] [--parent <T-NNN>] --by <role>:<name>
 trellis task add --from <tasks.json> --by <role>:<name>
 trellis doc list [dir] [--json]
@@ -419,7 +419,7 @@ Exit codes are part of the contract:
    JSON ledger is an index and an audit trail. `reindex` can rebuild it.
 2. **No LLM in the core.** The protocol validates structure, roles, tasks and
    evidence. The model writes the content; the protocol checks it.
-3. **Evidence over claims.** `task report --state done` refuses unless there is
+3. **Evidence over claims.** `task decide --decision accept` refuses unless there is
    passing evidence. `inconclusive` is not a pass.
 4. **No self-approval.** A gate's approver role cannot be the role that produced
    the work.

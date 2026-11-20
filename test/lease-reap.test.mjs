@@ -6,7 +6,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { claimTask, addTaskEvidence, reportTask } from '../src/core/mutations.mjs';
-import { cleanup, makeProject } from './helpers.mjs';
+import { cleanup, makeProject , completeTask } from './helpers.mjs';
 
 const execFileAsync = promisify(execFile);
 const bin = fileURLToPath(new URL('../bin/trellis.mjs', import.meta.url));
@@ -99,12 +99,12 @@ test('reporting done releases the lease and audits the implicit release', async 
   try {
     await claimTask(dir, 'T-001', { by: 'executor:w1' });
     await addTaskEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'manual', verdict: 'pass', by: 'executor:w1' });
-    await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+    await completeTask(dir, 'T-001', { by: 'executor:w1' });
     const status = await run(['lease', 'status', '--dir', dir, '--json']);
     assert.deepEqual(JSON.parse(status.stdout).data.items, []);
     const text = await readFile(path.join(dir, '.trellis/audit.jsonl'), 'utf8');
     assert.match(text, /lease\.released/);
-    assert.match(text, /task\.done/);
+    assert.match(text, /task\.pending/);
   } finally {
     await cleanup(dir);
   }

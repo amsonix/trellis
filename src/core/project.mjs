@@ -1741,7 +1741,7 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
       });
     }
     if (dryRun) {
-      return { task: { ...task, status: 'pending' }, pending: { reason: String(reason).trim(), dryRun: true } };
+      return { task: { ...task, status: 'pending' }, pending: { reason: String(reason).trim(), dryRun: true }, dryRun: true };
     }
     const heldPending = (await leaseStatus(root)).find((lease) => lease.taskId === taskId);
     if (heldPending && actor && heldPending.actor !== actor.raw) {
@@ -1751,7 +1751,10 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
         actor: heldPending.actor
       });
     }
-    if (heldPending) await releaseLease(root, taskId, actor?.raw ?? null);
+    if (heldPending) {
+      await releaseLease(root, taskId, actor?.raw ?? null);
+      appendAudit(state, 'lease.released', actor, { task: taskId, reason: 'task.pending', implicit: true });
+    }
     await updateTaskStatus(root, taskId, 'pending');
     state.taskPendings = state.taskPendings ?? {};
     state.taskPendings[taskId] = {
@@ -1932,8 +1935,20 @@ export async function finishTask(root, taskId, { run, by, timeoutMs = 30 * 60 * 
       evidence: evidence.id
     });
   }
-  const reported = await reportTask(root, taskId, { state: 'done', by });
-  return { taskId, exitCode, log, evidence, task: reported.task, warnings: reported.warnings ?? [] };
+  const reported = await reportTask(root, taskId, {
+    state: 'pending',
+    reason: `verification passed: ${run} (exit 0); awaiting acceptance`,
+    by
+  });
+  return {
+    taskId,
+    exitCode,
+    log,
+    evidence,
+    task: reported.task,
+    pending: reported.pending,
+    warnings: reported.warnings ?? []
+  };
 }
 
 export async function decideTask(root, taskId, { decision, note = null, by } = {}) {
@@ -1960,9 +1975,41 @@ export async function decideTask(root, taskId, { decision, note = null, by } = {
   }
   let evidence = null;
   let nextStatus;
+  const warnings = [];
   if (decision === 'accept') {
+    const openChildren = tasks.filter(
+      (item) => item.parent === taskId && !['done', 'canceled'].includes(item.status)
+    );
+    if (openChildren.length > 0) {
+      throw new RefusedError('TASK_OPEN_CHILDREN', `task ${taskId} has open child task(s): ${openChildren.map((item) => item.id).join(', ')}`, {
+        task: taskId,
+        children: openChildren.map((item) => item.id)
+      });
+    }
     evidence = await requirePassingEvidence(root, taskId);
     nextStatus = 'done';
+    const doneIds = new Set(tasks.filter((item) => item.status === 'done' && item.id !== taskId).map((item) => item.id));
+    const waitingOn = task.dependsOn.filter((dependency) => !doneIds.has(dependency));
+    if (waitingOn.length > 0) {
+      warnings.push({
+        code: 'TASK_DONE_WITH_OPEN_DEPENDENCIES',
+        message: `${taskId} is done but still waits on ${waitingOn.join(', ')}`,
+        waitingOn
+      });
+    }
+    try {
+      const worktree = await fs.stat(path.join(root, META_DIR, 'worktrees', taskId));
+      if (worktree.isDirectory()) {
+        warnings.push({
+          code: 'WORKTREE_REMAINS',
+          message: `worktree .trellis/worktrees/${taskId} still exists; remove it after landing`,
+          path: `.trellis/worktrees/${taskId}`,
+          cleanup: `git worktree remove .trellis/worktrees/${taskId}`
+        });
+      }
+    } catch {
+      // no conventional worktree
+    }
   } else if (decision === 'rework') {
     nextStatus = 'ready';
   } else {
@@ -1979,7 +2026,7 @@ export async function decideTask(root, taskId, { decision, note = null, by } = {
   };
   appendAudit(state, 'task.decided', actor, { task: taskId, decision, note, status: nextStatus });
   await saveState(root, state);
-  return { task: { ...task, status: nextStatus }, decision, evidence };
+  return { task: { ...task, status: nextStatus }, decision, evidence, warnings };
 }
 
 export async function addTasks(root, items, { by, force = false } = {}) {

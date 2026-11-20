@@ -9,7 +9,7 @@ import { nextAction } from '../src/core/project.mjs';
 import { parseTasks } from '../src/core/tasks.mjs';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { cleanup, makeProject } from './helpers.mjs';
+import { cleanup, makeProject , completeTask } from './helpers.mjs';
 
 const execFileAsync = promisify(execFile);
 const bin = fileURLToPath(new URL('../bin/trellis.mjs', import.meta.url));
@@ -56,12 +56,12 @@ test('a parent cannot be done while a child is open', async () => {
     await releaseLease(dir, 'T-001', 'executor:w1');
     await child(dir);
     await assert.rejects(
-      () => reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' }),
-      (error) => error.code === 'TASK_OPEN_CHILDREN'
-    );
-    await assert.rejects(
       () => claimTask(dir, 'T-001', { by: 'executor:w1' }),
       (error) => error.code === 'PARENT_HAS_OPEN_CHILDREN'
+    );
+    await assert.rejects(
+      () => completeTask(dir, 'T-001', { by: 'executor:w1' }),
+      (error) => error.code === 'TASK_OPEN_CHILDREN'
     );
   } finally {
     await cleanup(dir);
@@ -74,11 +74,11 @@ test('closing the child lets the parent close', async () => {
     await child(dir);
     await claimTask(dir, 'T-002', { by: 'executor:w1' });
     await addEvidence(dir, { taskId: 'T-002', kind: 'test', uri: 'manual', verdict: 'pass', by: 'executor:w1' });
-    await reportTask(dir, 'T-002', { state: 'done', by: 'executor:w1' });
+    await completeTask(dir, 'T-002', { by: 'executor:w1' });
 
     await claimTask(dir, 'T-001', { by: 'executor:w1' });
     await addEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'manual', verdict: 'pass', by: 'executor:w1' });
-    const parent = await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+    const parent = await completeTask(dir, 'T-001', { by: 'executor:w1' });
     assert.equal(parent.task.status, 'done');
   } finally {
     await cleanup(dir);

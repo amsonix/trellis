@@ -232,7 +232,9 @@ test('a failing evidence can be retracted by a reviewer', async () => {
       'evidence', 'add', '--task', 'T-001', '--kind', 'test', '--uri', 'npm test',
       '--verdict', 'pass', '--by', 'executor:w1', '--dir', dir, '--json'
     ]);
-    const done = await run(['task', 'report', 'T-001', '--state', 'done', '--by', 'executor:w1', '--dir', dir, '--json']);
+    const pending = await run(['task', 'report', 'T-001', '--state', 'pending', '--reason', 'ready', '--by', 'executor:w1', '--dir', dir, '--json']);
+    assert.equal(pending.code, 0);
+    const done = await run(['task', 'decide', 'T-001', '--decision', 'accept', '--by', 'human:alice', '--dir', dir, '--json']);
     assert.equal(done.code, 0);
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -344,7 +346,9 @@ test('passing evidence unlocks a done report and releases the lease', async () =
       '--verdict', 'pass', '--by', 'executor:w1', '--dir', dir, '--json'
     ]);
 
-    const done = await run(['task', 'report', 'T-001', '--state', 'done', '--by', 'executor:w1', '--dir', dir, '--json']);
+    const pending = await run(['task', 'report', 'T-001', '--state', 'pending', '--reason', 'ready', '--by', 'executor:w1', '--dir', dir, '--json']);
+    assert.equal(pending.code, 0);
+    const done = await run(['task', 'decide', 'T-001', '--decision', 'accept', '--by', 'human:alice', '--dir', dir, '--json']);
     assert.equal(done.code, 0);
     assert.equal(JSON.parse(done.stdout).data.task.status, 'done');
 

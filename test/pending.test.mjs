@@ -10,6 +10,10 @@ test('pending requires a reason and releases the lease', async () => {
   try {
     await claimTask(dir, 'T-001', { by: 'executor:w1' });
     await assert.rejects(
+      () => reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' }),
+      (error) => error.code === 'TASK_TRANSITION'
+    );
+    await assert.rejects(
       () => reportTask(dir, 'T-001', { state: 'pending', by: 'executor:w1' }),
       (error) => error.code === 'USAGE'
     );

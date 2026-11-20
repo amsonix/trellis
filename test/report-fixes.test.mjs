@@ -9,7 +9,7 @@ import { addEvidence } from '../src/core/evidence.mjs';
 import { addTask, cancelTask, claimTask, reportTask } from '../src/core/mutations.mjs';
 import { leaseStatus } from '../src/core/lease.mjs';
 import { parseTasks } from '../src/core/tasks.mjs';
-import { cleanup, makeProject } from './helpers.mjs';
+import { cleanup, makeProject , completeTask } from './helpers.mjs';
 
 const execFileAsync = promisify(execFile);
 const bin = fileURLToPath(new URL('../bin/trellis.mjs', import.meta.url));
@@ -43,7 +43,7 @@ test('a done task can be canceled directly', async () => {
   try {
     await claimTask(dir, 'T-001', { by: 'executor:w1' });
     await addEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'manual', verdict: 'pass', by: 'executor:w1' });
-    await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+    await completeTask(dir, 'T-001', { by: 'executor:w1' });
     await cancelTask(dir, 'T-001', { by: 'human:alice', reason: 'decided not to ship' });
     assert.equal((await parseTasks(dir)).tasks[0].status, 'canceled');
   } finally {
@@ -99,7 +99,7 @@ test('a fail from another commit no longer blocks done', async () => {
     await git('-c', 'user.email=a@b', '-c', 'user.name=a', 'commit', '--allow-empty', '-qm', 'later');
     await addEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'manual', verdict: 'pass', by: 'executor:w1' });
 
-    const result = await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+    const result = await completeTask(dir, 'T-001', { by: 'executor:w1' });
     assert.equal(result.task.status, 'done');
   } finally {
     await cleanup(dir);

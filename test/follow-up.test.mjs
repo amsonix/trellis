@@ -9,7 +9,7 @@ import {
   reportTask,
   runChecks
 } from '../src/core/project.mjs';
-import { cleanup, makeProject } from './helpers.mjs';
+import { cleanup, makeProject , completeTask } from './helpers.mjs';
 
 async function approvePlanning(dir) {
   for (const [gate, by] of [
@@ -26,7 +26,7 @@ async function approvePlanning(dir) {
 async function finish(dir, taskId) {
   await claimTask(dir, taskId, { by: 'executor:w1' });
   await addTaskEvidence(dir, { taskId, kind: 'test', uri: 'npm test', verdict: 'pass', by: 'executor:w1' });
-  await reportTask(dir, taskId, { state: 'done', by: 'executor:w1' });
+  await completeTask(dir, taskId, { by: 'executor:w1' });
 }
 
 const followUp = (extra = {}) => ({

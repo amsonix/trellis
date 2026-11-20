@@ -1,7 +1,10 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { initProject } from '../src/core/project.mjs';
+import { initProject, decideTask } from '../src/core/project.mjs';
+import { addEvidence, claimTask, reportTask } from '../src/core/mutations.mjs';
+import { listEvidence } from '../src/core/evidence.mjs';
+import { parseTasks } from '../src/core/tasks.mjs';
 import { META_DIR } from '../src/core/constants.mjs';
 
 export async function makeProject(profile = 'web-app') {
@@ -55,4 +58,25 @@ export function codes(checks) {
 
 export function failures(checks) {
   return checks.filter((check) => check.severity === 'fail' || check.severity === 'unavailable');
+}
+
+export async function completeTask(dir, taskId, { by = 'executor:w1', note = 'test completion' } = {}) {
+  let { tasks } = await parseTasks(dir);
+  let task = tasks.find((item) => item.id === taskId);
+  if (!task) throw new Error(`completeTask: ${taskId} not found`);
+  if (task.status === 'done') return task;
+  if (['todo', 'ready'].includes(task.status)) {
+    await claimTask(dir, taskId, { by });
+    task = (await parseTasks(dir)).tasks.find((item) => item.id === taskId);
+  }
+  if (task.status === 'in_progress') {
+    const records = (await listEvidence(dir, taskId)).filter((record) => !record.retracted);
+    if (!records.some((record) => record.verdict === 'pass')) {
+      await addEvidence(dir, {
+        taskId, kind: 'test', uri: 'npm test', verdict: 'pass', by
+      });
+    }
+    await reportTask(dir, taskId, { state: 'pending', reason: note, by });
+  }
+  return decideTask(dir, taskId, { decision: 'accept', note, by: 'human:test' });
 }

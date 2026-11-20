@@ -4,7 +4,7 @@ import { addEvidence, listEvidence } from '../src/core/evidence.mjs';
 import { claimTask, reportTask } from '../src/core/mutations.mjs';
 import { leaseStatus } from '../src/core/lease.mjs';
 import { parseTasks } from '../src/core/tasks.mjs';
-import { cleanup, makeProject } from './helpers.mjs';
+import { cleanup, makeProject , completeTask } from './helpers.mjs';
 
 test('a blocked task can return to todo or ready', async () => {
   const dir = await makeProject('generic');
@@ -27,13 +27,15 @@ test('report --dry-run validates without writing or releasing the lease', async 
     await claimTask(dir, 'T-001', { by: 'executor:w1' });
     await addEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'manual', verdict: 'pass', by: 'executor:w1' });
 
-    const preview = await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1', dryRun: true });
+    const preview = await reportTask(dir, 'T-001', {
+      state: 'pending', reason: 'preview', by: 'executor:w1', dryRun: true
+    });
     assert.equal(preview.dryRun, true);
-    assert.equal(preview.task.status, 'done');
+    assert.equal(preview.task.status, 'pending');
     assert.equal((await parseTasks(dir)).tasks[0].status, 'in_progress');
     assert.equal((await leaseStatus(dir)).length, 1);
 
-    await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+    await completeTask(dir, 'T-001', { by: 'executor:w1' });
     assert.equal((await parseTasks(dir)).tasks[0].status, 'done');
     assert.equal((await leaseStatus(dir)).length, 0);
   } finally {
@@ -57,7 +59,7 @@ test('a superseding passing record retracts the stale fail and unblocks done', a
     assert.equal(items.find((item) => item.id === failed.id).retracted.reason, `superseded by ${passing.id}`);
     assert.ok(!items.find((item) => item.id === passing.id).retracted);
 
-    const done = await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+    const done = await completeTask(dir, 'T-001', { by: 'executor:w1' });
     assert.equal(done.task.status, 'done');
   } finally {
     await cleanup(dir);

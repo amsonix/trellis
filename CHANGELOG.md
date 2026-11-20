@@ -14,6 +14,9 @@ All notable changes to this project are recorded here. The format follows
   requires passing evidence.
 - `status` reports `TASK_PENDING`; `next` does not return pending work as a
   candidate; `task ask` now moves the task to pending.
+- `in_progress` can no longer go directly to `done`: `task finish` ends at
+  `pending`, and only a human `task decide --decision accept` sets `done` after
+  checking evidence.
 - `review` and `blocked` are legacy: readable and migratable out, refused for
   new transitions with `TASK_STATE_LEGACY`.
 - 271 `node:test` cases.
@@ -812,3 +815,4 @@ All notable changes to this project are recorded here. The format follows
 [0.9.37]: https://github.com/amsonix/trellis/releases/tag/v0.9.37
 [0.9.38]: https://github.com/amsonix/trellis/releases/tag/v0.9.38
 [0.9.39]: https://github.com/amsonix/trellis/releases/tag/v0.9.39
+[0.9.40]: https://github.com/amsonix/trellis/releases/tag/v0.9.40

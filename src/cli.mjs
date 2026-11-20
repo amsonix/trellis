@@ -313,7 +313,7 @@ const HELP = {
   'task:decide': ['Resolve a pending task as a human.', 'trellis task decide <T-NNN> --decision accept|rework|cancel [--note <text>] --by human:<name>'],
   'task:recover': ['Return an in_progress task with no lease to ready or todo.', 'trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]'],
   'task:cancel': ['Cancel work that is no longer needed; canceled tasks do not satisfy dependencies.', 'trellis task cancel <T-NNN> --by human:<name> --reason <text> [--cascade]'],
-  'task:finish': ['Run the verification command, record the evidence and mark the task done.', 'trellis task finish <T-NNN> --run <command> --by <role>:<name>'],
+  'task:finish': ['Run the verification command, record the evidence and wait for acceptance.', 'trellis task finish <T-NNN> --run <command> --by <role>:<name>'],
   'task:edit': ['Edit a task field through the board validator (adds an audit record).', 'trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--scope <paths>] [--parent <T-NNN>] [--source <ref>] [--priority <p>] --by <role>:<name>'],
   evidence: ['Evidence log operations.', 'trellis evidence <add|list|retract> ...'],
   'evidence:add': ['Record evidence for a task.', 'trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] [--supersedes <EV,...>] --by <role>:<name>'],
@@ -1024,7 +1024,7 @@ async function dispatch(args) {
         data,
         exitCode: 0,
         print: () => {
-          console.log(`finished ${taskId} (exit 0); evidence ${data.evidence.id}; log ${data.log}`);
+          console.log(`finished ${taskId} (exit 0); pending acceptance; evidence ${data.evidence.id}; log ${data.log}`);
           for (const warning of data.warnings ?? []) console.log(`  warning ${warning.code}: ${warning.message}`);
         }
       };

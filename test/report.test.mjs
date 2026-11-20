@@ -4,7 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { addTaskEvidence, claimTask, projectReport, reportTask } from '../src/core/project.mjs';
 import { updateTaskStatus } from '../src/core/tasks.mjs';
-import { cleanup, makeProject } from './helpers.mjs';
+import { cleanup, makeProject , completeTask } from './helpers.mjs';
 
 test('a fresh project reports the pending gate and the next action', async () => {
   const dir = await makeProject('generic');
@@ -52,7 +52,7 @@ test('report aggregates milestones from the task board', async () => {
   try {
     await claimTask(dir, 'T-001', { by: 'executor:w1' });
     await addTaskEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'npm test', verdict: 'pass', by: 'executor:w1' });
-    await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+    await completeTask(dir, 'T-001', { by: 'executor:w1' });
 
     const report = await projectReport(dir);
     assert.deepEqual(report.milestones[0], {

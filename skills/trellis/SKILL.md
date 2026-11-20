@@ -219,7 +219,7 @@ trellis task answer <Q-NNN> --decision <text> --by human:<name>
 trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
 trellis task cancel <T-NNN> --by human:<name> --reason <text>
 trellis task finish <T-NNN> --run <command> --by <role>:<name>
-trellis task report <T-NNN> --state <todo|ready|in_progress|pending|done> [--reason <text>] --by <role>:<name>
+trellis task report <T-NNN> --state <todo|ready|in_progress|pending> [--reason <text>] --by <role>:<name>
 trellis task decide <T-NNN> --decision accept|rework|cancel --by human:<name>
 
 trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] --by <role>:<name>

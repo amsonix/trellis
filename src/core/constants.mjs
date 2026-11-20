@@ -1,4 +1,4 @@
-export const PROTOCOL_VERSION = '0.9.39';
+export const PROTOCOL_VERSION = '0.9.40';
 export const SCHEMA_VERSION = 3;
 export const META_DIR = '.trellis';
 
@@ -112,7 +112,7 @@ export const TASK_STATUSES = [
 export const TASK_TRANSITIONS = {
   todo: ['in_progress', 'ready', 'pending'],
   ready: ['in_progress', 'pending'],
-  in_progress: ['done', 'pending', 'todo'],
+  in_progress: ['pending', 'todo'],
   pending: ['in_progress', 'ready', 'done', 'todo'],
   review: ['done', 'in_progress', 'todo', 'pending'],
   blocked: ['in_progress', 'review', 'done', 'todo', 'ready', 'pending'],

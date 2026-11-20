@@ -10,12 +10,12 @@ import { addEvidence } from '../src/core/evidence.mjs';
 import { claimTask, reportTask } from '../src/core/mutations.mjs';
 import { projectStatus } from '../src/core/project.mjs';
 import { approveGate } from '../src/core/gates.mjs';
-import { cleanup, makeProject } from './helpers.mjs';
+import { cleanup, makeProject , completeTask } from './helpers.mjs';
 
 async function finish(dir, id) {
   await claimTask(dir, id, { by: 'executor:w1' });
   await addEvidence(dir, { taskId: id, kind: 'test', uri: 'manual', verdict: 'pass', by: 'executor:w1' });
-  await reportTask(dir, id, { state: 'done', by: 'executor:w1' });
+  await completeTask(dir, id, { by: 'executor:w1' });
 }
 
 test('milestones expose computed and declared status separately', async () => {

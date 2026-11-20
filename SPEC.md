@@ -255,8 +255,8 @@ Allowed status transitions:
 ```text
 todo        → in_progress | ready | pending
 ready       → in_progress | pending
-in_progress → done | pending | todo
-pending     → done | ready | in_progress | todo
+in_progress → pending | todo
+pending     → done (via task decide) | ready | in_progress | todo
 review      → pending | done | in_progress | todo        (legacy out only)
 blocked     → pending | in_progress | todo | ready       (legacy out only)
 done        → in_progress | todo                        (audited reopen)
@@ -265,7 +265,10 @@ done        → in_progress | todo                        (audited reopen)
 `task report --state review|blocked` is refused with `TASK_STATE_LEGACY`.
 
 `task claim` sets `in_progress` and acquires a lease over the task's scope.
-`task report --state done` verifies evidence and releases the lease.
+`task finish` runs the verification command, records evidence and moves the task
+to `pending`; it never marks `done` directly. A human accepts it with
+`task decide --decision accept`, which verifies evidence and sets `done`.
+`task report --state done` is refused from `in_progress`.
 
 `task cancel <T-NNN> --by human|coordinator --reason ...` closes work that is no
 longer needed: it releases the lease, records `task.canceled` and moves the task
@@ -422,7 +425,7 @@ A lease is a held claim over write domains. Active leases are recorded in
 - `task claim` acquires a lease over the task's scope; a conflicting lease
   refuses the claim. `TRELLIS_MAX_LEASES` caps the number of leases one actor
   may hold (`LEASE_LIMIT`).
-- `task report --state done` releases the lease.
+- `task finish` / `task report --state pending` releases the lease.
 - `lease release <T-NNN> --by <role>:<name>` releases a held lease without
   completing the task — the recovery path when a task is abandoned or blocked.
   The record keeps `releasedAt` and `releasedBy`; releasing a lease nobody

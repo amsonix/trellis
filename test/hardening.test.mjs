@@ -6,7 +6,7 @@ import { claimTask, compact, reportTask } from '../src/core/mutations.mjs';
 import { addTask } from '../src/core/project.mjs';
 import { listEvidence } from '../src/core/evidence.mjs';
 import { parseTasks } from '../src/core/tasks.mjs';
-import { cleanup, makeProject } from './helpers.mjs';
+import { cleanup, makeProject, completeTask } from './helpers.mjs';
 
 const readJson = async (file) => JSON.parse(await readFile(file, 'utf8'));
 
@@ -38,7 +38,7 @@ test('done records a warning when dependencies were added after the claim', asyn
     await import('../src/core/evidence.mjs').then(({ addEvidence }) =>
       addEvidence(dir, { taskId: 'T-002', kind: 'test', uri: 'manual', verdict: 'pass', by: 'verifier:ci' })
     );
-    const result = await reportTask(dir, 'T-002', { state: 'done', by: 'executor:w1' });
+    const result = await completeTask(dir, 'T-002', { by: 'executor:w1' });
     assert.equal(result.task.status, 'done');
     assert.ok(result.warnings.some((warning) => warning.code === 'TASK_DONE_WITH_OPEN_DEPENDENCIES'));
   } finally {
