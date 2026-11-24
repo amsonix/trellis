@@ -24,10 +24,12 @@ test('a fresh project reports the pending gate and the next action', async () =>
 test('a blocked task is reported with its note', async () => {
   const dir = await makeProject('generic');
   try {
-    await claimTask(dir, 'T-001', { by: 'executor:w1' });
-    await reportTask(dir, 'T-001', { state: 'pending', reason: 'waiting for the API key', by: 'executor:w1' });
+    const { addRecord } = await import('../src/core/records.mjs');
+    await addRecord(dir, {
+      kind: 'decision', text: 'waiting for the API key', fromTask: 'T-001', by: 'executor:w1'
+    });
     const report = await projectReport(dir);
-    const gap = report.gaps.find((item) => item.code === 'TASK_PENDING');
+    const gap = report.gaps.find((item) => item.code === 'DECISION_OPEN');
     assert.ok(gap);
     assert.match(gap.message, /waiting for the API key/);
   } finally {

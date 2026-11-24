@@ -6,21 +6,6 @@ import { leaseStatus } from '../src/core/lease.mjs';
 import { parseTasks } from '../src/core/tasks.mjs';
 import { cleanup, makeProject , completeTask } from './helpers.mjs';
 
-test('a blocked task can return to todo or ready', async () => {
-  const dir = await makeProject('generic');
-  try {
-    await reportTask(dir, 'T-001', { state: 'pending', reason: 'waiting for a decision', by: 'executor:w1' });
-    await reportTask(dir, 'T-001', { state: 'todo', by: 'coordinator:kim' });
-    assert.equal((await parseTasks(dir)).tasks[0].status, 'todo');
-
-    await reportTask(dir, 'T-001', { state: 'pending', reason: 'waiting for a decision', by: 'executor:w1' });
-    await reportTask(dir, 'T-001', { state: 'ready', by: 'coordinator:kim' });
-    assert.equal((await parseTasks(dir)).tasks[0].status, 'ready');
-  } finally {
-    await cleanup(dir);
-  }
-});
-
 test('report --dry-run validates without writing or releasing the lease', async () => {
   const dir = await makeProject('generic');
   try {
@@ -28,10 +13,10 @@ test('report --dry-run validates without writing or releasing the lease', async 
     await addEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'manual', verdict: 'pass', by: 'executor:w1' });
 
     const preview = await reportTask(dir, 'T-001', {
-      state: 'pending', reason: 'preview', by: 'executor:w1', dryRun: true
+      state: 'done', by: 'executor:w1', dryRun: true
     });
     assert.equal(preview.dryRun, true);
-    assert.equal(preview.task.status, 'pending');
+    assert.equal(preview.task.status, 'done');
     assert.equal((await parseTasks(dir)).tasks[0].status, 'in_progress');
     assert.equal((await leaseStatus(dir)).length, 1);
 

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { claimTask, reportTask, decideTask, addTaskEvidence, verifyTask, evidenceFor } from '../src/core/project.mjs';
+import { claimTask, reportTask, addTaskEvidence, verifyTask, evidenceFor } from '../src/core/project.mjs';
 import { leaseStatus } from '../src/core/lease.mjs';
 import { cleanup, makeProject } from './helpers.mjs';
 
@@ -10,9 +10,8 @@ test('a task cannot be done without passing evidence', async () => {
   const dir = await makeProject();
   try {
     await claimTask(dir, 'T-001', { by: 'executor:worker-1' });
-    await reportTask(dir, 'T-001', { state: 'pending', reason: 'ready for acceptance', by: 'executor:worker-1' });
     await assert.rejects(
-      () => decideTask(dir, 'T-001', { decision: 'accept', by: 'human:alice' }),
+      () => reportTask(dir, 'T-001', { state: 'done', by: 'executor:worker-1' }),
       (error) => error.code === 'EVIDENCE_REQUIRED'
     );
 
@@ -25,7 +24,7 @@ test('a task cannot be done without passing evidence', async () => {
       by: 'verifier:ci'
     });
     await assert.rejects(
-      () => decideTask(dir, 'T-001', { decision: 'accept', by: 'human:alice' }),
+      () => reportTask(dir, 'T-001', { state: 'done', by: 'executor:worker-1' }),
       (error) => error.code === 'EVIDENCE_REQUIRED'
     );
   } finally {
@@ -46,10 +45,9 @@ test('passing evidence completes the task and releases its lease', async () => {
       by: 'verifier:ci'
     });
     assert.ok(record.sha256);
-    await reportTask(dir, 'T-001', { state: 'pending', reason: 'ready for acceptance', by: 'executor:worker-1' });
-    assert.equal((await leaseStatus(dir)).length, 0);
-    const result = await decideTask(dir, 'T-001', { decision: 'accept', by: 'human:alice' });
+    const result = await reportTask(dir, 'T-001', { state: 'done', by: 'executor:worker-1' });
     assert.equal(result.task.status, 'done');
+    assert.equal((await leaseStatus(dir)).length, 0);
     const verified = await verifyTask(dir, 'T-001');
     assert.equal(verified.exitCode, 0);
     assert.equal((await evidenceFor(dir, 'T-001')).length, 1);
@@ -69,9 +67,8 @@ test('inconclusive evidence is not a pass', async () => {
       verdict: 'inconclusive',
       by: 'verifier:ci'
     });
-    await reportTask(dir, 'T-001', { state: 'pending', reason: 'inconclusive evidence', by: 'executor:worker-1' });
     await assert.rejects(
-      () => decideTask(dir, 'T-001', { decision: 'accept', by: 'human:alice' }),
+      () => reportTask(dir, 'T-001', { state: 'done', by: 'executor:worker-1' }),
       (error) => error.code === 'EVIDENCE_REQUIRED'
     );
   } finally {

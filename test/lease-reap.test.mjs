@@ -104,7 +104,7 @@ test('reporting done releases the lease and audits the implicit release', async 
     assert.deepEqual(JSON.parse(status.stdout).data.items, []);
     const text = await readFile(path.join(dir, '.trellis/audit.jsonl'), 'utf8');
     assert.match(text, /lease\.released/);
-    assert.match(text, /task\.pending/);
+    assert.match(text, /task\.done/);
   } finally {
     await cleanup(dir);
   }

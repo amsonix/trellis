@@ -23,16 +23,19 @@ async function run(dir, args) {
   }
 }
 
-test('a third party cannot push a leased task into blocked', async () => {
+test('a decision record requires a human to resolve', async () => {
   const dir = await makeProject('generic');
   try {
-    await claimTask(dir, 'T-001', { by: 'executor:w1' });
+    const { addRecord, resolveRecord } = await import('../src/core/records.mjs');
+    const record = await addRecord(dir, {
+      kind: 'decision', text: 'which approach?', fromTask: 'T-001', by: 'executor:w1'
+    });
     await assert.rejects(
-      () => reportTask(dir, 'T-001', { state: 'pending', reason: 'waiting for a key', by: 'coordinator:kim' }),
-      (error) => error.code === 'TASK_LEASE_HELD_BY_OTHER'
+      () => resolveRecord(dir, record.id, { resolution: 'mine', by: 'executor:w1' }),
+      (error) => error.code === 'RECORD_RESOLVE_ROLE'
     );
-    await reportTask(dir, 'T-001', { state: 'pending', reason: 'waiting for a key', by: 'executor:w1' });
-    assert.equal((await parseTasks(dir)).tasks[0].status, 'pending');
+    const resolved = await resolveRecord(dir, record.id, { resolution: 'B', by: 'human:alice' });
+    assert.equal(resolved.status, 'resolved');
   } finally {
     await cleanup(dir);
   }

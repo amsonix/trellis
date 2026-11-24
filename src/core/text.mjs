@@ -69,7 +69,7 @@ export function renderStatusPanel(data) {
   const tasks = data.tasks ?? {};
   lines.push(
     `tasks: done ${tasks.done}  canceled ${tasks.canceled}  in_progress ${tasks.in_progress}  ` +
-      `pending ${tasks.pending}  todo ${tasks.todo}  ready ${tasks.ready}  blocked ${tasks.blocked}  review ${tasks.review}`
+      `todo ${tasks.todo}  ready ${tasks.ready}  | records: ${data.records?.open ?? 0} open (${data.records?.decision ?? 0} decision, ${data.records?.gap ?? 0} gap)`
   );
   const summary = data.checks?.summary ?? {};
   lines.push(`checks: ${summary.pass} pass  ${summary.warn} warn  ${summary.fail} fail  ${summary.unavailable} unavailable`);

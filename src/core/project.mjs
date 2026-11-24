@@ -24,6 +24,7 @@ import { addEvidence, verifyTaskEvidence, requirePassingEvidence, listEvidence }
 import { acquireLease, releaseLease, leaseStatus, leaseConflicts } from './lease.mjs';
 import { milestoneProgress as computeMilestoneProgress } from './milestones.mjs';
 import { coverageFor, sourceMap } from './coverage.mjs';
+import { addRecord, listRecords, recordSummary } from './records.mjs';
 import { defaultState, loadState, saveState, appendAudit } from './store.mjs';
 import { RefusedError, UnavailableError, UsageError } from './errors.mjs';
 import { nowIso, parseActor, parseScope, isSafeDomain, assertMaxLength, writeText, covers, overlaps, normalizeSource } from './util.mjs';
@@ -183,7 +184,7 @@ export async function runChecks(root, stage = null) {
         );
       }
     }
-    const started = parsed.tasks.filter((task) => ['in_progress', 'pending', 'review', 'done'].includes(task.status));
+    const started = parsed.tasks.filter((task) => ['in_progress', 'done'].includes(task.status));
     if (started.length > 0 && !gateSatisfied(state, 'G4')) {
       checks.push(
         makeCheck(
@@ -231,48 +232,23 @@ export async function runChecks(root, stage = null) {
 }
 
 function taskCounts(tasks) {
-  const counts = { total: tasks.length, todo: 0, ready: 0, in_progress: 0, pending: 0, review: 0, blocked: 0, done: 0, canceled: 0 };
+  const counts = { total: tasks.length, todo: 0, ready: 0, in_progress: 0, done: 0, canceled: 0 };
   for (const task of tasks) counts[task.status] = (counts[task.status] ?? 0) + 1;
   return counts;
 }
 
 async function buildAttention(root, state, tasks, checks) {
   const attention = [];
-  for (const record of Object.values(state.questions ?? {})) {
-    if (record.status !== 'open') continue;
+  for (const record of await listRecords(root, { openOnly: true })) {
     attention.push({
-      kind: 'question',
-      code: 'QUESTION_OPEN',
-      message: `${record.id} for ${record.taskId}: ${record.question}`,
-      task: record.taskId,
-      question: record.id
+      kind: 'record',
+      code: record.kind === 'decision' ? 'DECISION_OPEN' : 'GAP_OPEN',
+      message: `${record.id} (${record.kind}) from ${record.fromTask ?? 'project'}: ${record.text}`,
+      record: record.id,
+      task: record.fromTask
     });
   }
-  for (const check of checks) {
-    if (check.severity === 'fail' || check.severity === 'unavailable') {
-      attention.push({ kind: 'check', code: check.code, message: check.message, artifact: check.artifact ?? null, task: check.task ?? null });
-    }
-  }
-  for (const task of tasks) {
-    if (task.status === 'pending') {
-      const pending = state.taskPendings?.[task.id];
-      attention.push({
-        kind: 'task',
-        code: 'TASK_PENDING',
-        message: `${task.id} is pending a decision${pending?.reason ? `: ${pending.reason}` : ''}`,
-        task: task.id
-      });
-    }
-    if (LEGACY_TASK_STATUSES.includes(task.status)) {
-      attention.push({
-        kind: 'task',
-        code: 'TASK_STATE_LEGACY',
-        message: `${task.id} uses legacy status '${task.status}'; move it to pending or done`,
-        task: task.id
-      });
-    }
-  }
-  const pendingTaskGate = tasks.find((task) => ['review', 'done'].includes(task.status) && !taskGateSatisfied(state, task.id));
+  const pendingTaskGate = tasks.find((task) => task.status === 'done' && !taskGateSatisfied(state, task.id));
   if (pendingTaskGate) {
     attention.push({
       kind: 'gate',
@@ -728,7 +704,7 @@ function selectTaskBatch(tasks, role, { batch, strategy = 'priority', excludeIds
 }
 
 const STALE_LEASE_HOURS = 24;
-const OPEN_STATUSES = ['todo', 'ready', 'in_progress', 'pending', 'review', 'blocked'];
+const OPEN_STATUSES = ['todo', 'ready', 'in_progress'];
 
 function ageDays(task) {
   if (!task.createdAt) return null;
@@ -781,26 +757,15 @@ export async function projectReport(root) {
     });
   }
 
-  for (const task of tasks.filter((item) => item.status === 'pending')) {
-    const pending = state.taskPendings?.[task.id];
+  for (const record of await listRecords(root, { openOnly: true })) {
     gaps.push({
-      kind: 'task',
-      severity: 'medium',
-      code: 'TASK_PENDING',
-      message: `${task.id} is pending a decision${pending?.reason ? `: ${pending.reason}` : ''}`,
-      action: `trellis task decide ${task.id} --decision accept|rework|cancel --by human:<name>`
+      kind: 'record',
+      severity: record.severity === 'high' ? 'high' : 'medium',
+      code: record.kind === 'decision' ? 'DECISION_OPEN' : 'GAP_OPEN',
+      message: `${record.id} (${record.kind}) from ${record.fromTask ?? 'project'}: ${record.text}`,
+      action: `trellis record resolve ${record.id} --resolution "..." --by human:<name>`
     });
   }
-  for (const task of tasks.filter((item) => LEGACY_TASK_STATUSES.includes(item.status))) {
-    gaps.push({
-      kind: 'task',
-      severity: 'low',
-      code: 'TASK_STATE_LEGACY',
-      message: `${task.id} uses legacy status '${task.status}'`,
-      action: `trellis task report ${task.id} --state pending --reason "migrate legacy status"`
-    });
-  }
-
   for (const task of tasks.filter((item) => item.status === 'done')) {
     const checks = await verifyTaskEvidence(root, task.id);
     const failing = checks.filter((check) => check.severity === 'fail');
@@ -830,22 +795,10 @@ export async function projectReport(root) {
   }
 
   gaps.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
-  const passedGates = PROJECT_GATES.filter(
-    (id) => status.gates[id]?.status === 'passed' || status.gates[id]?.status === 'waived'
-  ).length;
+  const passedGates = PROJECT_GATES.filter((id) => ['passed', 'waived'].includes(state.gates?.[id]?.status)).length;
   const doneTasks = tasks.filter((task) => task.status === 'done').length;
   const milestones = await milestonesFromRoadmap(root);
   const milestoneProgress = computeMilestoneProgress(milestones, tasks);
-  const pendingQuestions = Object.values(state.questions ?? {})
-    .filter((record) => record.status === 'open')
-    .map((record) => ({
-      id: record.id,
-      taskId: record.taskId,
-      question: record.question,
-      askedBy: record.askedBy,
-      askedAt: record.askedAt
-    }));
-
   return {
     project: status.project,
     stage: status.stage,
@@ -855,7 +808,7 @@ export async function projectReport(root) {
     },
     gaps: gaps.slice(0, 20),
     milestones: milestoneProgress,
-    pendingQuestions,
+    records: await recordSummary(root),
     next: {
       kind: status.next.kind,
       command: status.next.command ?? null,
@@ -1039,8 +992,6 @@ export async function claimTask(root, taskId, { by, paths, dryRun = false } = {}
         { task: taskId }
       );
     }
-  } else if (task.status === 'pending') {
-    throw new RefusedError('TASK_PENDING_DECISION', `task ${taskId} is pending a human decision`, { task: taskId });
   } else if (!['todo', 'ready'].includes(task.status)) {
     throw new RefusedError('TASK_NOT_CLAIMABLE', `task ${taskId} is '${task.status}', not todo/ready`, { task: taskId });
   }
@@ -1450,7 +1401,7 @@ export async function taskShow(root, taskId, { context = false } = {}) {
   });
   const base = {
     task: { ...task, ageDays: ageDays(task) },
-    pending: state.taskPendings?.[taskId] ?? null,
+    records: await listRecords(root, { fromTask: taskId }),
     effectiveSource: sourceMap(tasks).get(taskId) ?? null,
     parent: parent ? summary(parent) : null,
     children: children.map(summary),
@@ -1612,101 +1563,38 @@ export async function askTask(root, taskId, { question, by }) {
   assertMaxLength(question, 'question', 1000);
   if (!by) throw new UsageError('task ask needs --by <role>:<name>');
   const actor = parseActor(by);
-  const state = await loadState(root);
   const { tasks } = await parseTasks(root);
   const task = taskById(tasks, taskId);
   if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
-
-  state.questions = state.questions ?? {};
-  const open = Object.values(state.questions).find((item) => item.taskId === taskId && item.status === 'open');
-  if (open) {
-    throw new RefusedError('QUESTION_OPEN', `task ${taskId} already has open question ${open.id}`, {
-      task: taskId,
-      question: open.id
-    });
-  }
-
-  if (!['in_progress', 'review'].includes(task.status)) {
+  if (!['in_progress', 'done'].includes(task.status)) {
     throw new RefusedError(
       'QUESTION_NOT_ASKABLE',
-      `task ${taskId} is '${task.status}'; only an in_progress or review task can ask`,
+      `task ${taskId} is '${task.status}'; only an in_progress or done task can ask`,
       { task: taskId, status: task.status }
     );
   }
-
-  const id = `Q-${String(Object.keys(state.questions).length + 1).padStart(3, '0')}`;
-  const record = {
-    id,
-    taskId,
-    question: String(question).trim(),
-    askedBy: actor.raw,
-    askedAt: nowIso(),
-    agent: currentAgent(),
-    previousStatus: task.status,
-    status: 'open',
-    answer: null,
-    answeredBy: null,
-    answeredAt: null
-  };
-  state.questions[id] = record;
-  const held = (await leaseStatus(root)).find((lease) => lease.taskId === taskId);
-  if (held) await releaseLease(root, taskId, actor.raw);
-  await updateTaskStatus(root, taskId, 'pending');
-  state.taskPendings = state.taskPendings ?? {};
-  state.taskPendings[taskId] = {
-    reason: record.question,
-    questionId: id,
-    requestedBy: actor.raw,
-    requestedAt: record.askedAt,
-    decision: null,
-    decidedBy: null,
-    decidedAt: null
-  };
-  state.taskNotes = state.taskNotes ?? {};
-  state.taskNotes[taskId] = { note: record.question, at: record.askedAt, by: actor.raw, state: 'pending' };
-  appendAudit(state, 'task.question', actor, { task: taskId, question: id });
+  const record = await addRecord(root, {
+    kind: 'decision',
+    text: String(question).trim(),
+    fromTask: taskId,
+    severity: 'medium',
+    by: actor.raw
+  });
+  const state = await loadState(root);
+  appendAudit(state, 'task.question', actor, { task: taskId, record: record.id });
   await saveState(root, state);
-  return { question: record, task: { ...task, status: 'pending' } };
+  return { question: { ...record, id: record.id, question: record.text }, record, task: { ...task, status: task.status } };
 }
 
 export async function answerTask(root, questionId, { decision, by }) {
-  if (!questionId) throw new UsageError('task answer needs a question id');
+  if (!questionId) throw new UsageError('task answer needs a record id');
   if (!decision || String(decision).trim() === '') {
     throw new UsageError('task answer needs --decision "<the answer>"');
   }
-  if (!by) throw new UsageError('task answer needs --by <role>:<name>');
-  const actor = parseActor(by);
-  if (actor.role !== 'human') {
-    throw new RefusedError('QUESTION_ANSWER_ROLE', `${actor.raw} cannot answer a question; only human can`, {
-      actor: actor.raw
-    });
-  }
-
-  const state = await loadState(root);
-  const record = state.questions?.[questionId];
-  if (!record) {
-    throw new RefusedError('QUESTION_UNKNOWN', `no question '${questionId}'`, { question: questionId });
-  }
-  if (record.status !== 'open') {
-    throw new RefusedError('QUESTION_ANSWERED', `question ${questionId} is already ${record.status}`, {
-      question: questionId
-    });
-  }
-
-  record.status = 'answered';
-  record.answer = String(decision).trim();
-  record.answeredBy = actor.raw;
-  record.answeredAt = nowIso();
-  if (state.taskPendings?.[record.taskId]) {
-    state.taskPendings[record.taskId].decision = 'answered';
-    state.taskPendings[record.taskId].decidedBy = actor.raw;
-    state.taskPendings[record.taskId].decidedAt = record.answeredAt;
-    state.taskPendings[record.taskId].note = record.answer;
-  }
-  await updateTaskStatus(root, record.taskId, record.previousStatus);
-  appendAudit(state, 'task.answered', actor, { task: record.taskId, question: questionId });
-  await saveState(root, state);
-  return { question: record, task: { id: record.taskId, status: record.previousStatus } };
+  if (!by) throw new UsageError('task answer needs --by human:<name>');
+  const { resolveRecord } = await import('./records.mjs');
+  const record = await resolveRecord(root, questionId, { resolution: decision, by });
+  return { question: { ...record, question: record.text, answer: record.resolution }, record, task: { id: record.fromTask } };
 }
 
 export async function reportTask(root, taskId, { state: newStatus, note = null, reason = null, by, dryRun = false } = {}) {
@@ -1722,55 +1610,12 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
   if (LEGACY_TASK_STATUSES.includes(newStatus)) {
     throw new RefusedError(
       'TASK_STATE_LEGACY',
-      `'${newStatus}' is legacy; use 'pending' with --reason for a decision`,
+      `'${newStatus}' is legacy; reset the row to todo/ready and use records for gaps/decisions`,
       { task: taskId, status: newStatus }
     );
   }
-  if (newStatus === 'pending') {
-    if (!reason || String(reason).trim() === '') {
-      throw new UsageError('moving a task to pending needs --reason "<what decision is needed>"');
-    }
-    if (!by) throw new UsageError('moving a task to pending needs --by <role>:<name>');
-    const allowedPending = TASK_TRANSITIONS[task.status] ?? [];
-    if (!allowedPending.includes('pending')) {
-      throw new RefusedError('TASK_TRANSITION', `task ${taskId} cannot go from '${task.status}' to 'pending'`, {
-        task: taskId,
-        from: task.status,
-        to: 'pending',
-        allowed: allowedPending
-      });
-    }
-    if (dryRun) {
-      return { task: { ...task, status: 'pending' }, pending: { reason: String(reason).trim(), dryRun: true }, dryRun: true };
-    }
-    const heldPending = (await leaseStatus(root)).find((lease) => lease.taskId === taskId);
-    if (heldPending && actor && heldPending.actor !== actor.raw) {
-      throw new RefusedError('TASK_LEASE_HELD_BY_OTHER', `task ${taskId} is leased by ${heldPending.actor}`, {
-        task: taskId,
-        lease: heldPending.id,
-        actor: heldPending.actor
-      });
-    }
-    if (heldPending) {
-      await releaseLease(root, taskId, actor?.raw ?? null);
-      appendAudit(state, 'lease.released', actor, { task: taskId, reason: 'task.pending', implicit: true });
-    }
-    await updateTaskStatus(root, taskId, 'pending');
-    state.taskPendings = state.taskPendings ?? {};
-    state.taskPendings[taskId] = {
-      reason: String(reason).trim(),
-      requestedBy: actor?.raw ?? by,
-      requestedAt: nowIso(),
-      decision: null,
-      decidedBy: null,
-      decidedAt: null
-    };
-    appendAudit(state, 'task.pending', actor, { task: taskId, reason: String(reason).trim() });
-    await saveState(root, state);
-    return { task: { ...task, status: 'pending' }, pending: state.taskPendings[taskId] };
-  }
-  if (task.status === 'pending' && newStatus === 'done') {
-    throw new RefusedError('TASK_PENDING_DECISION', `task ${taskId} needs a human decision before done`, { task: taskId });
+  if (LEGACY_TASK_STATUSES.includes(task.status)) {
+    throw new RefusedError('TASK_STATE_LEGACY', `task ${taskId} uses legacy status '${task.status}'`, { task: taskId });
   }
   const heldLease = (await leaseStatus(root)).find((lease) => lease.taskId === taskId);
   if (heldLease && actor && heldLease.actor !== actor.raw && newStatus === 'blocked') {
@@ -1780,7 +1625,7 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
       actor: heldLease.actor
     });
   }
-  const reopening = ['done', 'review'].includes(task.status) && ['in_progress', 'todo'].includes(newStatus);
+  const reopening = task.status === 'done' && ['in_progress', 'todo'].includes(newStatus);
   if (reopening) {
     if (!actor || !['human', 'coordinator'].includes(actor.role)) {
       throw new RefusedError('TASK_REOPEN_ROLE', `only a human or coordinator may reopen ${taskId}`, { task: taskId });
@@ -1872,7 +1717,7 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
   return { task: { ...task, status: newStatus }, evidence, warnings };
 }
 
-export async function finishTask(root, taskId, { run, by, timeoutMs = 30 * 60 * 1000 } = {}) {
+export async function finishTask(root, taskId, { run, by, disposition = null, gap = null, decision = null, timeoutMs = 30 * 60 * 1000 } = {}) {
   if (!taskId) throw new UsageError('task finish needs a task id');
   if (!run) throw new UsageError('task finish needs --run "<command>"');
   if (!by) throw new UsageError('task finish needs --by <role>:<name>');
@@ -1935,98 +1780,35 @@ export async function finishTask(root, taskId, { run, by, timeoutMs = 30 * 60 * 
       evidence: evidence.id
     });
   }
-  const reported = await reportTask(root, taskId, {
-    state: 'pending',
-    reason: `verification passed: ${run} (exit 0); awaiting acceptance`,
-    by
-  });
+  const declared = disposition === 'clear' || Boolean(gap) || Boolean(decision);
+  if (!declared) {
+    throw new RefusedError(
+      'TASK_DISPOSITION_REQUIRED',
+      'declare --disposition clear, or record a --gap / --decision before finishing',
+      { task: taskId }
+    );
+  }
+  const records = [];
+  if (gap) {
+    records.push(await addRecord(root, {
+      kind: 'gap', text: String(gap).trim(), fromTask: taskId, by
+    }));
+  }
+  if (decision) {
+    records.push(await addRecord(root, {
+      kind: 'decision', text: String(decision).trim(), fromTask: taskId, by
+    }));
+  }
+  const reported = await reportTask(root, taskId, { state: 'done', by });
   return {
     taskId,
     exitCode,
     log,
     evidence,
     task: reported.task,
-    pending: reported.pending,
+    records,
     warnings: reported.warnings ?? []
   };
-}
-
-export async function decideTask(root, taskId, { decision, note = null, by } = {}) {
-  if (!taskId) throw new UsageError('task decide needs a task id');
-  if (!['accept', 'rework', 'cancel'].includes(decision)) {
-    throw new UsageError('task decide needs --decision accept|rework|cancel');
-  }
-  if (!by) throw new UsageError('task decide needs --by human:<name>');
-  const actor = parseActor(by);
-  if (actor.role !== 'human') {
-    throw new RefusedError('TASK_DECIDE_ROLE', `${actor.raw} cannot decide a pending task; only a human can`, {
-      actor: actor.raw
-    });
-  }
-  const state = await loadState(root);
-  const { tasks } = await parseTasks(root);
-  const task = taskById(tasks, taskId);
-  if (!task) throw new RefusedError('TASK_UNKNOWN', `task ${taskId} is not on the task board`, { task: taskId });
-  if (task.status !== 'pending') {
-    throw new RefusedError('TASK_NOT_PENDING', `task ${taskId} is '${task.status}', not pending`, {
-      task: taskId,
-      status: task.status
-    });
-  }
-  let evidence = null;
-  let nextStatus;
-  const warnings = [];
-  if (decision === 'accept') {
-    const openChildren = tasks.filter(
-      (item) => item.parent === taskId && !['done', 'canceled'].includes(item.status)
-    );
-    if (openChildren.length > 0) {
-      throw new RefusedError('TASK_OPEN_CHILDREN', `task ${taskId} has open child task(s): ${openChildren.map((item) => item.id).join(', ')}`, {
-        task: taskId,
-        children: openChildren.map((item) => item.id)
-      });
-    }
-    evidence = await requirePassingEvidence(root, taskId);
-    nextStatus = 'done';
-    const doneIds = new Set(tasks.filter((item) => item.status === 'done' && item.id !== taskId).map((item) => item.id));
-    const waitingOn = task.dependsOn.filter((dependency) => !doneIds.has(dependency));
-    if (waitingOn.length > 0) {
-      warnings.push({
-        code: 'TASK_DONE_WITH_OPEN_DEPENDENCIES',
-        message: `${taskId} is done but still waits on ${waitingOn.join(', ')}`,
-        waitingOn
-      });
-    }
-    try {
-      const worktree = await fs.stat(path.join(root, META_DIR, 'worktrees', taskId));
-      if (worktree.isDirectory()) {
-        warnings.push({
-          code: 'WORKTREE_REMAINS',
-          message: `worktree .trellis/worktrees/${taskId} still exists; remove it after landing`,
-          path: `.trellis/worktrees/${taskId}`,
-          cleanup: `git worktree remove .trellis/worktrees/${taskId}`
-        });
-      }
-    } catch {
-      // no conventional worktree
-    }
-  } else if (decision === 'rework') {
-    nextStatus = 'ready';
-  } else {
-    nextStatus = 'canceled';
-  }
-  await updateTaskStatus(root, taskId, nextStatus);
-  state.taskPendings = state.taskPendings ?? {};
-  state.taskPendings[taskId] = {
-    ...(state.taskPendings[taskId] ?? { reason: null, requestedBy: null, requestedAt: null }),
-    decision,
-    decidedBy: actor.raw,
-    decidedAt: nowIso(),
-    note: note === null ? null : String(note).trim()
-  };
-  appendAudit(state, 'task.decided', actor, { task: taskId, decision, note, status: nextStatus });
-  await saveState(root, state);
-  return { task: { ...task, status: nextStatus }, decision, evidence, warnings };
 }
 
 export async function addTasks(root, items, { by, force = false } = {}) {

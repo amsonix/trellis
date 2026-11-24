@@ -102,26 +102,20 @@ export const TASK_STATUSES = [
   'todo',
   'ready',
   'in_progress',
-  'pending',
-  'review',
-  'blocked',
   'done',
   'canceled'
 ];
 
 export const TASK_TRANSITIONS = {
-  todo: ['in_progress', 'ready', 'pending'],
-  ready: ['in_progress', 'pending'],
-  in_progress: ['pending', 'todo'],
-  pending: ['in_progress', 'ready', 'done', 'todo'],
-  review: ['done', 'in_progress', 'todo', 'pending'],
-  blocked: ['in_progress', 'review', 'done', 'todo', 'ready', 'pending'],
+  todo: ['in_progress', 'ready'],
+  ready: ['in_progress'],
+  in_progress: ['done', 'todo'],
   done: ['in_progress', 'todo']
 };
 
-// Kept so old boards can be read and migrated out. New transitions into these
-// states are refused with TASK_STATE_LEGACY.
-export const LEGACY_TASK_STATUSES = ['review', 'blocked'];
+// Old boards may still carry these statuses; they are read-only. New rows and
+// transitions never produce them.
+export const LEGACY_TASK_STATUSES = ['pending', 'review', 'blocked'];
 
 export const EVIDENCE_VERDICTS = ['pass', 'fail', 'inconclusive'];
 export const EVIDENCE_KINDS = ['test', 'benchmark', 'review', 'approval', 'log', 'screenshot', 'doc'];

@@ -186,7 +186,9 @@ Rules:
 2. `Milestone` must match a `## M...` section in `ROADMAP.md`.
 3. `Role` is one of `human`, `coordinator`, `architect`, `executor`, `reviewer`,
    `verifier`, `operator`.
-4. `Status` is one of `todo`, `ready`, `in_progress`, `pending`, `done`.
+4. `Status` is one of `todo`, `ready`, `in_progress`, `done`, `canceled`.
+   `pending`, `review` and `blocked` are legacy: old rows are readable but cannot
+   be re-entered (`TASK_STATE_LEGACY`).
    `review` and `blocked` are **legacy**: they remain readable for old boards
    and may only move out (to `pending`/`done`/`in_progress`); new transitions
    into them are `TASK_STATE_LEGACY`.
@@ -238,14 +240,15 @@ Rules:
     (`task answer`); the answer is recorded and the task returns to its previous
     status. An open question appears in `next` as `needsUser: true` and in
     `report` as `pendingQuestions`; a pending task cannot be claimed.
-16. **`pending`** is the only waiting state. Enter it with
-    `task report --state pending --reason "<what decision is needed>"`; the
-    task's lease is released. A human resolves it with
-    `task decide <T> --decision accept|rework|cancel`:
-    `accept` requires passing evidence and sets `done`; `rework` sets `ready`;
-    `cancel` sets `canceled`. Agents cannot decide or claim a pending task
-    (`TASK_PENDING_DECISION`). `status` raises `TASK_PENDING`; `next` does not
-    return pending work as a candidate.
+16. **Records** are the persistent place for gaps and decisions that must not
+    be forgotten after a task completes. They live in `.trellis/records.jsonl`
+    as an append-only log of `add`/`resolve` events. `task finish` refuses
+    without a disposition: `--disposition clear`, or `--gap <text>` /
+    `--decision <text>` (which create records). `task ask` creates a `decision`
+    record and leaves the task status unchanged; `task answer` resolves it.
+    Only a human may resolve a decision. `status` raises `GAP_OPEN` /
+    `DECISION_OPEN`; `report` lists them as gaps; `G6` fails while a decision is
+    open or a high-severity gap is unresolved.
 16. `scope suggest` reads commits whose message contains the task id as an
     exact token and proposes file-level paths inside its current scope. It only edits the board with `--apply --by
     <role>:<name>`, and only to narrow.
@@ -253,16 +256,14 @@ Rules:
 Allowed status transitions:
 
 ```text
-todo        → in_progress | ready | pending
-ready       → in_progress | pending
-in_progress → pending | todo
-pending     → done (via task decide) | ready | in_progress | todo
-review      → pending | done | in_progress | todo        (legacy out only)
-blocked     → pending | in_progress | todo | ready       (legacy out only)
-done        → in_progress | todo                        (audited reopen)
+todo        → in_progress | ready
+ready       → in_progress
+in_progress → done | todo
+done        → in_progress | todo        (audited reopen)
 ```
 
-`task report --state review|blocked` is refused with `TASK_STATE_LEGACY`.
+`task report --state pending|review|blocked` is refused with
+`TASK_STATE_LEGACY`. `task finish` is the normal route to `done`.
 
 `task claim` sets `in_progress` and acquires a lease over the task's scope.
 `task finish` runs the verification command, records evidence and moves the task

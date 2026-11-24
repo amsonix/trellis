@@ -4,6 +4,20 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- `pending`, `review` and `blocked` are retired. `in_progress → done` is direct,
+  but `task finish` requires a disposition: `--disposition clear` or
+  `--gap` / `--decision` records.
+- New `.trellis/records.jsonl` ledger: `record add/list/resolve`; `task ask`
+  creates a decision record and no longer blocks the task; `task answer`
+  resolves it. Only humans resolve decisions.
+- `status`/`report` surface `GAP_OPEN`/`DECISION_OPEN`; `G6` fails on an open
+  decision or high-severity gap. `task show` lists records from the task.
+- 271 `node:test` cases.
+
 ## [0.9.40] - 2026-11-20
 
 ### Changed

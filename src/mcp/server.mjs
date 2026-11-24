@@ -19,10 +19,10 @@ import {
   projectReport,
   verifyTask,
   evidenceFor,
-  decideTask,
   taskShow,
   listProfiles
 } from '../core/project.mjs';
+import { listRecords, addRecord, resolveRecord } from '../core/records.mjs';
 import { listDocs, showDoc, checkDoc, createAdr } from '../core/docs.mjs';
 import { planCoverage } from '../core/coverage.mjs';
 import {
@@ -313,9 +313,8 @@ const writeTools = [
       {
         dir: dirProp,
         task: text('Task id.'),
-        state: text('todo, ready, in_progress, pending or done.'),
+        state: text('todo, ready, in_progress or done.'),
         by: text('Actor as role:name.'),
-        reason: text('Why the task is pending; required for pending.'),
         note: text('Short note or the one question when blocked.'),
         dryRun: { type: 'boolean', description: 'Validate the transition without writing.' }
       },
@@ -324,11 +323,49 @@ const writeTools = [
     run: (args) =>
       reportTask(dirOf(args), args.task, {
         state: args.state,
-        reason: args.reason ?? null,
         note: args.note ?? null,
         by: args.by ?? null,
         dryRun: Boolean(args.dryRun)
       })
+  },
+  {
+    name: 'trellis_record_list',
+    description: 'List persisted gaps and decisions.',
+    inputSchema: object({
+      dir: dirProp,
+      open: { type: 'boolean' },
+      kind: text('gap or decision.'),
+      from: text('Source task id.')
+    }),
+    run: (args) => listRecords(dirOf(args), { openOnly: Boolean(args.open), kind: args.kind ?? null, fromTask: args.from ?? null })
+  },
+  {
+    name: 'trellis_record_add',
+    description: 'Persist a gap or decision so it is not forgotten after a task completes.',
+    inputSchema: object({
+      dir: dirProp,
+      kind: text('gap or decision.'),
+      text: text('What the gap or decision is.'),
+      from: text('Source task id.'),
+      severity: text('high, medium or low.'),
+      owner: text('Actor responsible.'),
+      by: text('Actor as role:name.')
+    }, ['kind', 'text', 'by']),
+    run: (args) => addRecord(dirOf(args), {
+      kind: args.kind, text: args.text, fromTask: args.from ?? null,
+      severity: args.severity ?? 'medium', owner: args.owner ?? null, by: args.by
+    })
+  },
+  {
+    name: 'trellis_record_resolve',
+    description: 'Resolve a record; decisions require a human.',
+    inputSchema: object({
+      dir: dirProp,
+      record: text('Record id.'),
+      resolution: text('What was decided or done.'),
+      by: text('Actor as role:name.')
+    }, ['record', 'resolution', 'by']),
+    run: (args) => resolveRecord(dirOf(args), args.record, { resolution: args.resolution, by: args.by })
   },
   {
     name: 'trellis_evidence_add',
@@ -416,25 +453,6 @@ const writeTools = [
         priority: args.priority,
         by: args.by
       })
-  },
-  {
-    name: 'trellis_task_decide',
-    description: 'Resolve a pending task as a human: accept, rework or cancel.',
-    inputSchema: object(
-      {
-        dir: dirProp,
-        task: text('Task id.'),
-        decision: text('accept, rework or cancel.'),
-        by: text('Actor as human:name.'),
-        note: text('Optional decision note.')
-      },
-      ['task', 'decision', 'by']
-    ),
-    run: (args) => decideTask(dirOf(args), args.task, {
-      decision: args.decision,
-      note: args.note ?? null,
-      by: args.by
-    })
   },
   {
     name: 'trellis_task_finish',

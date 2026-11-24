@@ -346,7 +346,9 @@ trellis plan coverage [dir] [--strict] [--json]
 trellis task show <T-NNN> [dir] [--context] [--json]
 trellis task list [dir] [--status <s>] [--role <r>] [--ready] [--limit <n>]
 trellis task report <T-NNN> --state <todo|ready|in_progress|pending|done> [--reason <text>] [--note <text>] [--by <role>:<name>]
-trellis task decide <T-NNN> --decision accept|rework|cancel --by human:<name>
+trellis record list [--open] [--kind gap|decision] [--from <T-NNN>]
+trellis record add --kind gap|decision --text <text> [--from <T-NNN>] --by <role>:<name>
+trellis record resolve <R-NNN> --resolution <text> --by human:<name>
 
 trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> \
                               --verdict <pass|fail|inconclusive> --by <role>:<name>

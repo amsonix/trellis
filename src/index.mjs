@@ -36,6 +36,12 @@ export {
 } from './core/mutations.mjs';
 
 export {
+  listRecords,
+  addRecord,
+  resolveRecord
+} from './core/records.mjs';
+
+export {
   parseTasks,
   validateTasks,
   readyTasks,

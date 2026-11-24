@@ -7,6 +7,7 @@ import { checkArtifact, readArtifact, ARTIFACTS } from './artifacts.mjs';
 import { validateTasks, milestonesFromRoadmap, taskById, parseTasks } from './tasks.mjs';
 import { verifyTaskEvidence } from './evidence.mjs';
 import { coverageFor } from './coverage.mjs';
+import { listRecords } from './records.mjs';
 import { loadState, saveState, appendAudit } from './store.mjs';
 import { getProfile } from './profiles.mjs';
 import { RefusedError, UsageError } from './errors.mjs';
@@ -288,6 +289,16 @@ export async function gateChecks(root, gateId, { profile, state, tasks, taskId =
   }
 
   if (gateId === 'G6') {
+    for (const record of await listRecords(root, { openOnly: true })) {
+      checks.push(
+        makeCheck(
+          record.kind === 'decision' ? 'DECISION_OPEN' : 'GAP_OPEN',
+          record.kind === 'decision' || record.severity === 'high' ? 'fail' : 'warn',
+          `${record.id} (${record.kind}) from ${record.fromTask ?? 'project'} is still open: ${record.text}`,
+          { gate: 'G6', record: record.id, task: record.fromTask }
+        )
+      );
+    }
     if (tasks.length === 0) {
       checks.push(makeCheck('TASKS_EMPTY', 'fail', 'no tasks to integrate', { stage: 'integrating' }));
     }

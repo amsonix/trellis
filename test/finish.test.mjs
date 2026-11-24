@@ -5,7 +5,6 @@ import { promisify } from 'node:util';
 import { access, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { claimTask, finishTask } from '../src/core/mutations.mjs';
-import { decideTask } from '../src/core/project.mjs';
 import { listEvidence, verifyTaskEvidence } from '../src/core/evidence.mjs';
 import { parseTasks } from '../src/core/tasks.mjs';
 import { cleanup, makeProject } from './helpers.mjs';
@@ -13,23 +12,20 @@ import { cleanup, makeProject } from './helpers.mjs';
 const execFileAsync = promisify(execFile);
 const git = (dir, ...args) => execFileAsync('git', ['-C', dir, ...args]);
 
-test('finish runs the command, records evidence and waits for acceptance', async () => {
+test('finish runs the command, records evidence and marks done', async () => {
   const dir = await makeProject('generic');
   try {
     const script = path.join(dir, 'ok.mjs');
     await writeFile(script, 'process.exit(0);\n');
-    await claimTask(dir, 'T-001', { by: 'executor:w1' });
+    await claimTask(dir, 'T-001', { by: 'executor:w1', disposition: 'clear' });
     const data = await finishTask(dir, 'T-001', {
       run: `"${process.execPath}" "${script}"`,
-      by: 'executor:w1'
+      by: 'executor:w1', disposition: 'clear'
     });
     assert.equal(data.exitCode, 0);
     assert.ok(data.log.startsWith('.trellis/logs/'));
     await access(path.join(dir, data.log));
-    let { tasks } = await parseTasks(dir);
-    assert.equal(tasks[0].status, 'pending');
-    await decideTask(dir, 'T-001', { decision: 'accept', by: 'human:alice' });
-    tasks = (await parseTasks(dir)).tasks;
+    const { tasks } = await parseTasks(dir);
     assert.equal(tasks[0].status, 'done');
     const items = await listEvidence(dir, 'T-001');
     assert.equal(items.length, 1);
@@ -45,7 +41,7 @@ test('a failing command records failing evidence and refuses done', async () => 
   try {
     const script = path.join(dir, 'fail.mjs');
     await writeFile(script, 'process.exit(1);\n');
-    await claimTask(dir, 'T-001', { by: 'executor:w1' });
+    await claimTask(dir, 'T-001', { by: 'executor:w1', disposition: 'clear' });
     await assert.rejects(
       () => finishTask(dir, 'T-001', { run: `"${process.execPath}" "${script}"`, by: 'executor:w1' }),
       (error) => error.code === 'TASK_FINISH_FAILED'
@@ -69,8 +65,8 @@ test('evidence records its commit and verify warns after HEAD moves', async () =
     const script = path.join(dir, 'ok.mjs');
     await writeFile(script, 'process.exit(0);\n');
 
-    await claimTask(dir, 'T-001', { by: 'executor:w1' });
-    const data = await finishTask(dir, 'T-001', { run: `"${process.execPath}" "${path.join(dir, 'ok.mjs')}"`, by: 'executor:w1' });
+    await claimTask(dir, 'T-001', { by: 'executor:w1', disposition: 'clear' });
+    const data = await finishTask(dir, 'T-001', { run: `"${process.execPath}" "${path.join(dir, 'ok.mjs')}"`, by: 'executor:w1', disposition: 'clear' });
     assert.equal(data.evidence.commit, head);
 
     await git(dir, '-c', 'user.email=a@b', '-c', 'user.name=a', 'commit', '--allow-empty', '-qm', 'later');

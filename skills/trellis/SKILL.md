@@ -58,9 +58,12 @@ If the project already exists, skip `init` and start at `brief`/`next`.
 Flags are command-scoped: do not assume `--dry-run` or `--force` exists on a
 new command; an unknown combination is a USAGE error.
 
-If a task is complete or blocked and you need a human decision, move it to
-`pending` with a reason; do not leave it `in_progress` and do not use `review` or
-`blocked` (legacy). The human resolves it with `task decide`; agents cannot.
+Never leave a gap or a decision unrecorded. `task finish` requires a
+disposition: `--disposition clear`, or `--gap <text>` / `--decision <text>`.
+Use `task ask` to record a decision; it does not block the task. The human
+resolves it with `task answer` (or `record resolve`). `pending`, `review` and
+`blocked` are legacy: never enter them. `status` and `report` surface open
+records; `G6` fails while a decision is open.
 
 If `next` and the user's request disagree, say so and ask. Do not silently
 switch stages or skip a gate.
@@ -215,11 +218,13 @@ trellis task list [dir] [--json]
 trellis task add --title <text> --scope <paths> --acceptance <text> --verification <text> [--priority <high|medium|low>] --by <role>:<name>
 trellis task claim <T-NNN> --by <role>:<name>
 trellis task ask <T-NNN> --question <text> --by <role>:<name>
-trellis task answer <Q-NNN> --decision <text> --by human:<name>
+trellis task answer <R-NNN> --decision <text> --by human:<name>
+trellis record list [--open] [--kind gap|decision] [--from <T-NNN>]
+trellis record resolve <R-NNN> --resolution <text> --by human:<name>
 trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
 trellis task cancel <T-NNN> --by human:<name> --reason <text>
 trellis task finish <T-NNN> --run <command> --by <role>:<name>
-trellis task report <T-NNN> --state <todo|ready|in_progress|pending> [--reason <text>] --by <role>:<name>
+trellis task report <T-NNN> --state <todo|ready|in_progress|done> --by <role>:<name>
 trellis task decide <T-NNN> --decision accept|rework|cancel --by human:<name>
 
 trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] --by <role>:<name>

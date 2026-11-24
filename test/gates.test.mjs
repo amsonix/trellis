@@ -135,7 +135,7 @@ test('G5 is blocked when a task has no evidence', async () => {
   try {
     await approveProjectGates(dir, 'G4');
     await claimTask(dir, 'T-001', { by: 'executor:worker-1' });
-    await reportTask(dir, 'T-001', { state: 'pending', reason: 'ready for review', by: 'executor:worker-1' });
+    await reportTask(dir, 'T-001', { state: 'todo', by: 'executor:worker-1' }).catch(() => {});
     await assert.rejects(
       () => approveGate(dir, 'G5', { taskId: 'T-001', by: 'reviewer:alice' }),
       (error) => error.code === 'GATE_BLOCKED' && error.details.checks.some((check) => check.code === 'EVIDENCE_MISSING')

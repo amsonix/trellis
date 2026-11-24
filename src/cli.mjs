@@ -11,6 +11,7 @@ import { planCoverage, sourceMap } from './core/coverage.mjs';
 import { listAdrs, setAdrStatus } from './core/adr.mjs';
 import { loadState } from './core/store.mjs';
 import { renderStatusPanel } from './core/text.mjs';
+import { listRecords, addRecord, resolveRecord } from './core/records.mjs';
 import {
   initProject,
   projectStatus,
@@ -20,7 +21,6 @@ import {
   projectReport,
   verifyTask,
   evidenceFor,
-  decideTask,
   taskShow,
   listProfiles
 } from './core/project.mjs';
@@ -64,6 +64,9 @@ const VALUE_OPTIONS = new Set([
   'by',
   'note',
   'reason',
+  'disposition',
+  'gap',
+  'decision',
   'task',
   'kind',
   'uri',
@@ -97,10 +100,14 @@ const VALUE_OPTIONS = new Set([
   'source',
   'to',
   'batch',
-  'strategy'
+  'strategy',
+  'text',
+  'severity',
+  'resolution',
+  'owner'
 ]);
 
-const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready', 'cascade', 'context', 'strict', 'panel', 'empty-tasks']);
+const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready', 'cascade', 'context', 'strict', 'panel', 'empty-tasks', 'open']);
 
 // A flag is only accepted where it means something. Every other flag is a
 // usage error, so `task add --dry-run` cannot silently write a task.
@@ -108,6 +115,8 @@ const GLOBAL_FLAGS = new Set(['json', 'help', 'version']);
 const INIT_FLAGS = ['empty-tasks'];
 const FLAG_SCOPES = {
   status: ['panel'],
+  'record:list': ['open'],
+  'record:add': ['severity'],
   report: [],
   compact: ['dry-run'],
   gate: ['approve', 'waive'],
@@ -121,6 +130,10 @@ const FLAG_SCOPES = {
   'task:cancel': ['cascade'],
   'task:show': ['context'],
   next: ['context'],
+  record: ['Persist gaps and decisions so they are not forgotten.', 'trellis record <list|add|resolve> ...'],
+  'record:list': ['List records.', 'trellis record list [dir] [--open] [--kind gap|decision] [--from <T-NNN>] [--json]'],
+  'record:add': ['Add a gap or decision record.', 'trellis record add --kind gap|decision --text <text> [--from <T-NNN>] [--severity high|medium|low] [--owner <actor>] --by <role>:<name>'],
+  'record:resolve': ['Resolve a record; decisions require a human.', 'trellis record resolve <R-NNN> --resolution <text> --by <role>:<name>'],
   'plan:coverage': ['strict'],
   restore: ['force'],
   init: INIT_FLAGS
@@ -175,7 +188,7 @@ function parseArgv(argv) {
 
   const command = positionals.shift() ?? null;
   let subcommand = null;
-  if (['task', 'evidence', 'lease', 'guard', 'profile', 'scope', 'doc', 'adr', 'milestone', 'plan'].includes(command)) {
+  if (['task', 'evidence', 'lease', 'guard', 'profile', 'scope', 'doc', 'adr', 'milestone', 'plan', 'record'].includes(command)) {
     subcommand = positionals.shift() ?? null;
   }
   validateFlags(command, subcommand, options);
@@ -221,7 +234,7 @@ trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dir <dir>]
   trellis task answer <Q-NNN> --decision <text> --by human:<name>
   trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
   trellis task cancel <T-NNN> --by human:<name> --reason <text>
-  trellis task finish <T-NNN> --run <command> --by <role>:<name>
+  trellis task finish <T-NNN> --run <command> (--disposition clear | --gap <text> | --decision <text>) --by <role>:<name>
   trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--scope <paths>] [--priority <p>] --by <role>:<name>
   trellis task list [dir] [--status <s>] [--role <r>] [--ready] [--limit <n>] [--dir <dir>]
   trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dir <dir>]
@@ -287,6 +300,10 @@ const HELP = {
   'doc:check': ['Run the structural checks for one document.', 'trellis doc check <ID> [dir] [--json]'],
   'doc:scaffold': ['Create a missing document from its template (never overwrites).', 'trellis doc scaffold <ID> --by <role>:<name> [dir] [--json]'],
   plan: ['Plan coverage and derivations.', 'trellis plan <coverage> ...'],
+  record: ['Persist gaps and decisions so they are not forgotten.', 'trellis record <list|add|resolve> ...'],
+  'record:list': ['List records.', 'trellis record list [dir] [--open] [--kind gap|decision] [--from <T-NNN>] [--json]'],
+  'record:add': ['Add a gap or decision record.', 'trellis record add --kind gap|decision --text <text> [--from <T-NNN>] [--severity high|medium|low] [--owner <actor>] --by <role>:<name>'],
+  'record:resolve': ['Resolve a record; decisions require a human.', 'trellis record resolve <R-NNN> --resolution <text> --by <role>:<name>'],
   'plan:coverage': ['Map ROADMAP exit criteria to tasks through Source.', 'trellis plan coverage [dir] [--strict] [--json]'],
   milestone: ['Milestone declared status (computed vs declared).', 'trellis milestone <list|status|close|reopen> ...'],
   'milestone:list': ['List milestones with computed and declared status.', 'trellis milestone list [dir] [--json]'],
@@ -307,13 +324,12 @@ const HELP = {
   'task:list': ['List the task board.', 'trellis task list [dir] [--status <status>] [--role <role>] [--ready] [--children-of <T-NNN>] [--limit <n>] [--json]'],
   'task:add': ['Validate and append a task row.', 'trellis task add --title <t> --scope <paths> --acceptance <a> --verification <v> --by <role>:<name> [--role <role>] [--milestone <M0>] [--priority high|medium|low] [--depends-on <ids>] [--follow-up-of <T-NNN>] [--parent <T-NNN>] [--source <ref>] [--id <T-NNN>] [--from <json>] [--force]'],
   'task:claim': ['Claim a task (creates the lease) or take over an orphaned claim.', 'trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dry-run]'],
-  'task:ask': ['Ask one blocking question; only a human answers it.', 'trellis task ask <T-NNN> --question <text> --by <role>:<name>'],
-  'task:answer': ['Answer an open question as a human.', 'trellis task answer <Q-NNN> --decision <text> --by human:<name>'],
-  'task:report': ['Report a task state; done requires passing evidence; pending needs --reason.', 'trellis task report <T-NNN> --state <status> [--reason <text>] [--note <text>] [--by <role>:<name>] [--dry-run]'],
-  'task:decide': ['Resolve a pending task as a human.', 'trellis task decide <T-NNN> --decision accept|rework|cancel [--note <text>] --by human:<name>'],
+  'task:ask': ['Record a decision needed from a human.', 'trellis task ask <T-NNN> --question <text> --by <role>:<name>'],
+  'task:answer': ['Resolve a decision record as a human.', 'trellis task answer <R-NNN> --decision <text> --by human:<name>'],
+  'task:report': ['Report a task state; done requires passing evidence.', 'trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dry-run]'],
   'task:recover': ['Return an in_progress task with no lease to ready or todo.', 'trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]'],
   'task:cancel': ['Cancel work that is no longer needed; canceled tasks do not satisfy dependencies.', 'trellis task cancel <T-NNN> --by human:<name> --reason <text> [--cascade]'],
-  'task:finish': ['Run the verification command, record the evidence and wait for acceptance.', 'trellis task finish <T-NNN> --run <command> --by <role>:<name>'],
+  'task:finish': ['Run verification, record evidence and declare disposition.', 'trellis task finish <T-NNN> --run <command> (--disposition clear | --gap <text> | --decision <text>) --by <role>:<name>'],
   'task:edit': ['Edit a task field through the board validator (adds an audit record).', 'trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--scope <paths>] [--parent <T-NNN>] [--source <ref>] [--priority <p>] --by <role>:<name>'],
   evidence: ['Evidence log operations.', 'trellis evidence <add|list|retract> ...'],
   'evidence:add': ['Record evidence for a task.', 'trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] [--supersedes <EV,...>] --by <role>:<name>'],
@@ -457,7 +473,7 @@ function printStatus(data) {
     const stale = gate.stale ? ' [STALE]' : '';
     console.log(`  ${gate.id} ${gate.title.padEnd(14)} ${gateSymbol(gate.status)}${who}${stale}`);
   }
-  console.log(`Tasks:   ${data.tasks.total} total | todo ${data.tasks.todo} | in_progress ${data.tasks.in_progress} | pending ${data.tasks.pending} | review ${data.tasks.review} | blocked ${data.tasks.blocked} | done ${data.tasks.done}`);
+  console.log(`Tasks:   ${data.tasks.total} total | todo ${data.tasks.todo} | in_progress ${data.tasks.in_progress} | done ${data.tasks.done} | records ${data.records?.open ?? 0} open`);
   if (data.attention.length > 0) {
     console.log('Attention:');
     for (const item of data.attention.slice(0, 12)) console.log(`  - [${item.code}] ${item.message}`);
@@ -772,6 +788,33 @@ async function dispatch(args) {
     throw new UsageError(`unknown plan subcommand '${subcommand}' (coverage)`);
   }
 
+  if (command === 'record') {
+    if (subcommand === 'list') {
+      const data = await listRecords(dirOf(args), {
+        openOnly: Boolean(options.open),
+        kind: options.kind || null,
+        fromTask: options.from || null
+      });
+      return { data, exitCode: 0, print: () => {
+        for (const record of data) console.log(`${record.id} [${record.kind}/${record.status}] ${record.text}${record.fromTask ? ` (${record.fromTask})` : ''}`);
+      } };
+    }
+    if (subcommand === 'add') {
+      const data = await addRecord(dirOf(args), {
+        kind: options.kind, text: options.text, fromTask: options.from || null,
+        severity: options.severity || 'medium', owner: options.owner || null, by: options.by
+      });
+      return { data, exitCode: 0, print: () => console.log(`added ${data.id}: ${data.text}`) };
+    }
+    if (subcommand === 'resolve' || subcommand === 'answer') {
+      const id = args.positionals[0];
+      if (!id) throw new UsageError('record resolve needs an id');
+      const data = await resolveRecord(dirOf(args), id, { resolution: options.resolution || options.decision, by: options.by });
+      return { data, exitCode: 0, print: () => console.log(`resolved ${data.id}: ${data.resolution}`) };
+    }
+    throw new UsageError(`unknown record subcommand '${subcommand}' (list|add|resolve)`);
+  }
+
   if (command === 'milestone') {
     if (subcommand === 'list') {
       const data = { items: await listMilestones(dirOf(args)) };
@@ -1024,7 +1067,8 @@ async function dispatch(args) {
         data,
         exitCode: 0,
         print: () => {
-          console.log(`finished ${taskId} (exit 0); pending acceptance; evidence ${data.evidence.id}; log ${data.log}`);
+          console.log(`finished ${taskId} (exit 0); evidence ${data.evidence.id}; log ${data.log}`);
+          for (const record of data.records ?? []) console.log(`  record ${record.id}: ${record.text}`);
           for (const warning of data.warnings ?? []) console.log(`  warning ${warning.code}: ${warning.message}`);
         }
       };
@@ -1047,21 +1091,6 @@ async function dispatch(args) {
       });
       return { data, exitCode: 0, print: () => console.log(`recovered ${taskId} to ${data.task.status}`) };
     }
-    if (subcommand === 'decide') {
-      const taskId = args.positionals[0];
-      if (!taskId) throw new UsageError('task decide needs a task id');
-      if (!options.decision) throw new UsageError('task decide needs --decision accept|rework|cancel');
-      const data = await decideTask(dir, taskId, {
-        decision: options.decision,
-        note: options.note || null,
-        by: options.by
-      });
-      return {
-        data,
-        exitCode: 0,
-        print: () => console.log(`${taskId}: ${data.task.status} (${data.decision})`)
-      };
-    }
     if (subcommand === 'report') {
       const taskId = args.positionals[0];
       if (!taskId) throw new UsageError('task report needs a task id');
@@ -1069,7 +1098,6 @@ async function dispatch(args) {
       const data = await reportTask(dir, taskId, {
         state: options.state,
         note: options.note || null,
-        reason: options.reason || null,
         by: options.by || null,
         dryRun: Boolean(options['dry-run'])
       });

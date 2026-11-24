@@ -7,7 +7,6 @@ import {
 } from '../src/core/project.mjs';
 import { retractEvidence, verifyTaskEvidence } from '../src/core/evidence.mjs';
 import { cleanup, makeProject, completeTask } from './helpers.mjs';
-import { decideTask } from '../src/core/project.mjs';
 
 async function failing(dir) {
   await claimTask(dir, 'T-001', { by: 'executor:w1' });
@@ -18,9 +17,8 @@ test('a retracted failure no longer blocks done', async () => {
   const dir = await makeProject('generic');
   try {
     const record = await failing(dir);
-    await reportTask(dir, 'T-001', { state: 'pending', reason: 'ready for acceptance', by: 'executor:w1' });
     await assert.rejects(
-      () => decideTask(dir, 'T-001', { decision: 'accept', by: 'human:alice' }),
+      () => reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' }),
       (error) => error.code === 'EVIDENCE_REQUIRED'
     );
 

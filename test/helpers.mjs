@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { initProject, decideTask } from '../src/core/project.mjs';
+import { initProject } from '../src/core/project.mjs';
 import { addEvidence, claimTask, reportTask } from '../src/core/mutations.mjs';
 import { listEvidence } from '../src/core/evidence.mjs';
 import { parseTasks } from '../src/core/tasks.mjs';
@@ -69,6 +69,7 @@ export async function completeTask(dir, taskId, { by = 'executor:w1', note = 'te
     await claimTask(dir, taskId, { by });
     task = (await parseTasks(dir)).tasks.find((item) => item.id === taskId);
   }
+  let result = null;
   if (task.status === 'in_progress') {
     const records = (await listEvidence(dir, taskId)).filter((record) => !record.retracted);
     if (!records.some((record) => record.verdict === 'pass')) {
@@ -76,7 +77,11 @@ export async function completeTask(dir, taskId, { by = 'executor:w1', note = 'te
         taskId, kind: 'test', uri: 'npm test', verdict: 'pass', by
       });
     }
-    await reportTask(dir, taskId, { state: 'pending', reason: note, by });
+    result = await reportTask(dir, taskId, { state: 'done', by });
   }
-  return decideTask(dir, taskId, { decision: 'accept', note, by: 'human:test' });
+  return {
+    ...(result ?? {}),
+    task: (await parseTasks(dir)).tasks.find((item) => item.id === taskId),
+    decision: 'accept'
+  };
 }
