@@ -80,6 +80,7 @@ const VALUE_OPTIONS = new Set([
   'verification',
   'depends-on',
   'follow-up-of',
+  'follow-up',
   'priority',
   'paths',
   'older-than',
@@ -133,7 +134,7 @@ const FLAG_SCOPES = {
   record: ['Persist gaps and decisions so they are not forgotten.', 'trellis record <list|add|resolve> ...'],
   'record:list': ['List records.', 'trellis record list [dir] [--open] [--kind gap|decision] [--from <T-NNN>] [--json]'],
   'record:add': ['Add a gap or decision record.', 'trellis record add --kind gap|decision --text <text> [--from <T-NNN>] [--severity high|medium|low] [--owner <actor>] --by <role>:<name>'],
-  'record:resolve': ['Resolve a record; decisions require a human.', 'trellis record resolve <R-NNN> --resolution <text> --by <role>:<name>'],
+  'record:resolve': ['Resolve a record; decisions require a human and --follow-up.', 'trellis record resolve <R-NNN> --resolution <text> [--follow-up required|none] --by <role>:<name>'],
   'plan:coverage': ['strict'],
   restore: ['force'],
   init: INIT_FLAGS
@@ -303,7 +304,7 @@ const HELP = {
   record: ['Persist gaps and decisions so they are not forgotten.', 'trellis record <list|add|resolve> ...'],
   'record:list': ['List records.', 'trellis record list [dir] [--open] [--kind gap|decision] [--from <T-NNN>] [--json]'],
   'record:add': ['Add a gap or decision record.', 'trellis record add --kind gap|decision --text <text> [--from <T-NNN>] [--severity high|medium|low] [--owner <actor>] --by <role>:<name>'],
-  'record:resolve': ['Resolve a record; decisions require a human.', 'trellis record resolve <R-NNN> --resolution <text> --by <role>:<name>'],
+  'record:resolve': ['Resolve a record; decisions require a human and --follow-up.', 'trellis record resolve <R-NNN> --resolution <text> [--follow-up required|none] --by <role>:<name>'],
   'plan:coverage': ['Map ROADMAP exit criteria to tasks through Source.', 'trellis plan coverage [dir] [--strict] [--json]'],
   milestone: ['Milestone declared status (computed vs declared).', 'trellis milestone <list|status|close|reopen> ...'],
   'milestone:list': ['List milestones with computed and declared status.', 'trellis milestone list [dir] [--json]'],
@@ -325,7 +326,7 @@ const HELP = {
   'task:add': ['Validate and append a task row.', 'trellis task add --title <t> --scope <paths> --acceptance <a> --verification <v> --by <role>:<name> [--role <role>] [--milestone <M0>] [--priority high|medium|low] [--depends-on <ids>] [--follow-up-of <T-NNN>] [--parent <T-NNN>] [--source <ref>] [--id <T-NNN>] [--from <json>] [--force]'],
   'task:claim': ['Claim a task (creates the lease) or take over an orphaned claim.', 'trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dry-run]'],
   'task:ask': ['Record a decision needed from a human.', 'trellis task ask <T-NNN> --question <text> --by <role>:<name>'],
-  'task:answer': ['Resolve a decision record as a human.', 'trellis task answer <R-NNN> --decision <text> --by human:<name>'],
+  'task:answer': ['Resolve a decision record as a human.', 'trellis task answer <R-NNN> --decision <text> --follow-up required|none --by human:<name>'],
   'task:report': ['Report a task state; done requires passing evidence.', 'trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dry-run]'],
   'task:recover': ['Return an in_progress task with no lease to ready or todo.', 'trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]'],
   'task:cancel': ['Cancel work that is no longer needed; canceled tasks do not satisfy dependencies.', 'trellis task cancel <T-NNN> --by human:<name> --reason <text> [--cascade]'],
@@ -809,7 +810,7 @@ async function dispatch(args) {
     if (subcommand === 'resolve' || subcommand === 'answer') {
       const id = args.positionals[0];
       if (!id) throw new UsageError('record resolve needs an id');
-      const data = await resolveRecord(dirOf(args), id, { resolution: options.resolution || options.decision, by: options.by });
+      const data = await resolveRecord(dirOf(args), id, { resolution: options.resolution || options.decision, by: options.by, followUp: options['follow-up'] || null });
       return { data, exitCode: 0, print: () => console.log(`resolved ${data.id}: ${data.resolution}`) };
     }
     throw new UsageError(`unknown record subcommand '${subcommand}' (list|add|resolve)`);
@@ -1050,7 +1051,7 @@ async function dispatch(args) {
       if (!questionId) throw new UsageError('task answer needs a question id');
       if (!options.decision) throw new UsageError('task answer needs --decision "<the answer>"');
       if (!options.by) throw new UsageError('task answer needs --by human:<name>');
-      const data = await answerTask(dir, questionId, { decision: options.decision, by: options.by });
+      const data = await answerTask(dir, questionId, { decision: options.decision, by: options.by, followUp: options['follow-up'] || null });
       return {
         data,
         exitCode: 0,

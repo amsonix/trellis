@@ -34,7 +34,7 @@ test('a decision record requires a human to resolve', async () => {
       () => resolveRecord(dir, record.id, { resolution: 'mine', by: 'executor:w1' }),
       (error) => error.code === 'RECORD_RESOLVE_ROLE'
     );
-    const resolved = await resolveRecord(dir, record.id, { resolution: 'B', by: 'human:alice' });
+    const resolved = await resolveRecord(dir, record.id, { resolution: 'B', by: 'human:alice', followUp: 'none' });
     assert.equal(resolved.status, 'resolved');
   } finally {
     await cleanup(dir);

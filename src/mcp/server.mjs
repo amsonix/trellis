@@ -284,11 +284,12 @@ const writeTools = [
         dir: dirProp,
         question: text('Question id, e.g. Q-001.'),
         decision: text('The answer.'),
+        followUp: text('required or none.'),
         by: text('Actor as human:<name>.')
       },
       ['question', 'decision', 'by']
     ),
-    run: (args) => answerTask(dirOf(args), args.question, { decision: args.decision, by: args.by })
+    run: (args) => answerTask(dirOf(args), args.question, { decision: args.decision, by: args.by, followUp: args.followUp ?? null })
   },
   {
     name: 'trellis_task_claim',
@@ -363,9 +364,10 @@ const writeTools = [
       dir: dirProp,
       record: text('Record id.'),
       resolution: text('What was decided or done.'),
+      followUp: text('required or none.'),
       by: text('Actor as role:name.')
     }, ['record', 'resolution', 'by']),
-    run: (args) => resolveRecord(dirOf(args), args.record, { resolution: args.resolution, by: args.by })
+    run: (args) => resolveRecord(dirOf(args), args.record, { resolution: args.resolution, by: args.by, followUp: args.followUp ?? null })
   },
   {
     name: 'trellis_evidence_add',

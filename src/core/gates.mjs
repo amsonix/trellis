@@ -289,7 +289,23 @@ export async function gateChecks(root, gateId, { profile, state, tasks, taskId =
   }
 
   if (gateId === 'G6') {
-    for (const record of await listRecords(root, { openOnly: true })) {
+    const records = await listRecords(root);
+    const sourceRefs = new Set(
+      tasks.flatMap((task) => (task.source ?? '').split(',').map((part) => part.trim()).filter(Boolean))
+    );
+    for (const record of records.filter((item) => item.kind === 'decision' && item.status === 'resolved' && item.followUp === 'required')) {
+      if (!sourceRefs.has(`RECORD#${record.id}`)) {
+        checks.push(
+          makeCheck(
+            'DECISION_UNFULFILLED',
+            'fail',
+            `decision ${record.id} requires a follow-up task but no task has RECORD#${record.id} in Source`,
+            { gate: 'G6', record: record.id }
+          )
+        );
+      }
+    }
+    for (const record of records.filter((item) => item.status === 'open')) {
       checks.push(
         makeCheck(
           record.kind === 'decision' ? 'DECISION_OPEN' : 'GAP_OPEN',

@@ -4,6 +4,16 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Gap and decision lifecycles are now distinct. A task becoming `done`
+  automatically resolves every open gap named in its `Source`. A decision
+  resolves with `--follow-up required|none`; `required` with no task carrying
+  `RECORD#R-NNN` in `Source` fails `G6` (`DECISION_UNFULFILLED`).
+- 277 `node:test` cases.
+
 ## [0.9.42] - 2026-11-25
 
 ### Changed

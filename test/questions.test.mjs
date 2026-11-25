@@ -57,7 +57,7 @@ test('a human answer resolves a decision record', async () => {
     await workingTask(dir);
     await askTask(dir, 'T-001', { question: 'keep the old login timeout?', by: 'executor:w1' });
     const { question } = await answerTask(dir, 'R-001', {
-      decision: 'keep it, add a warning',
+      decision: 'keep it, add a warning', followUp: 'none',
       by: 'human:alice'
     });
     assert.equal(question.status, 'resolved');
@@ -80,7 +80,7 @@ test('only a human may answer, and only once', async () => {
       () => answerTask(dir, 'R-001', { decision: 'mine', by: 'executor:w1' }),
       (error) => error.code === 'RECORD_RESOLVE_ROLE'
     );
-    await answerTask(dir, 'R-001', { decision: 'thirty seconds', by: 'human:alice' });
+    await answerTask(dir, 'R-001', { decision: 'thirty seconds', by: 'human:alice', followUp: 'none' });
     await assert.rejects(
       () => answerTask(dir, 'R-001', { decision: 'again', by: 'human:alice' }),
       (error) => error.code === 'RECORD_RESOLVED'

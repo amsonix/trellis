@@ -61,7 +61,10 @@ new command; an unknown combination is a USAGE error.
 Never leave a gap or a decision unrecorded. `task finish` requires a
 disposition: `--disposition clear`, or `--gap <text>` / `--decision <text>`.
 Use `task ask` to record a decision; it does not block the task. The human
-resolves it with `task answer` (or `record resolve`). `pending`, `review` and
+resolves it with `task answer --follow-up required|none` (or `record resolve`):
+`required` means a follow-up task is expected and `G6` fails until one carries
+`RECORD#R-NNN` in `Source`; `none` closes it. A **gap** is the reverse: create
+the task first, and when it is `done` the gap resolves automatically. `pending`, `review` and
 `blocked` are legacy: never enter them. `status` and `report` surface open
 records; `G6` fails while a decision is open.
 

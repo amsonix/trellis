@@ -191,7 +191,7 @@ test('task ask records a decision and answer resolves it', async () => {
     assert.equal(wrongRole.code, 3);
 
     const answered = await run([
-      'task', 'answer', 'R-001', '--decision', 'keep it with a warning', '--by', 'human:alice', '--dir', dir, '--json'
+      'task', 'answer', 'R-001', '--decision', 'keep it with a warning', '--follow-up', 'none', '--by', 'human:alice', '--dir', dir, '--json'
     ]);
     assert.equal(answered.code, 0);
 

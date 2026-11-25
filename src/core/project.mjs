@@ -24,7 +24,7 @@ import { addEvidence, verifyTaskEvidence, requirePassingEvidence, listEvidence }
 import { acquireLease, releaseLease, leaseStatus, leaseConflicts } from './lease.mjs';
 import { milestoneProgress as computeMilestoneProgress } from './milestones.mjs';
 import { coverageFor, sourceMap } from './coverage.mjs';
-import { addRecord, listRecords, recordSummary } from './records.mjs';
+import { addRecord, listRecords, recordSummary, resolveRecord } from './records.mjs';
 import { defaultState, loadState, saveState, appendAudit } from './store.mjs';
 import { RefusedError, UnavailableError, UsageError } from './errors.mjs';
 import { nowIso, parseActor, parseScope, isSafeDomain, assertMaxLength, writeText, covers, overlaps, normalizeSource } from './util.mjs';
@@ -1586,14 +1586,14 @@ export async function askTask(root, taskId, { question, by }) {
   return { question: { ...record, id: record.id, question: record.text }, record, task: { ...task, status: task.status } };
 }
 
-export async function answerTask(root, questionId, { decision, by }) {
+export async function answerTask(root, questionId, { decision, by, followUp = null }) {
   if (!questionId) throw new UsageError('task answer needs a record id');
   if (!decision || String(decision).trim() === '') {
     throw new UsageError('task answer needs --decision "<the answer>"');
   }
   if (!by) throw new UsageError('task answer needs --by human:<name>');
   const { resolveRecord } = await import('./records.mjs');
-  const record = await resolveRecord(root, questionId, { resolution: decision, by });
+  const record = await resolveRecord(root, questionId, { resolution: decision, by, followUp });
   return { question: { ...record, question: record.text, answer: record.resolution }, record, task: { id: record.fromTask } };
 }
 
@@ -1710,6 +1710,22 @@ export async function reportTask(root, taskId, { state: newStatus, note = null, 
     return { task: { ...task, status: newStatus }, evidence, warnings, dryRun: true };
   }
   await updateTaskStatus(root, taskId, newStatus);
+  if (newStatus === 'done' && task.source) {
+    for (const part of task.source.split(',')) {
+      const match = /^RECORD#(R-\d+)$/.exec(part);
+      if (!match) continue;
+      const records = await listRecords(root);
+      const record = records.find((item) => item.id === match[1]);
+      if (!record || record.kind !== 'gap' || record.status !== 'open') continue;
+      await resolveRecord(root, match[1], {
+        resolution: `resolved by task ${taskId}`,
+        by: actor?.raw ?? 'coordinator:system'
+      });
+      appendAudit(state, 'record.resolved', actor, {
+        record: match[1], task: taskId, reason: 'task.done'
+      });
+    }
+  }
   state.taskNotes = state.taskNotes ?? {};
   state.taskNotes[taskId] = { note, at: nowIso(), by: actor?.raw ?? null, state: newStatus };
   if (!reopening) appendAudit(state, `task.${newStatus}`, actor, { task: taskId, note });

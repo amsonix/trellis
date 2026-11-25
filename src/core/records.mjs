@@ -56,7 +56,8 @@ async function loadRecords(root) {
         by: event.by,
         resolution: null,
         resolvedAt: null,
-        resolvedBy: null
+        resolvedBy: null,
+        followUp: null
       });
     } else if (event.type === 'resolve') {
       const record = map.get(event.id);
@@ -65,6 +66,7 @@ async function loadRecords(root) {
         record.resolution = event.resolution;
         record.resolvedAt = event.at;
         record.resolvedBy = event.by;
+        record.followUp = event.followUp ?? null;
       }
     }
   }
@@ -110,7 +112,7 @@ export async function addRecord(root, { kind, text, fromTask = null, severity = 
   return { ...record, status: 'open', resolution: null, resolvedAt: null, resolvedBy: null };
 }
 
-export async function resolveRecord(root, id, { resolution, by }) {
+export async function resolveRecord(root, id, { resolution, by, followUp = null }) {
   if (!id) throw new UsageError('record resolve needs an id');
   if (!resolution || String(resolution).trim() === '') throw new UsageError('record resolve needs --resolution');
   if (!by) throw new UsageError('record resolve needs --by <role>:<name>');
@@ -127,15 +129,22 @@ export async function resolveRecord(root, id, { resolution, by }) {
       actor: actor.raw
     });
   }
+  if (followUp !== null && !['required', 'none'].includes(followUp)) {
+    throw new UsageError('--follow-up must be required or none');
+  }
+  if (record.kind === 'decision' && followUp === null) {
+    throw new UsageError('resolving a decision needs --follow-up required|none');
+  }
   const event = {
     type: 'resolve',
     id,
     resolution: String(resolution).trim(),
     at: nowIso(),
-    by: actor.raw
+    by: actor.raw,
+    followUp
   };
   await appendEvent(recordsPath(root), event);
-  return { ...record, status: 'resolved', resolution: event.resolution, resolvedAt: event.at, resolvedBy: event.by };
+  return { ...record, status: 'resolved', resolution: event.resolution, resolvedAt: event.at, resolvedBy: event.by, followUp };
 }
 
 export async function recordSummary(root) {
