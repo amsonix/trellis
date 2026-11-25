@@ -250,20 +250,26 @@ export function validateTasks(tasks, { milestones = [] } = {}) {
   }
   for (const task of tasks) {
     if (task.source) {
-      const match = /^([A-Z]+)#(.+)$/.exec(task.source);
-      if (!match) {
-        add('TASK_SOURCE_INVALID', 'fail', `task ${task.id} source '${task.source}' must look like ROADMAP#M2/exit-1`, { task: task.id });
-      } else if (match[1] !== 'ADR' && !ARTIFACTS[match[1]]) {
-        add('TASK_SOURCE_INVALID', 'fail', `task ${task.id} source names unknown artifact '${match[1]}'`, { task: task.id });
-      } else if (match[1] === 'ROADMAP') {
-        const [milestoneId, criterion] = match[2].split('/');
-        const milestone = milestones.find((item) => item.id === milestoneId);
-        if (!milestone) {
-          add('TASK_SOURCE_INVALID', 'fail', `task ${task.id} source names unknown milestone '${milestoneId}'`, { task: task.id });
-        } else if (criterion) {
-          const exit = /^exit-(\d+)$/.exec(criterion);
-          if (!exit || Number(exit[1]) < 1 || Number(exit[1]) > (milestone.criteria ?? []).length) {
-            add('TASK_SOURCE_INVALID', 'fail', `task ${task.id} source '${task.source}' names no exit criterion`, { task: task.id });
+      for (const part of task.source.split(',')) {
+        const match = /^([A-Z]+)#(.+)$/.exec(part);
+        if (!match) {
+          add('TASK_SOURCE_INVALID', 'fail', `task ${task.id} source '${part}' must look like ROADMAP#M2/exit-1`, { task: task.id });
+        } else if (match[1] !== 'ADR' && match[1] !== 'RECORD' && !ARTIFACTS[match[1]]) {
+          add('TASK_SOURCE_INVALID', 'fail', `task ${task.id} source names unknown artifact '${match[1]}'`, { task: task.id });
+        } else if (match[1] === 'RECORD') {
+          if (!/^R-\d+$/.test(match[2])) {
+            add('TASK_SOURCE_INVALID', 'fail', `task ${task.id} source '${part}' names no record`, { task: task.id });
+          }
+        } else if (match[1] === 'ROADMAP') {
+          const [milestoneId, criterion] = match[2].split('/');
+          const milestone = milestones.find((item) => item.id === milestoneId);
+          if (!milestone) {
+            add('TASK_SOURCE_INVALID', 'fail', `task ${task.id} source names unknown milestone '${milestoneId}'`, { task: task.id });
+          } else if (criterion) {
+            const exit = /^exit-(\d+)$/.exec(criterion);
+            if (!exit || Number(exit[1]) < 1 || Number(exit[1]) > (milestone.criteria ?? []).length) {
+              add('TASK_SOURCE_INVALID', 'fail', `task ${task.id} source '${part}' names no exit criterion`, { task: task.id });
+            }
           }
         }
       }

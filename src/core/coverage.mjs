@@ -9,7 +9,8 @@ export function sourceMap(tasks) {
     if (!task || seen.has(task.id)) return null;
     if (cache.has(task.id)) return cache.get(task.id);
     seen.add(task.id);
-    const source = task.source ?? (task.parent ? resolve(byId.get(task.parent), seen) : null);
+    const own = task.source ?? null;
+    const source = own || (task.parent ? resolve(byId.get(task.parent), seen) : null);
     cache.set(task.id, source);
     return source;
   };
@@ -20,10 +21,11 @@ export function coverageFor(tasks, milestones) {
   const sources = sourceMap(tasks);
   const reports = milestones.map((milestone) => {
     const items = tasks.filter((task) => task.milestone === milestone.id);
-    const milestoneLevel = items.filter((task) => sources.get(task.id) === `ROADMAP#${milestone.id}`);
+    const sourceList = (task) => (sources.get(task.id) ?? '').split(',').filter(Boolean);
+    const milestoneLevel = items.filter((task) => sourceList(task).includes(`ROADMAP#${milestone.id}`));
     const criteria = (milestone.criteria ?? []).map((criterion) => {
       const source = `ROADMAP#${milestone.id}/exit-${criterion.index}`;
-      const covering = items.filter((task) => sources.get(task.id) === source).map((task) => task.id);
+      const covering = items.filter((task) => sourceList(task).includes(source)).map((task) => task.id);
       return {
         index: criterion.index,
         text: criterion.text,

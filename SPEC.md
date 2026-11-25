@@ -246,6 +246,12 @@ Rules:
     without a disposition: `--disposition clear`, or `--gap <text>` /
     `--decision <text>` (which create records). `task ask` creates a `decision`
     record and leaves the task status unchanged; `task answer` resolves it.
+    A resolved decision that implies work must create a task whose `Source`
+    includes `RECORD#R-NNN`; see rule 20.
+20. `Source` is a comma-separated list of provenance refs. `ROADMAP#Mx/exit-N`
+    counts for `plan coverage`; `RECORD#R-NNN` is traceability only and never
+    covers an exit criterion. Other prefixes name artifacts. Malformed refs are
+    `TASK_SOURCE_INVALID`.
     Only a human may resolve a decision. `status` raises `GAP_OPEN` /
     `DECISION_OPEN`; `report` lists them as gaps; `G6` fails while a decision is
     open or a high-severity gap is unresolved.

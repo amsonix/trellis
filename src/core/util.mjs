@@ -254,14 +254,26 @@ export function isSafeDomain(value) {
   return true;
 }
 
-export function normalizeSource(value) {
+function normalizeOneSource(value) {
   const raw = String(value ?? '').trim();
   const match = /^([A-Za-z]+)#(.+)$/.exec(raw);
   if (!match) return raw;
   const artifact = match[1].toUpperCase();
-  if (artifact !== 'ROADMAP') return `${artifact}#${match[2].trim()}`;
-  const [milestone, criterion] = match[2].split('/');
-  return `ROADMAP#${milestone.toUpperCase()}${criterion ? `/${criterion.toLowerCase()}` : ''}`;
+  if (artifact === 'ROADMAP') {
+    const [milestone, criterion] = match[2].split('/');
+    return `ROADMAP#${milestone.toUpperCase()}${criterion ? `/${criterion.toLowerCase()}` : ''}`;
+  }
+  if (artifact === 'RECORD') return `RECORD#${match[2].trim().toUpperCase()}`;
+  return `${artifact}#${match[2].trim()}`;
+}
+
+export function normalizeSource(value) {
+  return String(value ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map(normalizeOneSource)
+    .join(',');
 }
 
 export function assertMaxLength(value, field, max) {

@@ -4,6 +4,17 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- `Source` is now a comma-separated list; `RECORD#R-NNN` links a task to the
+  decision that produced it. Only `ROADMAP#...` entries count for coverage.
+- Skill: a resolved decision must be read and, when it implies work, turned into
+  a task with `Source: RECORD#R-NNN,...`. Removed stale `blocked`/`needsUser`/
+  `task decide` wording.
+- 274 `node:test` cases.
+
 ## [0.9.41] - 2026-11-25
 
 ### Changed

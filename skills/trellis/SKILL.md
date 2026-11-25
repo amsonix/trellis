@@ -65,6 +65,26 @@ resolves it with `task answer` (or `record resolve`). `pending`, `review` and
 `blocked` are legacy: never enter them. `status` and `report` surface open
 records; `G6` fails while a decision is open.
 
+After a human resolves a decision, read the record and act on it:
+
+```bash
+trellis task show T-NNN --context    # records resolved from that task
+trellis record list --json           # all records, including resolutions
+```
+
+If the decision requires new work, create a task and link it back with the
+record in `Source` (Source is a comma-separated list):
+
+```bash
+trellis task add --title "<follow-up from the decision>" \
+  --scope "<paths>" --acceptance "<a>" --verification "<v>" \
+  --source "RECORD#R-NNN,ROADMAP#M2/exit-1" --by coordinator:<you>
+```
+
+`RECORD#R-NNN` is traceability only; only `ROADMAP#...` entries count for
+`plan coverage`. Do not leave a resolved decision that implies work with no
+task: the decision ledger is durable but nothing will act on it by itself.
+
 If `next` and the user's request disagree, say so and ask. Do not silently
 switch stages or skip a gate.
 
@@ -196,9 +216,10 @@ use `trellis doc list` (gate state), not a `status:` line in the file.
    passing evidence record. `inconclusive` is not a pass.
 4. **Never approve your own work.** A gate approver must not be the role that
    produced the work. A human approves; you produce the evidence and ask.
-5. **Blocked is one question.** Use `trellis task ask T-NNN --question "..."`;
-   it blocks the task, records the question and surfaces it as `needsUser`.
-   Never write a status essay, and never answer your own question.
+5. **A decision is a record, not a status.** Use `trellis task ask T-NNN
+   --question "..."` to record a decision needed from a human. It does not block
+   the task. The human resolves it with `trellis task answer R-NNN
+   --decision "..."`. Never answer your own question.
 6. **Do not edit the ledger by hand.** Use `evidence add`, `task report`,
    `gate` and `reindex`. The JSON files are an index and an audit trail.
 7. **A stale gate is re-approved, not skipped.** If `check` reports
@@ -225,7 +246,6 @@ trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]
 trellis task cancel <T-NNN> --by human:<name> --reason <text>
 trellis task finish <T-NNN> --run <command> --by <role>:<name>
 trellis task report <T-NNN> --state <todo|ready|in_progress|done> --by <role>:<name>
-trellis task decide <T-NNN> --decision accept|rework|cancel --by human:<name>
 
 trellis evidence add --task <T-NNN> --kind <kind> --uri <file|url|commit> --verdict <pass|fail|inconclusive> [--proves <text>] --by <role>:<name>
 trellis evidence list [--task <T-NNN>] [--json]

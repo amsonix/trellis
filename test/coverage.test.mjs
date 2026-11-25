@@ -4,7 +4,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { planCoverage } from '../src/core/coverage.mjs';
-import { addTask, claimTask, editTask } from '../src/core/mutations.mjs';
+import { addRecord } from '../src/core/records.mjs';
+import { addTask, claimTask, editTask, addEvidence, reportTask } from '../src/core/mutations.mjs';
 import { projectStatus, taskShow } from '../src/core/project.mjs';
 import { parseTasks } from '../src/core/tasks.mjs';
 import { cleanup, makeProject } from './helpers.mjs';
@@ -160,6 +161,72 @@ test('attaching an existing task to a parent inherits the source', async () => {
     await editTask(dir, 'T-002', { parent: 'T-001', by: 'architect:ann' });
     const { tasks } = await parseTasks(dir);
     assert.equal(tasks.find((task) => task.id === 'T-002').source, 'ROADMAP#M0/exit-1');
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('source accepts multiple values and RECORD#R-NNN', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await addTask(dir, {
+      title: 'From a decision',
+      scope: 'docs/multi',
+      acceptance: 'm',
+      verification: 'manual',
+      source: 'RECORD#r-001,ROADMAP#M0/exit-1',
+      by: 'architect:ann'
+    });
+    const { tasks } = await parseTasks(dir);
+    const added = tasks.find((task) => task.id === 'T-002');
+    assert.equal(added.source, 'RECORD#R-001,ROADMAP#M0/exit-1');
+
+    const coverage = await planCoverage(dir);
+    const m0 = coverage.milestones.find((item) => item.id === 'M0');
+    assert.deepEqual(m0.criteria[0].tasks, ['T-001', 'T-002']);
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('invalid source prefix and malformed record id are refused', async () => {
+  const dir = await makeProject('generic');
+  try {
+    for (const source of ['NOPE#x', 'RECORD#abc', 'ROADMAP#M0/exit-9']) {
+      await assert.rejects(
+        () => addTask(dir, {
+          title: 'Bad source', scope: 'docs/bad', acceptance: 'b', verification: 'manual',
+          source, by: 'architect:ann'
+        }),
+        (error) => error.code === 'TASK_INVALID'
+      );
+    }
+  } finally {
+    await cleanup(dir);
+  }
+});
+
+test('a RECORD-only source does not cover a criterion but is not an orphan', async () => {
+  const dir = await makeProject('generic');
+  try {
+    await claimTask(dir, 'T-001', { by: 'executor:w1' });
+    await addEvidence(dir, { taskId: 'T-001', kind: 'test', uri: 'manual', verdict: 'pass', by: 'executor:w1' });
+    await reportTask(dir, 'T-001', { state: 'done', by: 'executor:w1' });
+    await addRecord(dir, { kind: 'decision', text: 'which path?', fromTask: 'T-001', by: 'executor:w1' });
+
+    await addTask(dir, {
+      title: 'Decision follow-up',
+      scope: 'docs/decision',
+      acceptance: 'd',
+      verification: 'manual',
+      source: 'RECORD#R-001',
+      by: 'architect:ann'
+    });
+
+    const coverage = await planCoverage(dir);
+    const m0 = coverage.milestones.find((item) => item.id === 'M0');
+    assert.ok(!m0.criteria[0].tasks.includes('T-002'));
+    assert.equal(coverage.totals.orphanTasks, 0);
   } finally {
     await cleanup(dir);
   }
