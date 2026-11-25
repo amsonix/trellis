@@ -336,9 +336,14 @@ const writeTools = [
       dir: dirProp,
       open: { type: 'boolean' },
       kind: text('gap or decision.'),
-      from: text('Source task id.')
+      from: text('Source task id.'),
+      status: text('open or resolved.'),
+      severity: text('high, medium or low.')
     }),
-    run: (args) => listRecords(dirOf(args), { openOnly: Boolean(args.open), kind: args.kind ?? null, fromTask: args.from ?? null })
+    run: (args) => listRecords(dirOf(args), {
+      openOnly: Boolean(args.open), kind: args.kind ?? null,
+      fromTask: args.from ?? null, status: args.status ?? null, severity: args.severity ?? null
+    })
   },
   {
     name: 'trellis_record_add',

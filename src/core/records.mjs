@@ -73,12 +73,14 @@ async function loadRecords(root) {
   return map;
 }
 
-export async function listRecords(root, { openOnly = false, kind = null, fromTask = null } = {}) {
+export async function listRecords(root, { openOnly = false, kind = null, fromTask = null, status = null, severity = null } = {}) {
   const records = [...(await loadRecords(root)).values()];
   return records
     .filter((record) => (openOnly ? record.status === 'open' : true))
     .filter((record) => (kind ? record.kind === kind : true))
     .filter((record) => (fromTask ? record.fromTask === fromTask : true))
+    .filter((record) => (status ? record.status === status : true))
+    .filter((record) => (severity ? record.severity === severity : true))
     .sort((a, b) => a.id.localeCompare(b.id, 'en', { numeric: true }));
 }
 

@@ -132,7 +132,7 @@ const FLAG_SCOPES = {
   'task:show': ['context'],
   next: ['context'],
   record: ['Persist gaps and decisions so they are not forgotten.', 'trellis record <list|add|resolve> ...'],
-  'record:list': ['List records.', 'trellis record list [dir] [--open] [--kind gap|decision] [--from <T-NNN>] [--json]'],
+  'record:list': ['List records.', 'trellis record list [dir] [--open] [--status open|resolved] [--kind gap|decision] [--severity high|medium|low] [--from <T-NNN>] [--json]'],
   'record:add': ['Add a gap or decision record.', 'trellis record add --kind gap|decision --text <text> [--from <T-NNN>] [--severity high|medium|low] [--owner <actor>] --by <role>:<name>'],
   'record:resolve': ['Resolve a record; decisions require a human and --follow-up.', 'trellis record resolve <R-NNN> --resolution <text> [--follow-up required|none] --by <role>:<name>'],
   'plan:coverage': ['strict'],
@@ -302,7 +302,7 @@ const HELP = {
   'doc:scaffold': ['Create a missing document from its template (never overwrites).', 'trellis doc scaffold <ID> --by <role>:<name> [dir] [--json]'],
   plan: ['Plan coverage and derivations.', 'trellis plan <coverage> ...'],
   record: ['Persist gaps and decisions so they are not forgotten.', 'trellis record <list|add|resolve> ...'],
-  'record:list': ['List records.', 'trellis record list [dir] [--open] [--kind gap|decision] [--from <T-NNN>] [--json]'],
+  'record:list': ['List records.', 'trellis record list [dir] [--open] [--status open|resolved] [--kind gap|decision] [--severity high|medium|low] [--from <T-NNN>] [--json]'],
   'record:add': ['Add a gap or decision record.', 'trellis record add --kind gap|decision --text <text> [--from <T-NNN>] [--severity high|medium|low] [--owner <actor>] --by <role>:<name>'],
   'record:resolve': ['Resolve a record; decisions require a human and --follow-up.', 'trellis record resolve <R-NNN> --resolution <text> [--follow-up required|none] --by <role>:<name>'],
   'plan:coverage': ['Map ROADMAP exit criteria to tasks through Source.', 'trellis plan coverage [dir] [--strict] [--json]'],
@@ -794,7 +794,9 @@ async function dispatch(args) {
       const data = await listRecords(dirOf(args), {
         openOnly: Boolean(options.open),
         kind: options.kind || null,
-        fromTask: options.from || null
+        fromTask: options.from || null,
+        status: options.status || null,
+        severity: options.severity || null
       });
       return { data, exitCode: 0, print: () => {
         for (const record of data) console.log(`${record.id} [${record.kind}/${record.status}] ${record.text}${record.fromTask ? ` (${record.fromTask})` : ''}`);

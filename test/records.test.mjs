@@ -206,3 +206,20 @@ test('G6 passes when a required decision has a follow-up task', async () => {
     await cleanup(dir);
   }
 });
+
+test('record list filters by status and severity', async () => {
+  const dir = await makeProject('generic');
+  try {
+    const high = await addRecord(dir, { kind: 'gap', text: 'high gap', severity: 'high', by: 'executor:w1' });
+    await addRecord(dir, { kind: 'gap', text: 'low gap', severity: 'low', by: 'executor:w1' });
+    const decision = await addRecord(dir, { kind: 'decision', text: 'pick one', by: 'executor:w1' });
+    await resolveRecord(dir, decision.id, { resolution: 'B', by: 'human:alice', followUp: 'none' });
+
+    assert.deepEqual((await listRecords(dir, { status: 'resolved' })).map((r) => r.id), [decision.id]);
+    assert.deepEqual((await listRecords(dir, { status: 'open', severity: 'high' })).map((r) => r.id), [high.id]);
+    assert.equal((await listRecords(dir, { severity: 'low' })).length, 1);
+    assert.equal((await listRecords(dir)).length, 3);
+  } finally {
+    await cleanup(dir);
+  }
+});
