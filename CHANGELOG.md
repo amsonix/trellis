@@ -4,6 +4,16 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Task report archive: `task report-save`, `task reports`, `task report-show`
+  with MCP equivalents. Reports live in `.trellis/reports/<T-NNN>/` and are
+  indexed in `.trellis/reports/index.jsonl`; `task show` exposes the link.
+- Skill: an agent must archive a narrative report before ending a task.
+- 282 `node:test` cases.
+
 ## [0.9.44] - 2026-11-25
 
 ### Added

@@ -23,6 +23,7 @@ import {
   listProfiles
 } from '../core/project.mjs';
 import { listRecords, addRecord, resolveRecord } from '../core/records.mjs';
+import { saveTaskReport, listTaskReports, readTaskReport } from '../core/reports.mjs';
 import { listDocs, showDoc, checkDoc, createAdr } from '../core/docs.mjs';
 import { planCoverage } from '../core/coverage.mjs';
 import {
@@ -373,6 +374,38 @@ const writeTools = [
       by: text('Actor as role:name.')
     }, ['record', 'resolution', 'by']),
     run: (args) => resolveRecord(dirOf(args), args.record, { resolution: args.resolution, by: args.by, followUp: args.followUp ?? null })
+  },
+  {
+    name: 'trellis_task_report_save',
+    description: 'Archive a narrative task report with a link back to its task.',
+    inputSchema: object({
+      dir: dirProp,
+      task: text('Task id.'),
+      text: text('The report body.'),
+      title: text('Optional report title.'),
+      supersedes: text('Optional report id this replaces.'),
+      by: text('Actor as role:name.')
+    }, ['task', 'text', 'by']),
+    run: (args) => saveTaskReport(dirOf(args), {
+      taskId: args.task, text: args.text, actor: args.by,
+      title: args.title ?? null, supersedes: args.supersedes ?? null
+    })
+  },
+  {
+    name: 'trellis_task_reports',
+    description: 'List archived task reports.',
+    inputSchema: object({
+      dir: dirProp,
+      task: text('Task id.'),
+      all: { type: 'boolean', description: 'Include superseded reports.' }
+    }),
+    run: (args) => listTaskReports(dirOf(args), { taskId: args.task ?? null, includeSuperseded: Boolean(args.all) })
+  },
+  {
+    name: 'trellis_task_report_show',
+    description: 'Read one archived task report.',
+    inputSchema: object({ dir: dirProp, report: text('Report id.') }, ['report']),
+    run: (args) => readTaskReport(dirOf(args), args.report)
   },
   {
     name: 'trellis_evidence_add',

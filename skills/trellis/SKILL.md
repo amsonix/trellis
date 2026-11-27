@@ -99,6 +99,20 @@ If the runtime exposes Trellis MCP tools (`trellis_*`), they follow the same
 rules. Gate approval is not available there by design; a human runs it from the
 CLI.
 
+Before a task ends, archive the narrative report so the next agent can read it:
+
+```bash
+trellis task report-save <T-NNN> \
+  --text "<what you did, found, and left open>" \
+  --title "<short title>" --by <actor>
+```
+
+Reports live in `.trellis/reports/<T-NNN>/` and are indexed by
+`trellis task show <T-NNN> --context` (`data.reports`) and
+`trellis task reports <T-NNN>`. Read one with `trellis task report-show <RP-NNN>`.
+A report is a human-facing account, not proof: it does not replace evidence or a
+`done` report. Use `--supersedes <RP-NNN>` to replace a corrected report.
+
 ## Capturing new work
 
 After G3, when the user gives you a requirement, a bug report or test feedback,
@@ -169,7 +183,8 @@ delegate one task per child instead of doing them sequentially:
    - one task id and that task's `read` list
    - the same project directory
    - a unique `--by` actor (`executor:lane-<id>`)
-   - the instruction to claim, work, record evidence and report done, then stop
+   - the instruction to claim, work, record evidence, archive a task report,
+     then report done, then stop
 2. The parent never reports a child's task done, never edits the board to retry,
    and never starts more children than the returned batch.
 3. If the host has no subagent primitive, run sequentially; do not fake

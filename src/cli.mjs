@@ -12,6 +12,7 @@ import { listAdrs, setAdrStatus } from './core/adr.mjs';
 import { loadState } from './core/store.mjs';
 import { renderStatusPanel } from './core/text.mjs';
 import { listRecords, addRecord, resolveRecord } from './core/records.mjs';
+import { saveTaskReport, listTaskReports, readTaskReport, taskReportSummary } from './core/reports.mjs';
 import {
   initProject,
   projectStatus,
@@ -74,6 +75,8 @@ const VALUE_OPTIONS = new Set([
   'state',
   'status',
   'title',
+  'text',
+  'supersedes',
   'scope',
   'milestone',
   'acceptance',
@@ -108,7 +111,7 @@ const VALUE_OPTIONS = new Set([
   'owner'
 ]);
 
-const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready', 'cascade', 'context', 'strict', 'panel', 'empty-tasks', 'open']);
+const FLAG_OPTIONS = new Set(['json', 'observe', 'approve', 'waive', 'staged', 'help', 'version', 'force', 'dry-run', 'a2a', 'apply', 'no-cancel', 'ready', 'cascade', 'context', 'strict', 'panel', 'empty-tasks', 'open', 'all']);
 
 // A flag is only accepted where it means something. Every other flag is a
 // usage error, so `task add --dry-run` cannot silently write a task.
@@ -238,6 +241,9 @@ trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dir <dir>]
   trellis task finish <T-NNN> --run <command> (--disposition clear | --gap <text> | --decision <text>) --by <role>:<name>
   trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--scope <paths>] [--priority <p>] --by <role>:<name>
   trellis task list [dir] [--status <s>] [--role <r>] [--ready] [--limit <n>] [--dir <dir>]
+  trellis task report-save <T-NNN> --text <text> [--title <t>] [--supersedes <RP-NNN>] --by <role>:<name>
+  trellis task reports [<T-NNN>] [--all]
+  trellis task report-show <RP-NNN>
   trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dir <dir>]
   trellis doc list [dir] [--json]
   trellis doc show <ID> [dir] [--json]
@@ -327,6 +333,10 @@ const HELP = {
   'task:claim': ['Claim a task (creates the lease) or take over an orphaned claim.', 'trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dry-run]'],
   'task:ask': ['Record a decision needed from a human.', 'trellis task ask <T-NNN> --question <text> --by <role>:<name>'],
   'task:answer': ['Resolve a decision record as a human.', 'trellis task answer <R-NNN> --decision <text> --follow-up required|none --by human:<name>'],
+  'task:reports': ['List archived task reports.', 'trellis task reports [<T-NNN>] [dir] [--all] [--json]'],
+  'task:report-show': ['Read an archived report.', 'trellis task report-show <RP-NNN> [dir] [--json]'],
+  'task:report-save': ['Archive a narrative task report.', 'trellis task report-save <T-NNN> --text <text> [--title <t>] [--supersedes <RP-NNN>] --by <role>:<name>'],
+  'task:reports': ['all'],
   'task:report': ['Report a task state; done requires passing evidence.', 'trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dry-run]'],
   'task:recover': ['Return an in_progress task with no lease to ready or todo.', 'trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]'],
   'task:cancel': ['Cancel work that is no longer needed; canceled tasks do not satisfy dependencies.', 'trellis task cancel <T-NNN> --by human:<name> --reason <text> [--cascade]'],
@@ -1093,6 +1103,35 @@ async function dispatch(args) {
         reason: options.reason
       });
       return { data, exitCode: 0, print: () => console.log(`recovered ${taskId} to ${data.task.status}`) };
+    }
+    if (subcommand === 'reports') {
+      const taskId = args.positionals[0] ?? null;
+      const data = await listTaskReports(dir, { taskId, includeSuperseded: Boolean(options.all) });
+      return { data, exitCode: 0, print: () => {
+        if (data.length === 0) console.log('no reports');
+        for (const report of data) console.log(`${report.id} ${report.taskId} ${report.at} ${report.by} ${report.title ?? ''}`);
+      } };
+    }
+    if (subcommand === 'report-show') {
+      const id = args.positionals[0];
+      if (!id) throw new UsageError('task report-show needs a report id');
+      const data = await readTaskReport(dir, id);
+      return { data, exitCode: 0, print: () => {
+        console.log(`${data.id} ${data.taskId} ${data.at} ${data.by}`);
+        console.log(data.text);
+      } };
+    }
+    if (subcommand === 'report-save') {
+      const taskId = args.positionals[0];
+      if (!taskId) throw new UsageError('task report-save needs a task id');
+      const data = await saveTaskReport(dir, {
+        taskId,
+        text: options.text,
+        actor: options.by,
+        title: options.title || null,
+        supersedes: options.supersedes || null
+      });
+      return { data, exitCode: 0, print: () => console.log(`saved ${data.id} for ${data.taskId}: ${data.path}`) };
     }
     if (subcommand === 'report') {
       const taskId = args.positionals[0];

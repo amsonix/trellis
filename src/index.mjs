@@ -42,6 +42,12 @@ export {
 } from './core/records.mjs';
 
 export {
+  saveTaskReport,
+  listTaskReports,
+  readTaskReport
+} from './core/reports.mjs';
+
+export {
   parseTasks,
   validateTasks,
   readyTasks,

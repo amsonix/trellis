@@ -25,6 +25,7 @@ import { acquireLease, releaseLease, leaseStatus, leaseConflicts } from './lease
 import { milestoneProgress as computeMilestoneProgress } from './milestones.mjs';
 import { coverageFor, sourceMap } from './coverage.mjs';
 import { addRecord, listRecords, recordSummary, resolveRecord } from './records.mjs';
+import { taskReportSummary } from './reports.mjs';
 import { defaultState, loadState, saveState, appendAudit } from './store.mjs';
 import { RefusedError, UnavailableError, UsageError } from './errors.mjs';
 import { nowIso, parseActor, parseScope, isSafeDomain, assertMaxLength, writeText, covers, overlaps, normalizeSource } from './util.mjs';
@@ -1402,6 +1403,7 @@ export async function taskShow(root, taskId, { context = false } = {}) {
   const base = {
     task: { ...task, ageDays: ageDays(task) },
     records: await listRecords(root, { fromTask: taskId }),
+    reports: await taskReportSummary(root, taskId),
     effectiveSource: sourceMap(tasks).get(taskId) ?? null,
     parent: parent ? summary(parent) : null,
     children: children.map(summary),
