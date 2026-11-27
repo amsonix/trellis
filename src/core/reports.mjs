@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { META_DIR } from './constants.mjs';
 import { RefusedError, UsageError, ProtocolError } from './errors.mjs';
-import { exists, nowIso, parseActor, syncFile, syncDirectory } from './util.mjs';
+import { exists, nowIso, parseActor, syncFile, syncDirectory, fileSha256 } from './util.mjs';
 
 export const REPORTS_DIR = `${META_DIR}/reports`;
 export const REPORT_INDEX = `${META_DIR}/reports/index.jsonl`;
@@ -68,9 +68,11 @@ function nextId(reports) {
   return `RP-${String(n).padStart(3, '0')}`;
 }
 
-export async function saveTaskReport(root, { taskId, text, actor, title = null, supersedes = null }) {
+export async function saveTaskReport(root, { taskId, text = null, sourcePath = null, actor, title = null, supersedes = null }) {
   if (!taskId || !/^T-\d+$/.test(taskId)) throw new UsageError('task report needs a task id like T-001');
-  if (!text || String(text).trim() === '') throw new UsageError('task report needs --text');
+  if ((!text || String(text).trim() === '') && !sourcePath) {
+    throw new UsageError('task report needs --text or --file');
+  }
   if (!actor) throw new UsageError('task report needs --by <role>:<name>');
   const by = parseActor(actor);
   const reports = await loadIndex(root);
@@ -83,6 +85,17 @@ export async function saveTaskReport(root, { taskId, text, actor, title = null, 
       });
     }
   }
+  let sourceText = text;
+  let sourceFile = null;
+  let sha256 = null;
+  if (sourcePath) {
+    const source = path.resolve(root, String(sourcePath));
+    if (!(await exists(source))) throw new RefusedError('REPORT_FILE_MISSING', `report file not found: ${sourcePath}`, { file: sourcePath });
+    sourceText = await fs.readFile(source, 'utf8');
+    sourceFile = path.relative(root, source).split(path.sep).join('/');
+    sha256 = await fileSha256(source);
+  }
+  if (!sourceText || String(sourceText).trim() === '') throw new UsageError('task report text is empty');
   const id = nextId(reports);
   const at = nowIso();
   const stamp = at.replace(/[:.]/g, '-');
@@ -95,10 +108,11 @@ export async function saveTaskReport(root, { taskId, text, actor, title = null, 
     `- by: ${by.raw}`,
     `- at: ${at}`,
     ...(supersedes ? [`- supersedes: ${supersedes}`] : []),
+    ...(sourceFile ? [`- source-file: ${sourceFile}`, `- sha256: ${sha256}`] : []),
     '',
     '## Report',
     '',
-    String(text).trim(),
+    String(sourceText).trim(),
     ''
   ].join('\n');
   await fs.mkdir(path.dirname(file), { recursive: true });
@@ -112,6 +126,8 @@ export async function saveTaskReport(root, { taskId, text, actor, title = null, 
     at,
     title: title ? String(title).trim() : null,
     path: path.relative(root, file).split(path.sep).join('/'),
+    sourceFile,
+    sha256,
     supersedes: supersedes ?? null,
     supersededBy: null,
     supersededAt: null

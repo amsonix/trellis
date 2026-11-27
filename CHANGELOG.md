@@ -4,6 +4,17 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `task report-save --file <path>` imports an existing report, stores it under
+  `.trellis/reports/<T>/`, and records its sha256; `--text` and `--file` are
+  alternatives.
+- `trellis skill sync [--force]` refreshes the project skill after a Trellis
+  upgrade. It refuses to overwrite a locally edited skill unless forced.
+- 285 `node:test` cases.
+
 ## [0.9.45] - 2026-11-27
 
 ### Added

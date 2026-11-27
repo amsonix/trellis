@@ -28,7 +28,7 @@ import { addRecord, listRecords, recordSummary, resolveRecord } from './records.
 import { taskReportSummary } from './reports.mjs';
 import { defaultState, loadState, saveState, appendAudit } from './store.mjs';
 import { RefusedError, UnavailableError, UsageError } from './errors.mjs';
-import { nowIso, parseActor, parseScope, isSafeDomain, assertMaxLength, writeText, covers, overlaps, normalizeSource } from './util.mjs';
+import { nowIso, parseActor, parseScope, isSafeDomain, assertMaxLength, writeText, covers, overlaps, normalizeSource, exists } from './util.mjs';
 import { currentAgent } from './identity.mjs';
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -50,6 +50,33 @@ export const TEMPLATE_MAP = {
 };
 
 export { listProfiles };
+
+export async function syncSkill(root, { force = false } = {}) {
+  const target = path.join(root, '.agents', 'skills', 'trellis', 'SKILL.md');
+  let skill = null;
+  try {
+    skill = await fs.readFile(SKILL_SOURCE, 'utf8');
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  if (skill === null) {
+    throw new UnavailableError('skill source is missing from this Trellis package', { path: SKILL_SOURCE });
+  }
+  const state = await loadState(root);
+  const existed = await exists(target);
+  if (existed && !force) {
+    const current = await fs.readFile(target, 'utf8');
+    if (current === skill) return { path: path.relative(root, target), changed: false, created: false };
+    throw new RefusedError('SKILL_EXISTS', 'skill differs; pass --force to overwrite it', {
+      path: path.relative(root, target)
+    });
+  }
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  await writeText(target, skill);
+  appendAudit(state, 'skill.synced', null, { path: path.relative(root, target), force });
+  await saveState(root, state);
+  return { path: path.relative(root, target), changed: existed, created: !existed };
+}
 
 export async function initProject({ dir, name = null, profile: profileId = 'generic', emptyTasks = false }) {
   const root = path.resolve(dir);

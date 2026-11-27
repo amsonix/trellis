@@ -15,6 +15,7 @@ import { listRecords, addRecord, resolveRecord } from './core/records.mjs';
 import { saveTaskReport, listTaskReports, readTaskReport, taskReportSummary } from './core/reports.mjs';
 import {
   initProject,
+  syncSkill,
   projectStatus,
   runChecks,
   nextAction,
@@ -77,6 +78,7 @@ const VALUE_OPTIONS = new Set([
   'title',
   'text',
   'supersedes',
+  'file',
   'scope',
   'milestone',
   'acceptance',
@@ -99,6 +101,7 @@ const VALUE_OPTIONS = new Set([
   'run',
   'logs-keep',
   'supersedes',
+  'file',
   'children-of',
   'parent',
   'source',
@@ -134,13 +137,15 @@ const FLAG_SCOPES = {
   'task:cancel': ['cascade'],
   'task:show': ['context'],
   next: ['context'],
+  skill: ['Manage the agent skill in a project.', 'trellis skill sync [dir] [--force]'],
   record: ['Persist gaps and decisions so they are not forgotten.', 'trellis record <list|add|resolve> ...'],
   'record:list': ['List records.', 'trellis record list [dir] [--open] [--status open|resolved] [--kind gap|decision] [--severity high|medium|low] [--from <T-NNN>] [--json]'],
   'record:add': ['Add a gap or decision record.', 'trellis record add --kind gap|decision --text <text> [--from <T-NNN>] [--severity high|medium|low] [--owner <actor>] --by <role>:<name>'],
   'record:resolve': ['Resolve a record; decisions require a human and --follow-up.', 'trellis record resolve <R-NNN> --resolution <text> [--follow-up required|none] --by <role>:<name>'],
   'plan:coverage': ['strict'],
   restore: ['force'],
-  init: INIT_FLAGS
+  init: INIT_FLAGS,
+  'skill:sync': ['force']
 };
 
 function validateFlags(command, subcommand, options) {
@@ -192,7 +197,7 @@ function parseArgv(argv) {
 
   const command = positionals.shift() ?? null;
   let subcommand = null;
-  if (['task', 'evidence', 'lease', 'guard', 'profile', 'scope', 'doc', 'adr', 'milestone', 'plan', 'record'].includes(command)) {
+  if (['task', 'evidence', 'lease', 'guard', 'profile', 'scope', 'doc', 'adr', 'milestone', 'plan', 'record', 'skill'].includes(command)) {
     subcommand = positionals.shift() ?? null;
   }
   validateFlags(command, subcommand, options);
@@ -215,6 +220,7 @@ An agent-facing protocol for building projects: stages, artifacts, gates, roles,
 tasks and evidence. Files are the source of truth; .trellis/ is the index.
 
 Usage:
+  trellis skill sync [dir] [--force]
   trellis init [project-dir] [--profile <generic|web-app|library|cli>] [--name <name>]
       (works on an existing project; creates <project>/.trellis/ and, once,
        the agent skill .agents/skills/trellis/SKILL.md; never overwrites;
@@ -241,7 +247,7 @@ trellis task claim <T-NNN> --by <role>:<name> [--paths <a,b>] [--dir <dir>]
   trellis task finish <T-NNN> --run <command> (--disposition clear | --gap <text> | --decision <text>) --by <role>:<name>
   trellis task edit <T-NNN> [--title <t>] [--acceptance <a>] [--verification <v>] [--depends-on <list>] [--scope <paths>] [--priority <p>] --by <role>:<name>
   trellis task list [dir] [--status <s>] [--role <r>] [--ready] [--limit <n>] [--dir <dir>]
-  trellis task report-save <T-NNN> --text <text> [--title <t>] [--supersedes <RP-NNN>] --by <role>:<name>
+  trellis task report-save <T-NNN> (--text <text> | --file <path>) [--title <t>] [--supersedes <RP-NNN>] --by <role>:<name>
   trellis task reports [<T-NNN>] [--all]
   trellis task report-show <RP-NNN>
   trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dir <dir>]
@@ -307,6 +313,7 @@ const HELP = {
   'doc:check': ['Run the structural checks for one document.', 'trellis doc check <ID> [dir] [--json]'],
   'doc:scaffold': ['Create a missing document from its template (never overwrites).', 'trellis doc scaffold <ID> --by <role>:<name> [dir] [--json]'],
   plan: ['Plan coverage and derivations.', 'trellis plan <coverage> ...'],
+  skill: ['Manage the agent skill in a project.', 'trellis skill sync [dir] [--force]'],
   record: ['Persist gaps and decisions so they are not forgotten.', 'trellis record <list|add|resolve> ...'],
   'record:list': ['List records.', 'trellis record list [dir] [--open] [--status open|resolved] [--kind gap|decision] [--severity high|medium|low] [--from <T-NNN>] [--json]'],
   'record:add': ['Add a gap or decision record.', 'trellis record add --kind gap|decision --text <text> [--from <T-NNN>] [--severity high|medium|low] [--owner <actor>] --by <role>:<name>'],
@@ -335,7 +342,7 @@ const HELP = {
   'task:answer': ['Resolve a decision record as a human.', 'trellis task answer <R-NNN> --decision <text> --follow-up required|none --by human:<name>'],
   'task:reports': ['List archived task reports.', 'trellis task reports [<T-NNN>] [dir] [--all] [--json]'],
   'task:report-show': ['Read an archived report.', 'trellis task report-show <RP-NNN> [dir] [--json]'],
-  'task:report-save': ['Archive a narrative task report.', 'trellis task report-save <T-NNN> --text <text> [--title <t>] [--supersedes <RP-NNN>] --by <role>:<name>'],
+  'task:report-save': ['Archive a narrative task report.', 'trellis task report-save <T-NNN> (--text <text> | --file <path>) [--title <t>] [--supersedes <RP-NNN>] --by <role>:<name>'],
   'task:reports': ['all'],
   'task:report': ['Report a task state; done requires passing evidence.', 'trellis task report <T-NNN> --state <status> [--note <text>] [--by <role>:<name>] [--dry-run]'],
   'task:recover': ['Return an in_progress task with no lease to ready or todo.', 'trellis task recover <T-NNN> --by human:<name> --reason <text> [--to ready|todo]'],
@@ -614,6 +621,18 @@ async function dispatch(args) {
   }
   if (!command) {
     return { data: { usage: usage() }, exitCode: 0, print: () => console.log(usage()) };
+  }
+
+  if (command === 'skill') {
+    if (subcommand === 'sync') {
+      const data = await syncSkill(dirOf(args), { force: Boolean(options.force) });
+      return {
+        data,
+        exitCode: 0,
+        print: () => console.log(data.changed ? `synced ${data.path}` : `${data.path} already current`)
+      };
+    }
+    throw new UsageError(`unknown skill subcommand '${subcommand}' (sync)`);
   }
 
   if (command === 'init') {
@@ -1126,7 +1145,8 @@ async function dispatch(args) {
       if (!taskId) throw new UsageError('task report-save needs a task id');
       const data = await saveTaskReport(dir, {
         taskId,
-        text: options.text,
+        text: options.text || null,
+        sourcePath: options.file || null,
         actor: options.by,
         title: options.title || null,
         supersedes: options.supersedes || null

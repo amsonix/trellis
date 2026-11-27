@@ -251,8 +251,11 @@ Rules:
 20. **Task reports** are narrative accounts archived in
     `.trellis/reports/<T-NNN>/` with an append-only index at
     `.trellis/reports/index.jsonl`. `task report-save <T> --text ...` creates an
-    `RP-NNN` report linked to the task; `task reports <T>` lists them and
-    `task report-show <RP-NNN>` reads one. `--supersedes` replaces a corrected
+    `RP-NNN` report linked to the task; `--file <path>` imports an existing
+    Markdown report and records its sha256; `task reports <T>` lists them and
+    `task report-show <RP-NNN>` reads one. `skill sync [--force]` refreshes
+    `.agents/skills/trellis/SKILL.md` in an existing project; a local edit is
+    preserved unless `--force` is given. `--supersedes` replaces a corrected
     report. Reports are human-facing and never count as evidence.
 21. `Source` is a comma-separated list of provenance refs. `ROADMAP#Mx/exit-N`
     counts for `plan coverage`; `RECORD#R-NNN` is traceability only and never

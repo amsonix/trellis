@@ -382,12 +382,13 @@ const writeTools = [
       dir: dirProp,
       task: text('Task id.'),
       text: text('The report body.'),
+      file: text('Path to a report file.'),
       title: text('Optional report title.'),
       supersedes: text('Optional report id this replaces.'),
       by: text('Actor as role:name.')
     }, ['task', 'text', 'by']),
     run: (args) => saveTaskReport(dirOf(args), {
-      taskId: args.task, text: args.text, actor: args.by,
+      taskId: args.task, text: args.text ?? null, sourcePath: args.file ?? null, actor: args.by,
       title: args.title ?? null, supersedes: args.supersedes ?? null
     })
   },
